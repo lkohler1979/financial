@@ -16,11 +16,7 @@
     "**/dist": true,
     "**/*.lock": true
   },
-  "eslint.workingDirectories": [
-    "apps/api",
-    "apps/web",
-    "packages/shared-types"
-  ],
+  "eslint.workingDirectories": ["apps/api", "apps/web", "packages/shared-types"],
   "prisma.showPrismaDataPlatformNotification": false,
   "[typescript]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"

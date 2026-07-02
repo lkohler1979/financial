@@ -11,16 +11,13 @@ const connection = { url: process.env.REDIS_URL || "redis://localhost:6379/0" };
 const placeholderWorker = new Worker(
   "ethos-placeholder",
   async (job) => {
-    // eslint-disable-next-line no-console
     console.log(`[worker] processando job ${job.name}`, job.data);
   },
-  { connection }
+  { connection },
 );
 
 placeholderWorker.on("completed", (job) => {
-  // eslint-disable-next-line no-console
   console.log(`[worker] job ${job.id} concluído`);
 });
 
-// eslint-disable-next-line no-console
 console.log("[EthosFinancial Worker] aguardando jobs...");

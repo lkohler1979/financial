@@ -12,9 +12,9 @@ Ao concluir uma tarefa, marque o checkbox e, se relevante, adicione uma linha cu
 - [x] `docker-compose.yml` com postgres, redis, evolution-api, ollama (opcional), api, worker, web, adminer
 - [x] `.env.example` com todas as variáveis necessárias
 - [x] `schema.prisma` inicial com as entidades do modelo de dados
-- [ ] Configurar ESLint + Prettier no monorepo (api e web)
-- [ ] Configurar pipeline de CI (lint + testes) no GitHub Actions/GitLab CI
-- [ ] Rodar `docker compose up -d` e validar todos os healthchecks localmente
+- [x] Configurar ESLint + Prettier no monorepo (api e web) — 2026-07-02: flat config (`eslint.config.mjs`) na raiz cobrindo api e web + Prettier; regras Angular-específicas (`@angular-eslint`) ficam para quando o app Angular real for gerado via `ng new`/`ng add @angular-eslint/schematics`.
+- [x] Configurar pipeline de CI (lint + testes) no GitHub Actions/GitLab CI — 2026-07-02: `.github/workflows/ci.yml` (lint, format:check, prisma generate, test:api); repositório é local, sem remoto, então o workflow não é executado automaticamente ainda, mas os passos foram validados manualmente. Criado teste smoke `apps/api/tests/integration/health.test.ts` para o pipeline ter algo a rodar.
+- [x] Rodar `docker compose up -d` e validar todos os healthchecks localmente — 2026-07-02: postgres e redis `healthy`, evolution-api respondendo HTTP 200. Portas do `.env` local ajustadas (6379→6390, 3000→3010, 4200→4210, 8080→8090, 8081→8091) por já estarem em uso pelos containers do projeto WhatFlow nesta máquina.
 
 ## Sprint 1 — Cadastros Base (Aluno, Curso, Matrícula)
 

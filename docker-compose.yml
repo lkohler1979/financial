@@ -7,7 +7,6 @@ version: "3.9"
 # =============================================================================
 
 services:
-
   # ---------------------------------------------------------------------------
   # Banco de dados principal
   # ---------------------------------------------------------------------------
@@ -24,7 +23,8 @@ services:
     volumes:
       - ethos_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ethos} -d ${POSTGRES_DB:-ethos_financial}"]
+      test:
+        ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ethos} -d ${POSTGRES_DB:-ethos_financial}"]
       interval: 10s
       timeout: 5s
       retries: 5

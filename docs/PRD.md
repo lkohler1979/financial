@@ -9,6 +9,7 @@ O EthosFinancial é uma plataforma web de gestão acadêmico-financeira para ins
 **Problema resolvido:** hoje o controle é feito em planilhas dispersas, sem histórico de tratativas, sem rastreabilidade e com geração manual de documentos de protesto.
 
 **Proposta de valor:**
+
 - Elimina o retrabalho manual de identificar inadimplentes a cada ciclo;
 - Transforma a cobrança em um fluxo de CRM (situações, TAGs, histórico, ações em lote);
 - Gera automaticamente os documentos de protesto no padrão jurídico da instituição;
@@ -108,6 +109,7 @@ Registrar: edição de aluno, alteração de matrícula/parcela, alteração de 
 ## 19. Requisitos Não Funcionais
 
 **Performance:**
+
 - API simples: ≤ 300ms p95; relatórios/listagens filtradas: ≤ 1,5s p95;
 - Importação de 10k registros: assíncrona, sem bloquear UI;
 - Geração de Word: ≤ 3s/documento, em lote assíncrono;
@@ -115,6 +117,7 @@ Registrar: edição de aluno, alteração de matrícula/parcela, alteração de 
 - Disponibilidade alvo: ≥ 99,5%.
 
 **Segurança:**
+
 - JWT com expiração + refresh token; senhas com bcrypt/argon2;
 - RBAC em todas as rotas; HTTPS/TLS obrigatório;
 - Mitigação OWASP Top 10 (Prisma evita SQL injection; sanitização de XSS; CSRF em formulários; rate limiting em rotas públicas/auth);
@@ -122,6 +125,7 @@ Registrar: edição de aluno, alteração de matrícula/parcela, alteração de 
 - Segredos apenas via variáveis de ambiente; backups criptografados.
 
 **Acessibilidade:**
+
 - WCAG 2.1 nível AA nas telas administrativas;
 - Contraste adequado; navegação completa via teclado; atributos ARIA;
 - Indicadores de cor (ex.: situação de cobrança) sempre acompanhados de rótulo textual.
@@ -141,30 +145,39 @@ Templates Word parametrizáveis; agendamento por watch folder; versionamento de 
 ## 23. Módulo de Gestão de Cobranças
 
 ### 23.1 Situação da Cobrança
+
 Cadastro configurável (Nome, Cor, Ordem, Ativa, Descrição, `participaNovosRelatorios`). Exemplos: Pendente, Em contato, Aguardando retorno, Promessa de pagamento, Quitado, Enviado para Protesto, Enviado para Jurídico, Renegociado.
 
 ### 23.2 TAGs
+
 Cadastro livre, N:N com Matrícula. Exemplos: Alto Valor, Prioridade, WhatsApp, Jurídico, Bolsa, Convênio, Ex-aluno, Desistente, Cobrança 2026.
 
 ### 23.3 Histórico da Cobrança
+
 Toda alteração de situação/TAG/observação gera registro imutável (data, usuário, ação).
 
 ### 23.4 Geração do Relatório — Filtros
+
 Financeiros (parcelas mínimas, dias de atraso, valor min/max, curso, tipo de título) · Aluno (CPF, nome, cidade, estado) · Matrícula (curso, data, contrato, situação) · Cobrança (situação, TAG, possui/não possui TAG, incluir/excluir situações).
 
 ### 23.5 Atualização em Lote
+
 Após gerar relatório: alterar situação, inserir/remover TAG, adicionar observação, marcar como exportado/protestado/contatado — para todos os selecionados.
 
 ### 23.6 Regras para Próximos Relatórios
+
 Checkbox para ignorar situações já tratadas (ex.: Quitado, Protestado, Jurídico) na próxima geração.
 
 ### 23.7 Observações da Cobrança
+
 Linha do tempo de observações por matrícula.
 
 ### 23.8 Dashboard da Cobrança
+
 Inadimplentes, valor em aberto, quantidade por situação/TAG, valor em protesto/renegociado/quitado, relatórios por período, top 10 cursos, ranking de TAGs.
 
 ### 23.9 Campanhas de Cobrança (evolução futura)
+
 Substituir "relatório" por "Campanha" (ex.: "Protesto Julho/2026"), com métricas por campanha e rastreabilidade completa.
 
 ## 24. Arquitetura do Projeto e Estrutura de Pastas
@@ -177,9 +190,9 @@ Serviços: `postgres`, `redis`, `evolution-api`, `ollama` (opcional, profile `ia
 
 ## 26. Roadmap de Releases (sugestão)
 
-| Release | Escopo |
-|---|---|
-| 1.0 | Cadastros, Importação, Financeiro, Relatório de Inadimplência, Geração de Word, Configurações, Auditoria |
-| 1.1 | Módulo de Gestão de Cobranças completo (Situações, TAGs, Histórico, Filtros, Lote) |
-| 1.2 | Dashboard de Cobrança e indicadores avançados |
-| 2.0 | Campanhas de Cobrança, watch folder, notificações por e-mail, API de integração com ERPs |
+| Release | Escopo                                                                                                   |
+| ------- | -------------------------------------------------------------------------------------------------------- |
+| 1.0     | Cadastros, Importação, Financeiro, Relatório de Inadimplência, Geração de Word, Configurações, Auditoria |
+| 1.1     | Módulo de Gestão de Cobranças completo (Situações, TAGs, Histórico, Filtros, Lote)                       |
+| 1.2     | Dashboard de Cobrança e indicadores avançados                                                            |
+| 2.0     | Campanhas de Cobrança, watch folder, notificações por e-mail, API de integração com ERPs                 |

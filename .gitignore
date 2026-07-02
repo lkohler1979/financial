@@ -1,0 +1,32 @@
+# Dependências
+node_modules/
+**/node_modules/
+
+# Build
+dist/
+build/
+.angular/
+
+# Ambiente
+.env
+.env.local
+*.local
+
+# Prisma
+apps/api/prisma/dev.db
+
+# Documentos gerados
+apps/api/output/
+*.docx.tmp
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor / SO
+.DS_Store
+Thumbs.db
+.idea/
+
+# Testes
+coverage/

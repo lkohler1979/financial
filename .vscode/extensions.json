@@ -1,0 +1,13 @@
+{
+  "recommendations": [
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "prisma.prisma",
+    "angular.ng-template",
+    "ms-azuretools.vscode-docker",
+    "eamodio.gitlens",
+    "mikestead.dotenv",
+    "humao.rest-client",
+    "streetsidesoftware.code-spell-checker"
+  ]
+}

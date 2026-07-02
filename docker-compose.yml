@@ -1,0 +1,215 @@
+version: "3.9"
+
+# =============================================================================
+# EthosFinancial 1.0 — Ambiente de Desenvolvimento / Homologação
+# Sobe: PostgreSQL, Redis, Evolution API (WhatsApp), Ollama (LLM local, opcional),
+# API (Node/Express/Prisma), Web (Angular) e Adminer (admin de banco, opcional).
+# =============================================================================
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # Banco de dados principal
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: ethos-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ethos}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ethos_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-ethos_financial}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - ethos_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ethos} -d ${POSTGRES_DB:-ethos_financial}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ethos-network
+
+  # ---------------------------------------------------------------------------
+  # Redis — broker de filas (BullMQ) e cache
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: ethos-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - ethos_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ethos-network
+
+  # ---------------------------------------------------------------------------
+  # Evolution API v2 — Gateway de WhatsApp para notificações/cobrança
+  # ---------------------------------------------------------------------------
+  evolution-api:
+    image: atendai/evolution-api:v2.1.1
+    container_name: ethos-evolution-api
+    restart: unless-stopped
+    ports:
+      - "${EVOLUTION_API_PORT:-8080}:8080"
+    environment:
+      AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY:-change-me-evolution-key}
+      DATABASE_ENABLED: "true"
+      DATABASE_PROVIDER: postgresql
+      DATABASE_CONNECTION_URI: postgresql://${POSTGRES_USER:-ethos}:${POSTGRES_PASSWORD:-ethos_secret}@postgres:5432/${EVOLUTION_DB:-evolution_api}
+      CACHE_REDIS_ENABLED: "true"
+      CACHE_REDIS_URI: redis://redis:6379/1
+      CACHE_LOCAL_ENABLED: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ethos_evolution_instances:/evolution/instances
+    networks:
+      - ethos-network
+
+  # ---------------------------------------------------------------------------
+  # Ollama — LLM local (opcional, alternativa on-premise ao Groq)
+  # ---------------------------------------------------------------------------
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ethos-ollama
+    restart: unless-stopped
+    profiles: ["ia-local"]
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ethos_ollama_data:/root/.ollama
+    networks:
+      - ethos-network
+
+  # ---------------------------------------------------------------------------
+  # API — Backend Node.js 20 + Express 5 + TypeScript + Prisma
+  # ---------------------------------------------------------------------------
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: development
+    container_name: ethos-api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ethos}:${POSTGRES_PASSWORD:-ethos_secret}@postgres:5432/${POSTGRES_DB:-ethos_financial}
+      REDIS_URL: redis://redis:6379/0
+      EVOLUTION_API_URL: http://evolution-api:8080
+      EVOLUTION_API_KEY: ${EVOLUTION_API_KEY:-change-me-evolution-key}
+      OLLAMA_URL: http://ollama:11434
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      AI_PROVIDER: ${AI_PROVIDER:-groq}
+      JWT_SECRET: ${JWT_SECRET:-change-me-jwt-secret}
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3000
+    ports:
+      - "${API_PORT:-3000}:3000"
+    volumes:
+      - ./apps/api:/app/apps/api
+      - ./packages/shared-types:/app/packages/shared-types
+      - ethos_api_node_modules:/app/apps/api/node_modules
+      - ethos_documents_output:/app/apps/api/output
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - ethos-network
+
+  # ---------------------------------------------------------------------------
+  # Worker — processa filas BullMQ (importação, geração de Word, envio WhatsApp)
+  # ---------------------------------------------------------------------------
+  worker:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: development
+    container_name: ethos-worker
+    restart: unless-stopped
+    command: ["npm", "run", "worker:dev"]
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ethos}:${POSTGRES_PASSWORD:-ethos_secret}@postgres:5432/${POSTGRES_DB:-ethos_financial}
+      REDIS_URL: redis://redis:6379/0
+      EVOLUTION_API_URL: http://evolution-api:8080
+      EVOLUTION_API_KEY: ${EVOLUTION_API_KEY:-change-me-evolution-key}
+      OLLAMA_URL: http://ollama:11434
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      AI_PROVIDER: ${AI_PROVIDER:-groq}
+      NODE_ENV: ${NODE_ENV:-development}
+    volumes:
+      - ./apps/api:/app/apps/api
+      - ./packages/shared-types:/app/packages/shared-types
+      - ethos_api_node_modules:/app/apps/api/node_modules
+      - ethos_documents_output:/app/apps/api/output
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - ethos-network
+
+  # ---------------------------------------------------------------------------
+  # Web — Frontend Angular 17+
+  # ---------------------------------------------------------------------------
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: development
+    container_name: ethos-web
+    restart: unless-stopped
+    environment:
+      API_URL: http://localhost:${API_PORT:-3000}
+    ports:
+      - "${WEB_PORT:-4200}:4200"
+    volumes:
+      - ./apps/web:/app/apps/web
+      - ethos_web_node_modules:/app/apps/web/node_modules
+    depends_on:
+      - api
+    networks:
+      - ethos-network
+
+  # ---------------------------------------------------------------------------
+  # Adminer — administração visual do PostgreSQL (opcional)
+  # ---------------------------------------------------------------------------
+  adminer:
+    image: adminer:latest
+    container_name: ethos-adminer
+    restart: unless-stopped
+    profiles: ["tools"]
+    ports:
+      - "${ADMINER_PORT:-8081}:8080"
+    depends_on:
+      - postgres
+    networks:
+      - ethos-network
+
+networks:
+  ethos-network:
+    driver: bridge
+
+volumes:
+  ethos_postgres_data:
+  ethos_redis_data:
+  ethos_evolution_instances:
+  ethos_ollama_data:
+  ethos_api_node_modules:
+  ethos_web_node_modules:
+  ethos_documents_output:

@@ -1,0 +1,227 @@
+// =============================================================================
+// EthosFinancial 1.0 — Schema Prisma
+// Reflete o modelo de dados descrito na especificação (seção 20)
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PerfilUsuario {
+  ADMINISTRADOR
+  OPERADOR
+}
+
+enum StatusParcela {
+  EM_ABERTO
+  PAGO
+  CANCELADO
+  PROTESTADO
+  RENEGOCIADO
+}
+
+enum FrequenciaImportacao {
+  MANUAL
+  SEMANAL
+  MENSAL
+}
+
+model Usuario {
+  id        String        @id @default(uuid())
+  nome      String
+  email     String        @unique
+  senhaHash String
+  perfil    PerfilUsuario @default(OPERADOR)
+  ativo     Boolean       @default(true)
+  criadoEm  DateTime      @default(now())
+
+  importacoes         Importacao[]
+  auditorias          Auditoria[]
+  historicosCobranca  HistoricoCobranca[]
+
+  @@map("usuarios")
+}
+
+model Aluno {
+  id         String   @id @default(uuid())
+  cpf        String   @unique
+  nome       String
+  tipoPessoa String?  @map("tipo_pessoa")
+  email      String?
+  telefone1  String?  @map("telefone_1")
+  telefone2  String?  @map("telefone_2")
+  cep        String?
+  endereco   String?
+  numero     String?
+  complemento String?
+  bairro     String?
+  cidade     String?
+  estado     String?
+  criadoEm   DateTime @default(now()) @map("criado_em")
+  atualizadoEm DateTime @updatedAt @map("atualizado_em")
+
+  matriculas Matricula[]
+
+  @@map("alunos")
+}
+
+model Curso {
+  id          String   @id @default(uuid())
+  codigo      String   @unique
+  nome        String
+  situacao    Boolean  @default(true)
+  observacoes String?
+
+  matriculas Matricula[]
+
+  @@map("cursos")
+}
+
+model Matricula {
+  id               String    @id @default(uuid())
+  alunoId          String    @map("aluno_id")
+  cursoId          String    @map("curso_id")
+  numeroMatricula  String?   @map("numero_matricula")
+  dataMatricula    DateTime? @map("data_matricula")
+  contratoAssinado Boolean   @default(false) @map("contrato_assinado")
+  situacao         String    @default("ATIVA")
+  observacoes      String?
+
+  aluno Aluno @relation(fields: [alunoId], references: [id])
+  curso Curso @relation(fields: [cursoId], references: [id])
+
+  parcelas           Parcela[]
+  tags               MatriculaTag[]
+  historicoCobranca  HistoricoCobranca[]
+  observacoesCobranca ObservacaoCobranca[]
+  situacaoCobrancaId String? @map("situacao_cobranca_id")
+  situacaoCobranca   SituacaoCobranca? @relation(fields: [situacaoCobrancaId], references: [id])
+
+  @@unique([alunoId, cursoId, numeroMatricula])
+  @@map("matriculas")
+}
+
+model Parcela {
+  id            String        @id @default(uuid())
+  matriculaId   String        @map("matricula_id")
+  codTitulo     String        @map("cod_titulo")
+  parcela       String
+  vencimento    DateTime
+  valor         Decimal       @db.Decimal(12, 2)
+  tipoTitulo    String?       @map("tipo_titulo")
+  status        StatusParcela @default(EM_ABERTO)
+  dataPagamento DateTime?     @map("data_pagamento")
+  valorPago     Decimal?      @db.Decimal(12, 2) @map("valor_pago")
+  observacoes   String?
+
+  matricula Matricula @relation(fields: [matriculaId], references: [id])
+
+  @@unique([matriculaId, codTitulo])
+  @@map("parcelas")
+}
+
+model Importacao {
+  id                  String   @id @default(uuid())
+  usuarioId           String   @map("usuario_id")
+  arquivo             String
+  data                DateTime @default(now())
+  totalRegistros      Int      @default(0) @map("total_registros")
+  novosAlunos         Int      @default(0) @map("novos_alunos")
+  alunosAtualizados   Int      @default(0) @map("alunos_atualizados")
+  parcelasNovas       Int      @default(0) @map("parcelas_novas")
+  parcelasAtualizadas Int      @default(0) @map("parcelas_atualizadas")
+  erros               Json?
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id])
+
+  @@map("importacoes")
+}
+
+model Configuracao {
+  id                     String  @id @default(uuid())
+  parcelasMinimas        Int     @default(3) @map("parcelas_minimas")
+  diasAtraso             Int     @default(0) @map("dias_atraso")
+  pastaSaidaDocumentos   String  @map("pasta_saida_documentos")
+  modeloDocx             String  @map("modelo_docx")
+  padraoNomeArquivo      String  @default("{NOME}_{CPF}_{CURSO}.docx") @map("padrao_nome_arquivo")
+  frequenciaImportacao   FrequenciaImportacao @default(MANUAL) @map("frequencia_importacao")
+
+  @@map("configuracoes")
+}
+
+model SituacaoCobranca {
+  id                       String   @id @default(uuid())
+  nome                     String   @unique
+  cor                      String
+  ordem                    Int      @default(0)
+  ativa                    Boolean  @default(true)
+  descricao                String?
+  participaNovosRelatorios Boolean  @default(true) @map("participa_novos_relatorios")
+
+  matriculas Matricula[]
+
+  @@map("situacoes_cobranca")
+}
+
+model Tag {
+  id   String @id @default(uuid())
+  nome String @unique
+
+  matriculas MatriculaTag[]
+
+  @@map("tags")
+}
+
+model MatriculaTag {
+  matriculaId String @map("matricula_id")
+  tagId       String @map("tag_id")
+
+  matricula Matricula @relation(fields: [matriculaId], references: [id])
+  tag       Tag       @relation(fields: [tagId], references: [id])
+
+  @@id([matriculaId, tagId])
+  @@map("matricula_tags")
+}
+
+model HistoricoCobranca {
+  id          String   @id @default(uuid())
+  matriculaId String   @map("matricula_id")
+  usuarioId   String   @map("usuario_id")
+  data        DateTime @default(now())
+  acao        String
+
+  matricula Matricula @relation(fields: [matriculaId], references: [id])
+  usuario   Usuario   @relation(fields: [usuarioId], references: [id])
+
+  @@map("historico_cobranca")
+}
+
+model ObservacaoCobranca {
+  id          String   @id @default(uuid())
+  matriculaId String   @map("matricula_id")
+  data        DateTime @default(now())
+  texto       String
+
+  matricula Matricula @relation(fields: [matriculaId], references: [id])
+
+  @@map("observacoes_cobranca")
+}
+
+model Auditoria {
+  id         String   @id @default(uuid())
+  usuarioId  String   @map("usuario_id")
+  entidade   String
+  entidadeId String   @map("entidade_id")
+  acao       String
+  detalhes   Json?
+  data       DateTime @default(now())
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id])
+
+  @@map("auditoria")
+}

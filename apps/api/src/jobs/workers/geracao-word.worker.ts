@@ -6,6 +6,7 @@ import { GERACAO_WORD_QUEUE_NAME, GeracaoWordJobData } from "../queues/geracao-w
 import { configuracoesRepository } from "../../modules/configuracoes/configuracoes.repository";
 import { relatoriosRepository } from "../../modules/relatorios/relatorios.repository";
 import { gerarDocumentoProtesto } from "../../modules/relatorios/documento-protesto.generator";
+import { calcularDiasAtraso } from "../../modules/relatorios/calculo-financeiro";
 
 interface ItemRelatorio {
   matriculaId: string;
@@ -61,12 +62,10 @@ async function processarJob(job: Job<GeracaoWordJobData>): Promise<void> {
         alunoCpf: item.alunoCpf,
         cursoNome: item.cursoNome,
         parcelas: parcelas.map((p) => ({
-          codTitulo: p.codTitulo,
-          parcela: p.parcela,
           vencimento: p.vencimento,
-          valor: Number(p.valor),
+          valorBruto: Number(p.valor),
+          diasAtraso: calcularDiasAtraso(p.vencimento),
         })),
-        totalConsolidado: item.valorTotal,
       });
 
       const nomeArquivo = montarNomeArquivo(configuracao.padraoNomeArquivo, item);

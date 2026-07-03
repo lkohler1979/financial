@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../database/prisma";
+import { calcularDiasAtraso, calcularMultaJuros } from "./calculo-financeiro";
 
 function inicioHoje(): Date {
   const agora = new Date();
@@ -15,6 +16,9 @@ export interface MatriculaElegivel {
   cursoNome: string;
   quantidadeParcelasVencidas: number;
   diasAtrasoMaximo: number;
+  /** Soma de Parcela.valor das parcelas vencidas, sem multa/juros. */
+  valorBruto: number;
+  /** Valor bruto + multa + juros (o que efetivamente vai para o documento de protesto). */
   valorTotal: number;
 }
 
@@ -48,11 +52,13 @@ export const relatoriosRepository = {
     return matriculas.map((matricula) => {
       const parcelasVencidas = matricula.parcelas;
       const diasAtrasoMaximo = Math.max(
-        ...parcelasVencidas.map((p) =>
-          Math.floor((hoje.getTime() - p.vencimento.getTime()) / (1000 * 60 * 60 * 24)),
-        ),
+        ...parcelasVencidas.map((p) => calcularDiasAtraso(p.vencimento, hoje)),
       );
-      const valorTotal = parcelasVencidas.reduce((soma, p) => soma + Number(p.valor), 0);
+      const calculos = parcelasVencidas.map((p) =>
+        calcularMultaJuros(Number(p.valor), calcularDiasAtraso(p.vencimento, hoje)),
+      );
+      const valorBruto = calculos.reduce((soma, c) => soma + c.valorBruto, 0);
+      const valorTotal = calculos.reduce((soma, c) => soma + c.total, 0);
 
       return {
         matriculaId: matricula.id,
@@ -63,6 +69,7 @@ export const relatoriosRepository = {
         cursoNome: matricula.curso.nome,
         quantidadeParcelasVencidas: parcelasVencidas.length,
         diasAtrasoMaximo,
+        valorBruto,
         valorTotal,
       };
     });

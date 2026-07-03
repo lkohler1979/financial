@@ -6,12 +6,11 @@ describe("gerarDocumentoProtesto", () => {
     const buffer = await gerarDocumentoProtesto({
       alunoNome: "Maria Silva",
       alunoCpf: "39053344705",
-      cursoNome: "Engenharia",
+      cursoNome: "Ethos Digital/Engenharia",
       parcelas: [
-        { codTitulo: "TIT-1", parcela: "1/3", vencimento: new Date("2026-05-10"), valor: 100 },
-        { codTitulo: "TIT-2", parcela: "2/3", vencimento: new Date("2026-06-10"), valor: 100 },
+        { vencimento: new Date("2026-05-10"), valorBruto: 100, diasAtraso: 30 },
+        { vencimento: new Date("2026-06-10"), valorBruto: 100, diasAtraso: 10 },
       ],
-      totalConsolidado: 200,
     });
 
     expect(Buffer.isBuffer(buffer)).toBe(true);

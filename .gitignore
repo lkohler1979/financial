@@ -19,6 +19,10 @@ apps/api/prisma/dev.db
 apps/api/output/
 *.docx.tmp
 
+# Uploads temporários de importação
+uploads/
+apps/api/uploads/
+
 # Logs
 *.log
 npm-debug.log*

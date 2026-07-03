@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<style>
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  background: var(--page-bg);
+  color: var(--text-primary);
+  padding: 24px;
+}
+h1 { font-size: 22px; font-weight: 500; margin: 0; color: var(--text-primary); }
+h2 { font-size: 18px; font-weight: 500; color: var(--text-primary); }
+p { margin: 0; }
+table { border-collapse: collapse; }
+input, select, button, textarea {
+  font-family: inherit;
+  font-size: 14px;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--fill-field);
+  color: var(--text-primary);
+  height: 36px;
+  padding: 0 10px;
+}
+button {
+  background: transparent;
+  border: 0.5px solid var(--border-strong);
+  cursor: pointer;
+  padding: 0 14px;
+}
+:root {
+  --page-bg: #F7F6F3;
+  --surface-0: #F7F6F3;
+  --surface-1: #F1EFE8;
+  --surface-2: #FFFFFF;
+  --text-primary: #1A1A1A;
+  --text-secondary: #595959;
+  --text-muted: #8C8C87;
+  --border: rgba(20,20,18,0.10);
+  --border-strong: rgba(20,20,18,0.20);
+  --radius: 8px;
+  --fill-field: #FFFFFF;
+  --bg-accent: #E6F1FB;
+  --text-accent: #0C447C;
+  --bg-danger: #FCEBEB;
+  --text-danger: #A32D2D;
+  --bg-success: #EAF3DE;
+  --text-success: #3B6D11;
+  --bg-warning: #FAEEDA;
+  --text-warning: #854F0B;
+}
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+
+.frame { width: 760px; margin: 0 auto; }
+</style>
+</head>
+<body>
+<div class="frame">
+
+<h1 style="margin: 0 0 1rem;">Relatório de inadimplência</h1>
+
+<div style="background: var(--surface-2); border: 0.5px solid var(--border); border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1rem;">
+  <p style="font-size: 12px; font-weight: 500; color: var(--text-secondary); margin: 0 0 8px;">Financeiro</p>
+  <div style="display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 8px; margin-bottom: 14px;">
+    <input type="text" value="3 parcelas" style="font-size: 12px;" />
+    <input type="text" value="30 dias de atraso" style="font-size: 12px;" />
+    <input type="text" placeholder="Valor mínimo" style="font-size: 12px;" />
+    <select style="font-size: 12px;"><option>Todos os cursos</option></select>
+  </div>
+  <p style="font-size: 12px; font-weight: 500; color: var(--text-secondary); margin: 0 0 8px;">Cobrança</p>
+  <div style="display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 8px;">
+    <select style="font-size: 12px;"><option>Incluir situações</option></select>
+    <select style="font-size: 12px;"><option>Excluir tratados</option></select>
+    <select style="font-size: 12px;"><option>Qualquer TAG</option></select>
+    <button style="display:flex; align-items:center; justify-content:center; gap:6px; font-size: 12px;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:1em;height:1em;vertical-align:-0.15em;flex-shrink:0;font-size:14px;"><path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0" />
+  <path d="M21 21l-6 -6" /></svg>Gerar relatório</button>
+  </div>
+</div>
+
+<div style="display: flex; justify-content: space-between; align-items: center; background: var(--bg-accent); border-radius: var(--radius); padding: 10px 14px; margin-bottom: 10px;">
+  <span style="font-size: 13px; color: var(--text-accent); font-weight: 500;">132 alunos selecionados</span>
+  <div style="display: flex; gap: 8px;">
+    <select style="font-size: 12px; height: 30px;"><option>Alterar situação</option></select>
+    <select style="font-size: 12px; height: 30px;"><option>Inserir TAG</option></select>
+    <button style="font-size: 12px; height: 30px; padding: 0 10px;">Gerar Word em lote</button>
+  </div>
+</div>
+
+<div style="border: 0.5px solid var(--border); border-radius: var(--radius); overflow: hidden;">
+  <table style="width: 100%; border-collapse: collapse; font-size: 12.5px; table-layout: fixed;">
+    <thead>
+      <tr style="background: var(--surface-1); text-align: left;">
+        <th style="padding: 9px 10px; width: 4%;"><input type="checkbox" checked /></th>
+        <th style="padding: 9px 10px; font-weight: 500; color: var(--text-secondary); width: 20%;">Nome</th>
+        <th style="padding: 9px 10px; font-weight: 500; color: var(--text-secondary); width: 20%;">Curso</th>
+        <th style="padding: 9px 10px; font-weight: 500; color: var(--text-secondary); width: 10%;">Parcelas</th>
+        <th style="padding: 9px 10px; font-weight: 500; color: var(--text-secondary); width: 12%;">Total devedor</th>
+        <th style="padding: 9px 10px; font-weight: 500; color: var(--text-secondary); width: 14%;">Situação</th>
+        <th style="padding: 9px 10px; font-weight: 500; color: var(--text-secondary); width: 20%;">TAGs</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-top: 0.5px solid var(--border);">
+        <td style="padding: 9px 10px;"><input type="checkbox" checked /></td>
+        <td style="padding: 9px 10px;">Josie Lucia de Mello</td>
+        <td style="padding: 9px 10px; color: var(--text-secondary);">Psicologia positiva</td>
+        <td style="padding: 9px 10px;">3</td>
+        <td style="padding: 9px 10px;">R$ 262,49</td>
+        <td style="padding: 9px 10px;"><span style="background: var(--surface-1); font-size: 11px; padding: 3px 8px; border-radius: var(--radius);">Pendente</span></td>
+        <td style="padding: 9px 10px;"><span style="background: var(--bg-danger); color: var(--text-danger); font-size: 11px; padding: 2px 7px; border-radius: var(--radius); margin-right: 4px;">Alto valor</span></td>
+      </tr>
+      <tr style="border-top: 0.5px solid var(--border);">
+        <td style="padding: 9px 10px;"><input type="checkbox" checked /></td>
+        <td style="padding: 9px 10px;">Marcos Vinícius Alves</td>
+        <td style="padding: 9px 10px; color: var(--text-secondary);">Psicologia positiva</td>
+        <td style="padding: 9px 10px;">5</td>
+        <td style="padding: 9px 10px;">R$ 438,10</td>
+        <td style="padding: 9px 10px;"><span style="background: #E6F1FB; color: #0C447C; font-size: 11px; padding: 3px 8px; border-radius: var(--radius);">Em contato</span></td>
+        <td style="padding: 9px 10px;"><span style="background: var(--surface-1); font-size: 11px; padding: 2px 7px; border-radius: var(--radius); margin-right: 4px;">WhatsApp</span></td>
+      </tr>
+      <tr style="border-top: 0.5px solid var(--border);">
+        <td style="padding: 9px 10px;"><input type="checkbox" checked /></td>
+        <td style="padding: 9px 10px;">Renata Souza Lima</td>
+        <td style="padding: 9px 10px; color: var(--text-secondary);">Gestão empresarial</td>
+        <td style="padding: 9px 10px;">4</td>
+        <td style="padding: 9px 10px;">R$ 356,80</td>
+        <td style="padding: 9px 10px;"><span style="background: var(--bg-warning); color: var(--text-warning); font-size: 11px; padding: 3px 8px; border-radius: var(--radius);">Promessa</span></td>
+        <td style="padding: 9px 10px;"><span style="background: var(--surface-1); font-size: 11px; padding: 2px 7px; border-radius: var(--radius); margin-right: 4px;">Jurídico</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+</div>
+</body>
+</html>

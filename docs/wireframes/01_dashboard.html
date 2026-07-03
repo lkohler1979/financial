@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<style>
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  background: var(--page-bg);
+  color: var(--text-primary);
+  padding: 24px;
+}
+h1 { font-size: 22px; font-weight: 500; margin: 0; color: var(--text-primary); }
+h2 { font-size: 18px; font-weight: 500; color: var(--text-primary); }
+p { margin: 0; }
+table { border-collapse: collapse; }
+input, select, button, textarea {
+  font-family: inherit;
+  font-size: 14px;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--fill-field);
+  color: var(--text-primary);
+  height: 36px;
+  padding: 0 10px;
+}
+button {
+  background: transparent;
+  border: 0.5px solid var(--border-strong);
+  cursor: pointer;
+  padding: 0 14px;
+}
+:root {
+  --page-bg: #F7F6F3;
+  --surface-0: #F7F6F3;
+  --surface-1: #F1EFE8;
+  --surface-2: #FFFFFF;
+  --text-primary: #1A1A1A;
+  --text-secondary: #595959;
+  --text-muted: #8C8C87;
+  --border: rgba(20,20,18,0.10);
+  --border-strong: rgba(20,20,18,0.20);
+  --radius: 8px;
+  --fill-field: #FFFFFF;
+  --bg-accent: #E6F1FB;
+  --text-accent: #0C447C;
+  --bg-danger: #FCEBEB;
+  --text-danger: #A32D2D;
+  --bg-success: #EAF3DE;
+  --text-success: #3B6D11;
+  --bg-warning: #FAEEDA;
+  --text-warning: #854F0B;
+}
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+
+.frame { width: 760px; margin: 0 auto; }
+</style>
+</head>
+<body>
+<div class="frame">
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+  <div style="display: flex; align-items: center; gap: 10px;">
+    <div style="width: 28px; height: 28px; border-radius: 6px; background: var(--surface-1); display: flex; align-items: center; justify-content: center;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:1em;height:1em;vertical-align:-0.15em;flex-shrink:0;font-size: 16px; color: var(--text-secondary);"><path d="M3 21l18 0" />
+  <path d="M3 10l18 0" />
+  <path d="M5 6l7 -3l7 3" />
+  <path d="M4 10l0 11" />
+  <path d="M20 10l0 11" />
+  <path d="M8 14l0 3" />
+  <path d="M12 14l0 3" />
+  <path d="M16 14l0 3" /></svg></div>
+    <span style="font-size: 15px; font-weight: 500;">EthosFinancial</span>
+  </div>
+  <div style="display: flex; gap: 16px; align-items: center;">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:1em;height:1em;vertical-align:-0.15em;flex-shrink:0;font-size: 18px; color: var(--text-secondary);"><path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
+  <path d="M9 17v1a3 3 0 0 0 6 0v-1" /></svg>
+    <div style="width: 28px; height: 28px; border-radius: 50%; background: var(--bg-accent); display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--text-accent);">LA</div>
+  </div>
+</div>
+
+<div style="display: flex; gap: 4px; border-bottom: 0.5px solid var(--border); margin-bottom: 1.25rem; font-size: 13px;">
+  <div style="padding: 8px 12px; border-bottom: 2px solid var(--text-primary); font-weight: 500;">Dashboard</div>
+  <div style="padding: 8px 12px; color: var(--text-secondary);">Alunos</div>
+  <div style="padding: 8px 12px; color: var(--text-secondary);">Cursos</div>
+  <div style="padding: 8px 12px; color: var(--text-secondary);">Financeiro</div>
+  <div style="padding: 8px 12px; color: var(--text-secondary);">Importação</div>
+  <div style="padding: 8px 12px; color: var(--text-secondary);">Cobrança</div>
+  <div style="padding: 8px 12px; color: var(--text-secondary);">Configurações</div>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; margin-bottom: 1.5rem;">
+  <div style="background: var(--surface-1); border-radius: var(--radius); padding: 1rem;">
+    <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 6px;">Total de alunos</p>
+    <p style="font-size: 24px; font-weight: 500; margin: 0;">1.842</p>
+  </div>
+  <div style="background: var(--surface-1); border-radius: var(--radius); padding: 1rem;">
+    <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 6px;">Alunos inadimplentes</p>
+    <p style="font-size: 24px; font-weight: 500; margin: 0; color: var(--text-danger);">227</p>
+  </div>
+  <div style="background: var(--surface-1); border-radius: var(--radius); padding: 1rem;">
+    <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 6px;">Valor total vencido</p>
+    <p style="font-size: 24px; font-weight: 500; margin: 0;">R$ 148.320</p>
+  </div>
+  <div style="background: var(--surface-1); border-radius: var(--radius); padding: 1rem;">
+    <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 6px;">Última importação</p>
+    <p style="font-size: 24px; font-weight: 500; margin: 0;">02/07</p>
+  </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 1.3fr 1fr; gap: 12px; margin-bottom: 1.5rem;">
+  <div style="background: var(--surface-2); border: 0.5px solid var(--border); border-radius: 12px; padding: 1rem 1.25rem;">
+    <p style="font-size: 13px; font-weight: 500; margin: 0 0 12px; color: var(--text-secondary);">Inadimplência mensal</p>
+    <div style="display: flex; align-items: flex-end; gap: 10px; height: 120px;">
+      <div style="flex:1; background: #B5D4F4; height: 40%; border-radius: 4px 4px 0 0;"></div>
+      <div style="flex:1; background: #B5D4F4; height: 55%; border-radius: 4px 4px 0 0;"></div>
+      <div style="flex:1; background: #B5D4F4; height: 48%; border-radius: 4px 4px 0 0;"></div>
+      <div style="flex:1; background: #378ADD; height: 70%; border-radius: 4px 4px 0 0;"></div>
+      <div style="flex:1; background: #B5D4F4; height: 62%; border-radius: 4px 4px 0 0;"></div>
+      <div style="flex:1; background: #B5D4F4; height: 80%; border-radius: 4px 4px 0 0;"></div>
+    </div>
+    <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-top: 6px;">
+      <span>Fev</span><span>Mar</span><span>Abr</span><span>Mai</span><span>Jun</span><span>Jul</span>
+    </div>
+  </div>
+  <div style="background: var(--surface-2); border: 0.5px solid var(--border); border-radius: 12px; padding: 1rem 1.25rem;">
+    <p style="font-size: 13px; font-weight: 500; margin: 0 0 12px; color: var(--text-secondary);">Top cursos com inadimplência</p>
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      <div>
+        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;"><span>Psicologia positiva</span><span style="color: var(--text-secondary);">62</span></div>
+        <div style="height: 6px; background: var(--surface-1); border-radius: 3px;"><div style="height: 6px; width: 80%; background: #D85A30; border-radius: 3px;"></div></div>
+      </div>
+      <div>
+        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;"><span>Gestão empresarial</span><span style="color: var(--text-secondary);">41</span></div>
+        <div style="height: 6px; background: var(--surface-1); border-radius: 3px;"><div style="height: 6px; width: 55%; background: #D85A30; border-radius: 3px;"></div></div>
+      </div>
+      <div>
+        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;"><span>Pós em RH</span><span style="color: var(--text-secondary);">29</span></div>
+        <div style="height: 6px; background: var(--surface-1); border-radius: 3px;"><div style="height: 6px; width: 38%; background: #D85A30; border-radius: 3px;"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="background: var(--surface-2); border: 0.5px solid var(--border); border-radius: 12px; padding: 1rem 1.25rem;">
+  <p style="font-size: 13px; font-weight: 500; margin: 0 0 12px; color: var(--text-secondary);">Quantidade por situação de cobrança</p>
+  <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+    <span style="background: var(--bg-warning); color: var(--text-warning); font-size: 12px; padding: 4px 10px; border-radius: var(--radius);">Pendente · 118</span>
+    <span style="background: #E6F1FB; color: #0C447C; font-size: 12px; padding: 4px 10px; border-radius: var(--radius);">Em contato · 54</span>
+    <span style="background: var(--bg-success); color: var(--text-success); font-size: 12px; padding: 4px 10px; border-radius: var(--radius);">Promessa de pagamento · 22</span>
+    <span style="background: var(--bg-danger); color: var(--text-danger); font-size: 12px; padding: 4px 10px; border-radius: var(--radius);">Enviado para protesto · 33</span>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

@@ -8,7 +8,7 @@ Convenção: `[ ]` em aberto · `[x]` resolvida (mover a decisão final para o P
 
 ## Regras de Negócio
 
-- [ ] **Curso não mapeado na importação:** confirmar comportamento padrão de fábrica — "criar automaticamente" ou "deixar pendente"? A especificação permite ambos como configuração, mas não define o padrão inicial.
+- [x] **Curso não mapeado na importação:** resolvido em 2026-07-03 — o wireframe `docs/wireframes/03_importacao.html` mostra explicitamente "Criar curso automaticamente ao encontrar nome novo na planilha" como o comportamento padrão. Implementado dessa forma em `apps/api/src/modules/importacao/importacao.processor.ts`. **Ainda não é configurável de fato** (fica hardcoded até o módulo `configuracoes` existir no Sprint 5) — quando existir, expor como campo em `Configuracao` e ler o valor real em vez do padrão fixo.
 - [ ] **CPF inválido ou duplicado com dados divergentes** (ex.: mesmo CPF, nomes diferentes entre importações): qual o critério de decisão — manter o nome mais recente, o mais antigo, ou gerar alerta para revisão manual?
 - [ ] **Cálculo de multa e juros:** o exemplo da planilha traz multa e juros já calculados na origem. Confirmar se o EthosFinancial deve **recalcular** esses valores (com fórmula própria) ou apenas **exibir** o que vier importado da planilha.
 - [ ] **Regra de elegibilidade combinada:** quando "parcelas mínimas vencidas" (ex.: 3) e "dias de atraso" (ex.: 30 dias) estão configurados simultaneamente, a regra é E (ambas) ou OU (qualquer uma)?
@@ -23,6 +23,7 @@ Convenção: `[ ]` em aberto · `[x]` resolvida (mover a decisão final para o P
 
 ## Segurança e Compliance
 
+- [ ] **Identidade do usuário para Auditoria antes do Sprint 7 (auth):** toda alteração sensível precisa gerar registro em `Auditoria`, cuja FK `usuarioId` é obrigatória — mas o módulo `auth`/JWT só chega no Sprint 7. Implementado um middleware temporário (`apps/api/src/middlewares/request-context.ts`) que resolve o usuário a partir do header `x-usuario-id` ou de um usuário de sistema (`sistema@ethosfinancial.local`) garantido em banco. Deve ser substituído pela extração do usuário do token JWT quando o Sprint 7 for implementado. Confirmar se o usuário de sistema é aceitável para registros feitos por processos automáticos (ex.: importação) mesmo após a auth existir.
 - [ ] **LGPD — retenção de dados:** definir por quanto tempo os dados de alunos inadimplentes já quitados/protestados devem ser mantidos no sistema (política de retenção e anonimização).
 - [ ] **Ambiente de produção:** confirmar onde a aplicação será hospedada (cloud própria da Ethos, provedor específico, on-premise) — impacta a configuração de TLS, backups e rede do Docker Compose (que hoje é focado em desenvolvimento/homologação).
 - [ ] **Certificado/HTTPS em produção:** confirmar se haverá um reverse proxy (ex.: Traefik/Nginx com Let's Encrypt) gerenciando TLS, não coberto no `docker-compose.yml` atual (que é de desenvolvimento).
@@ -36,6 +37,10 @@ Convenção: `[ ]` em aberto · `[x]` resolvida (mover a decisão final para o P
 
 - [ ] **Volume esperado de alunos/parcelas:** a especificação menciona suporte a "arquivos grandes (acima de 10.000 registros)" — confirmar o volume real esperado em produção para dimensionar corretamente banco, filas e workers.
 - [ ] **Múltiplos ambientes:** confirmar necessidade de ambientes distintos (dev / homologação / produção) e se cada um terá sua própria instância de Evolution API (recomendado, para não misturar números de teste com produção).
+- [ ] **Redis e Evolution API removidos do `docker-compose.yml` (2026-07-03, decisão do usuário):** o compose deste projeto agora sobe apenas `postgres`, `ollama` (opcional), `api`, `web` e `adminer`. Efeitos:
+  - A fila BullMQ do módulo `importacao` (Sprint 2) não tem broker local — `REDIS_URL` no `.env` não aponta para nada em execução. O upload de planilha enfileira o job, mas ele não será processado até haver um Redis acessível (reintroduzir o serviço no compose, apontar para uma instância externa/compartilhada, ou definir outra estratégia). **Não testado ponta a ponta.**
+  - Sprint 6 (WhatsApp/IA) também depende de Evolution API — precisa ser resolvido antes daquele sprint.
+  - Confirmar a estratégia definitiva: (a) reintroduzir os dois serviços quando forem necessários, (b) apontar para instâncias compartilhadas (ex.: as do projeto WhatFlow, já rodando nesta máquina de dev) via `.env`, ou (c) outra infraestrutura.
 
 ## Escopo do MVP (release 1.0)
 

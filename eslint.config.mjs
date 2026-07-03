@@ -23,5 +23,13 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
     },
   },
+  {
+    // Arquivos de configuração CommonJS (ex.: tailwind.config.js).
+    files: ["**/*.{js,cjs}"],
+    languageOptions: {
+      sourceType: "commonjs",
+      globals: { module: "writable", require: "readonly", process: "readonly" },
+    },
+  },
   prettier,
 );

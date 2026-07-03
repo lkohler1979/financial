@@ -18,21 +18,21 @@ Ao concluir uma tarefa, marque o checkbox e, se relevante, adicione uma linha cu
 
 ## Sprint 1 — Cadastros Base (Aluno, Curso, Matrícula)
 
-- [ ] Módulo `alunos`: CRUD completo (CPF como chave única) + testes
-- [ ] Módulo `cursos`: CRUD (código editável) + testes
-- [ ] Módulo `matriculas`: CRUD, vínculo aluno↔curso, número de matrícula editável + testes
-- [ ] Tela Angular de cadastro/listagem de Alunos
-- [ ] Tela Angular de cadastro/listagem de Cursos
-- [ ] Tela Angular de cadastro/listagem de Matrículas
+- [x] Módulo `alunos`: CRUD completo (CPF como chave única) + testes — 2026-07-02: controller/service/repository/schema (Zod) em `apps/api/src/modules/alunos`; validação de CPF (dígitos verificadores) + normalização; auditoria em criação/atualização/exclusão; bloqueio de exclusão com matrículas vinculadas (append-first). Testes unitários com Prisma mockado (rodam sem banco, compatível com o CI).
+- [x] Módulo `cursos`: CRUD (código editável) + testes — 2026-07-02: mesma estrutura; código único e editável (revalidação de unicidade no update); auditoria + bloqueio de exclusão com matrículas.
+- [x] Módulo `matriculas`: CRUD, vínculo aluno↔curso, número de matrícula editável + testes — 2026-07-02: valida existência de aluno/curso; chave natural `(aluno, curso, número)` única; auditoria + bloqueio de exclusão com parcelas (append-first). Rotas montadas em `apps/api/src/app.ts` sob `/api/*` com error-handler central e middleware de contexto de usuário.
+- [x] Tela Angular de cadastro/listagem de Alunos — 2026-07-02: app Angular 17 standalone gerado em `apps/web` (Material + Tailwind, `preflight` desligado para não conflitar com o Material; roteamento lazy; `HttpClient` com interceptor de erro → snackbar; proxy `/api` no dev via `proxy.conf.json`). Tela de alunos: lista com busca (nome/CPF), paginação, exclusão com confirmação; formulário reativo com validação de CPF (dígitos verificadores) e CPF não editável na edição.
+- [x] Tela Angular de cadastro/listagem de Cursos — 2026-07-02: lista com busca e badge de situação; formulário (código editável, situação ativa/inativa, observações).
+- [x] Tela Angular de cadastro/listagem de Matrículas — 2026-07-02: lista com aluno/curso/nº/data/situação; formulário com autocomplete de aluno e curso (busca server-side), situação e contrato assinado. `ng build` de produção validado (saída em `dist/ethos-financial-web/browser`, compatível com o Dockerfile/nginx). Nota: regras de lint específicas de template Angular (`@angular-eslint`) ainda não adicionadas — o `ng build` já faz a checagem de templates (`strictTemplates`); adicionar `@angular-eslint` fica como follow-up.
 
 ## Sprint 2 — Financeiro e Importação
 
-- [ ] Módulo `financeiro`: CRUD de Parcela + regra de status
-- [ ] Módulo `importacao`: parser de planilha .xlsx (colunas definidas no PRD seção 11)
-- [ ] Fila BullMQ `importacao` — worker que processa upload em background
-- [ ] Regra de atualização incremental (matrícula + cod_titulo) sem exclusão de registros antigos
-- [ ] Tela Angular de upload de planilha + acompanhamento do progresso da importação
-- [ ] Registro de `Importacao` (histórico) ao final de cada processamento
+- [x] Módulo `financeiro`: CRUD de Parcela + regra de status — 2026-07-03: `apps/api/src/modules/financeiro`; sem rota de exclusão (Parcela é append-first, PRD seção 12 — cancelamento é feito via status `CANCELADO`); status `PAGO` preenche `dataPagamento`/`valorPago` com padrão quando não informados; auditoria em criação/atualização. Testes unitários com repositórios mockados.
+- [x] Módulo `importacao`: parser de planilha .xlsx (colunas definidas no PRD seção 11) — 2026-07-03: `apps/api/src/modules/importacao/importacao.parser.ts` (parse + validação Zod linha a linha, erros não interrompem o lote) e `importacao.processor.ts` (fluxo PRD seção 21: localiza/cria Aluno por CPF → localiza/cria Curso por nome → localiza/cria Matrícula (aluno+curso, planilha não traz número) → upsert de Parcela por `(matrícula, cod_titulo)`). "Curso não mapeado" resolvido como "criar automaticamente" com base no wireframe `03_importacao.html` (ver PENDENCIAS.md). Testes unitários cobrindo parser e processor com repositórios mockados.
+- [~] Fila BullMQ `importacao` — worker que processa upload em background — 2026-07-03: código completo (`apps/api/src/jobs/queues/importacao.queue.ts`, `apps/api/src/jobs/workers/importacao.worker.ts`, endpoint `POST /api/importacao/upload` com multer). **Não verificado ponta a ponta**: por decisão do usuário (2026-07-03) o Redis foi removido do `docker-compose.yml` deste projeto, então não há broker local disponível agora — ver PENDENCIAS.md.
+- [x] Regra de atualização incremental (matrícula + cod_titulo) sem exclusão de registros antigos — 2026-07-03: `financeiroRepository.findByChaveNatural` + `processor` nunca chama delete; parcela existente é atualizada, nunca recriada/apagada.
+- [~] Tela Angular de upload de planilha + acompanhamento do progresso da importação — 2026-07-03: `apps/web/src/app/features/importacao/importacao-upload.component.ts` (drag-and-drop, polling do status do job, histórico) seguindo a estrutura do wireframe `03_importacao.html`; menu do shell (`app.component.ts`) trocado de sidenav para abas horizontais (Dashboard/Alunos/Cursos/Matrículas/Financeiro/Importação/Cobrança/Configurações — módulos ainda não implementados ficam desabilitados), conforme estrutura de navegação dos wireframes. `ng build` de produção validado (AOT/strictTemplates OK). **Não verificado visualmente no navegador** nesta sessão — a ferramenta de preview está associada ao projeto WhatFlow (diretório principal desta sessão), não ao EthosFinancial; recomenda-se validar com `npm run dev:api` + `npm run dev:web` localmente (portas 3010/4210, ver `.env`).
+- [x] Registro de `Importacao` (histórico) ao final de cada processamento — 2026-07-03: worker cria o registro com as contagens (novos/atualizados/parcelas) e a lista de erros por linha; uma única `Auditoria` por importação (não por registro individual — ver PENDENCIAS.md), não por Aluno/Matrícula/Parcela tocados individualmente.
 
 ## Sprint 3 — Relatório de Inadimplência e Geração de Word
 

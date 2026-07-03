@@ -16,6 +16,9 @@ interface FiltrosResolvidos {
   diasAtraso: number;
   valorMinimo?: number;
   cursoId?: string;
+  situacaoCobrancaId?: string;
+  tagId?: string;
+  ignorarSituacoesTratadas: boolean;
   financeiro: ConfiguracaoFinanceira;
 }
 
@@ -29,6 +32,9 @@ async function resolverFiltros(filtros: FiltrosElegibilidadeInput): Promise<Filt
     diasAtraso: filtros.diasAtraso ?? configuracao.diasAtraso,
     valorMinimo: filtros.valorMinimo,
     cursoId: filtros.cursoId,
+    situacaoCobrancaId: filtros.situacaoCobrancaId,
+    tagId: filtros.tagId,
+    ignorarSituacoesTratadas: filtros.ignorarSituacoesTratadas,
     financeiro: {
       multaPercentual: Number(configuracao.multaPercentual),
       jurosDiarioPercentual: Number(configuracao.jurosDiarioPercentual),
@@ -65,6 +71,11 @@ export const relatoriosService = {
     const candidatos = await relatoriosRepository.buscarMatriculasComParcelasVencidas(
       filtros.cursoId,
       filtros.financeiro,
+      {
+        situacaoCobrancaId: filtros.situacaoCobrancaId,
+        tagId: filtros.tagId,
+        ignorarSituacoesTratadas: filtros.ignorarSituacoesTratadas,
+      },
     );
     return aplicarElegibilidade(candidatos, filtros);
   },
@@ -74,6 +85,11 @@ export const relatoriosService = {
     let elegiveis = await relatoriosRepository.buscarMatriculasComParcelasVencidas(
       filtros.cursoId,
       filtros.financeiro,
+      {
+        situacaoCobrancaId: filtros.situacaoCobrancaId,
+        tagId: filtros.tagId,
+        ignorarSituacoesTratadas: filtros.ignorarSituacoesTratadas,
+      },
     );
     elegiveis = aplicarElegibilidade(elegiveis, filtros);
 

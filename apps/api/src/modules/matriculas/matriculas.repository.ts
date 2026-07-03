@@ -12,6 +12,7 @@ export interface ListarMatriculasParams {
 const incluiAlunoCurso = {
   aluno: { select: { id: true, cpf: true, nome: true } },
   curso: { select: { id: true, codigo: true, nome: true } },
+  situacaoCobranca: { select: { id: true, nome: true, cor: true } },
 } satisfies Prisma.MatriculaInclude;
 
 export const matriculasRepository = {

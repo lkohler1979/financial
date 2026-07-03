@@ -67,5 +67,12 @@ export const routes: Routes = [
         (m) => m.RelatoriosGeracaoComponent,
       ),
   },
+  {
+    path: "cobranca/matriculas/:matriculaId",
+    loadComponent: () =>
+      import("./features/cobranca/ficha-cobranca.component").then(
+        (m) => m.FichaCobrancaComponent,
+      ),
+  },
   { path: "**", redirectTo: "alunos" },
 ];

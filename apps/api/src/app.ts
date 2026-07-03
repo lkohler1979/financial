@@ -9,6 +9,7 @@ import { matriculasRouter } from "./modules/matriculas/matriculas.routes";
 import { financeiroRouter } from "./modules/financeiro/financeiro.routes";
 import { importacaoRouter } from "./modules/importacao/importacao.routes";
 import { relatoriosRouter } from "./modules/relatorios/relatorios.routes";
+import { cobrancaRouter } from "./modules/cobranca/cobranca.routes";
 
 export const app = express();
 
@@ -29,9 +30,9 @@ app.use("/api/matriculas", matriculasRouter);
 app.use("/api/financeiro", financeiroRouter);
 app.use("/api/importacao", importacaoRouter);
 app.use("/api/relatorios", relatoriosRouter);
+app.use("/api/cobranca", cobrancaRouter);
 
 // TODO (próximos sprints): registrar demais módulos de negócio:
-// app.use("/api/cobranca", cobrancaRouter);
 // app.use("/api/configuracoes", configuracoesRouter);
 // app.use("/api/auditoria", auditoriaRouter);
 // app.use("/api/auth", authRouter);

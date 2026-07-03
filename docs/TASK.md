@@ -44,13 +44,14 @@ Ao concluir uma tarefa, marque o checkbox e, se relevante, adicione uma linha cu
 
 ## Sprint 4 — Módulo de Gestão de Cobranças
 
-- [ ] Módulo `cobranca`: CRUD de `SituacaoCobranca` (nome, cor, ordem, ativa, participaNovosRelatorios)
-- [ ] CRUD de `Tag` e associação N:N com Matrícula
-- [ ] `HistoricoCobranca` — registro automático e imutável em toda alteração
-- [ ] `ObservacaoCobranca` — linha do tempo por matrícula
-- [ ] Tela de filtros avançados (financeiros, aluno, matrícula, cobrança) para geração de relatório
-- [ ] Ação em lote (alterar situação / TAGs / observação / marcações) sobre resultado de relatório
-- [ ] Regra de exclusão automática de situações já tratadas na próxima geração
+- [x] Módulo `cobranca`: CRUD de `SituacaoCobranca` (nome, cor, ordem, ativa, participaNovosRelatorios) — 2026-07-03: `apps/api/src/modules/cobranca/situacoes.*`; nome único, bloqueio de exclusão com matrículas vinculadas. Testes unitários.
+- [x] CRUD de `Tag` e associação N:N com Matrícula — 2026-07-03: `tags.*` (CRUD) + `ficha.service.ts` (associar/desassociar via `MatriculaTag`), cada alteração gera `HistoricoCobranca`. Testes unitários.
+- [x] `HistoricoCobranca` — registro automático e imutável em toda alteração — 2026-07-03: `historico.repository.ts`; toda mudança de situação, tag ou observação (via `ficha.service.ts`) grava um registro; nunca editado/apagado.
+- [x] `ObservacaoCobranca` — linha do tempo por matrícula — 2026-07-03: `observacoes.repository.ts` + endpoint de criação/listagem.
+- [x] Tela de filtros avançados (financeiros, aluno, matrícula, cobrança) para geração de relatório — 2026-07-03: `relatorios-geracao.component.ts` ganhou os filtros de Cobrança (situação, TAG, "excluir situações já tratadas") do wireframe `04_relatorio_inadimplencia.html`. Filtros de aluno/matrícula (CPF, nome, cidade/estado, contrato) do PRD 23.4 **não** foram implementados nesta rodada — a prévia de elegíveis já parte de "quem tem parcela vencida", então esses filtros ficariam redundantes com os de Alunos/Matrículas; registrar como gap se o time achar necessário.
+- [x] Ação em lote (alterar situação / TAGs / observação / marcações) sobre resultado de relatório — 2026-07-03: `POST /api/cobranca/lote` (`fichaService.aplicarEmLote`, processa cada matrícula de forma independente) + UI na tela de relatório (selects "Alterar situação"/"Inserir TAG" + botão "Aplicar" na barra de seleção). "Observação em lote" existe na API mas não tem campo dedicado na UI ainda (só situação/TAG, como no wireframe).
+- [x] Regra de exclusão automática de situações já tratadas na próxima geração — 2026-07-03: filtro `ignorarSituacoesTratadas` (default `true`) em `relatorios.repository.ts`, aplicado via `SituacaoCobranca.participaNovosRelatorios`; exposto como checkbox na tela de geração.
+- [x] Tela de Ficha de Cobrança (nova, além do previsto na Sprint 4) — 2026-07-03: `apps/web/src/app/features/cobranca/ficha-cobranca.component.ts`, seguindo o wireframe `05_ficha_cobranca.html` (situação, tags, parcelas em aberto, observações, histórico), acessível a partir da listagem de Matrículas e da tela de Relatórios. **Não verificada visualmente no navegador** (mesma limitação de tooling já registrada).
 
 ## Sprint 5 — Dashboard, Configurações e Auditoria
 

@@ -67,6 +67,13 @@ import {
         <ng-container matColumnDef="acoes">
           <th mat-header-cell *matHeaderCellDef class="text-right">Ações</th>
           <td mat-cell *matCellDef="let m" class="text-right">
+            <a
+              mat-icon-button
+              [routerLink]="['/cobranca/matriculas', m.id]"
+              aria-label="Ficha de cobrança"
+            >
+              <mat-icon>receipt_long</mat-icon>
+            </a>
             <a mat-icon-button [routerLink]="['/matriculas', m.id]" aria-label="Editar">
               <mat-icon>edit</mat-icon>
             </a>

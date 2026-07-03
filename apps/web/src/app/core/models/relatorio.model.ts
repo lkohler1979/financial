@@ -8,6 +8,9 @@ export interface MatriculaElegivel {
   quantidadeParcelasVencidas: number;
   diasAtrasoMaximo: number;
   valorTotal: number;
+  situacaoCobrancaId?: string | null;
+  situacaoCobrancaNome?: string | null;
+  tags?: Array<{ id: string; nome: string }>;
 }
 
 export interface ErroItemRelatorio {
@@ -40,4 +43,7 @@ export interface FiltrosRelatorio {
   diasAtraso?: number;
   valorMinimo?: number;
   cursoId?: string;
+  situacaoCobrancaId?: string;
+  tagId?: string;
+  ignorarSituacoesTratadas?: boolean;
 }

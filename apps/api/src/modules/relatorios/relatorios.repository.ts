@@ -24,11 +24,21 @@ export interface MatriculaElegivel {
   valorBruto: number;
   /** Valor bruto + multa + juros (o que efetivamente vai para o documento de protesto). */
   valorTotal: number;
+  situacaoCobrancaId: string | null;
+  situacaoCobrancaNome: string | null;
+  tags: Array<{ id: string; nome: string }>;
 }
 
 export interface ListarRelatoriosParams {
   skip: number;
   take: number;
+}
+
+export interface FiltrosCobrancaElegibilidade {
+  situacaoCobrancaId?: string;
+  tagId?: string;
+  /** true (padrão): exclui matrículas cuja situação atual tem participaNovosRelatorios=false (PRD seção 23.6). */
+  ignorarSituacoesTratadas: boolean;
 }
 
 export const relatoriosRepository = {
@@ -41,18 +51,33 @@ export const relatoriosRepository = {
   async buscarMatriculasComParcelasVencidas(
     cursoId: string | undefined,
     configFinanceira: ConfiguracaoFinanceira,
+    filtrosCobranca: FiltrosCobrancaElegibilidade,
   ): Promise<MatriculaElegivel[]> {
     const hoje = inicioHoje();
 
     const matriculas = await prisma.matricula.findMany({
       where: {
         ...(cursoId ? { cursoId } : {}),
+        ...(filtrosCobranca.situacaoCobrancaId
+          ? { situacaoCobrancaId: filtrosCobranca.situacaoCobrancaId }
+          : {}),
+        ...(filtrosCobranca.tagId ? { tags: { some: { tagId: filtrosCobranca.tagId } } } : {}),
+        ...(filtrosCobranca.ignorarSituacoesTratadas
+          ? {
+              OR: [
+                { situacaoCobrancaId: null },
+                { situacaoCobranca: { participaNovosRelatorios: true } },
+              ],
+            }
+          : {}),
         parcelas: { some: { status: "EM_ABERTO", vencimento: { lt: hoje } } },
       },
       include: {
         aluno: { select: { id: true, nome: true, cpf: true } },
         curso: { select: { id: true, nome: true } },
         parcelas: { where: { status: "EM_ABERTO", vencimento: { lt: hoje } } },
+        situacaoCobranca: { select: { id: true, nome: true } },
+        tags: { select: { tag: { select: { id: true, nome: true } } } },
       },
     });
 
@@ -84,6 +109,9 @@ export const relatoriosRepository = {
         diasAtrasoMaximo,
         valorBruto,
         valorTotal,
+        situacaoCobrancaId: matricula.situacaoCobranca?.id ?? null,
+        situacaoCobrancaNome: matricula.situacaoCobranca?.nome ?? null,
+        tags: matricula.tags.map((associacao) => associacao.tag),
       };
     });
   },

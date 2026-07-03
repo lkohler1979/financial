@@ -10,6 +10,12 @@ export interface MatriculaResumoCurso {
   nome: string;
 }
 
+export interface MatriculaResumoSituacaoCobranca {
+  id: string;
+  nome: string;
+  cor: string;
+}
+
 export interface Matricula {
   id: string;
   alunoId: string;
@@ -19,8 +25,10 @@ export interface Matricula {
   contratoAssinado: boolean;
   situacao: string;
   observacoes?: string | null;
+  situacaoCobrancaId?: string | null;
   aluno?: MatriculaResumoAluno;
   curso?: MatriculaResumoCurso;
+  situacaoCobranca?: MatriculaResumoSituacaoCobranca | null;
 }
 
 export interface MatriculaPayload {

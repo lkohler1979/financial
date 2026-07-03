@@ -1,5 +1,6 @@
 import { Component, inject, OnInit } from "@angular/core";
 import { CurrencyPipe, DatePipe } from "@angular/common";
+import { RouterLink } from "@angular/router";
 import { FormBuilder, ReactiveFormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
@@ -13,12 +14,14 @@ import { MatDialog, MatDialogModule } from "@angular/material/dialog";
 import { MatSnackBar } from "@angular/material/snack-bar";
 import { RelatoriosService } from "../../core/services/relatorios.service";
 import { CursosService } from "../../core/services/cursos.service";
+import { CobrancaService } from "../../core/services/cobranca.service";
 import {
   FiltrosRelatorio,
   MatriculaElegivel,
   RelatorioInadimplencia,
 } from "../../core/models/relatorio.model";
 import { Curso } from "../../core/models/curso.model";
+import { SituacaoCobranca, Tag } from "../../core/models/cobranca.model";
 import { RelatorioDetalheDialogComponent } from "./relatorio-detalhe-dialog.component";
 
 @Component({
@@ -27,6 +30,7 @@ import { RelatorioDetalheDialogComponent } from "./relatorio-detalhe-dialog.comp
   imports: [
     CurrencyPipe,
     DatePipe,
+    RouterLink,
     ReactiveFormsModule,
     MatButtonModule,
     MatIconModule,
@@ -43,11 +47,7 @@ import { RelatorioDetalheDialogComponent } from "./relatorio-detalhe-dialog.comp
 
     <div class="bg-white rounded-xl border p-5 mb-5">
       <p class="text-xs font-medium text-gray-600 mb-3">Financeiro</p>
-      <form
-        [formGroup]="filtros"
-        class="grid grid-cols-2 md:grid-cols-4 gap-3 items-start"
-        (ngSubmit)="buscarElegiveis()"
-      >
+      <form [formGroup]="filtros" class="grid grid-cols-2 md:grid-cols-4 gap-3 items-start">
         <mat-form-field appearance="outline">
           <mat-label>Parcelas mínimas vencidas</mat-label>
           <input matInput type="number" min="0" formControlName="parcelasMinimas" />
@@ -69,14 +69,41 @@ import { RelatorioDetalheDialogComponent } from "./relatorio-detalhe-dialog.comp
             }
           </mat-select>
         </mat-form-field>
+
+        <p class="text-xs font-medium text-gray-600 col-span-2 md:col-span-4 mb-0 mt-1">
+          Cobrança
+        </p>
+        <mat-form-field appearance="outline">
+          <mat-label>Incluir situação</mat-label>
+          <mat-select formControlName="situacaoCobrancaId">
+            <mat-option [value]="undefined">Todas as situações</mat-option>
+            @for (situacao of situacoes; track situacao.id) {
+              <mat-option [value]="situacao.id">{{ situacao.nome }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Possui a TAG</mat-label>
+          <mat-select formControlName="tagId">
+            <mat-option [value]="undefined">Qualquer TAG</mat-option>
+            @for (tag of tags; track tag.id) {
+              <mat-option [value]="tag.id">{{ tag.nome }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <div class="flex items-center">
+          <mat-checkbox formControlName="ignorarSituacoesTratadas">
+            Excluir situações já tratadas
+          </mat-checkbox>
+        </div>
       </form>
       <button mat-raised-button color="primary" type="button" (click)="buscarElegiveis()">
         <mat-icon>search</mat-icon> Buscar elegíveis
       </button>
       <p class="text-[11px] text-gray-400 mt-3 mb-0">
-        Deixe em branco para usar os padrões configurados no sistema. Módulo de Gestão de Cobranças
-        (situações/TAGs, wireframe <code>04_relatorio_inadimplencia.html</code>) chega no Sprint 4 —
-        ver docs/PENDENCIAS.md.
+        Deixe em branco para usar os padrões configurados no sistema. "Excluir situações já
+        tratadas" ignora matrículas cuja situação atual está marcada como
+        "não participa de novos relatórios" (ex.: Quitado).
       </p>
     </div>
 
@@ -86,18 +113,44 @@ import { RelatorioDetalheDialogComponent } from "./relatorio-detalhe-dialog.comp
 
     @if (buscou) {
       @if (elegiveis.length > 0) {
-        <div class="flex justify-between items-center bg-blue-50 rounded px-4 py-2 mb-3">
+        <div class="flex flex-wrap justify-between items-center gap-2 bg-blue-50 rounded px-4 py-2 mb-3">
           <span class="text-sm text-blue-900 font-medium">
             {{ selecionados.size }} de {{ elegiveis.length }} alunos selecionados
           </span>
-          <button
-            mat-raised-button
-            color="primary"
-            [disabled]="selecionados.size === 0 || gerando"
-            (click)="gerarRelatorio()"
-          >
-            <mat-icon>description</mat-icon> Gerar Word em lote
-          </button>
+          <div class="flex flex-wrap gap-2 items-center">
+            <mat-form-field appearance="outline" class="!w-44" subscriptSizing="dynamic">
+              <mat-select
+                placeholder="Alterar situação"
+                (selectionChange)="situacaoLote = $event.value"
+              >
+                @for (situacao of situacoes; track situacao.id) {
+                  <mat-option [value]="situacao.id">{{ situacao.nome }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="!w-40" subscriptSizing="dynamic">
+              <mat-select placeholder="Inserir TAG" (selectionChange)="tagLote = $event.value">
+                @for (tag of tags; track tag.id) {
+                  <mat-option [value]="tag.id">{{ tag.nome }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+            <button
+              mat-stroked-button
+              [disabled]="selecionados.size === 0 || (!situacaoLote && !tagLote)"
+              (click)="aplicarLote()"
+            >
+              Aplicar
+            </button>
+            <button
+              mat-raised-button
+              color="primary"
+              [disabled]="selecionados.size === 0 || gerando"
+              (click)="gerarRelatorio()"
+            >
+              <mat-icon>description</mat-icon> Gerar Word em lote
+            </button>
+          </div>
         </div>
 
         <div class="bg-white rounded shadow-sm overflow-auto mb-6">
@@ -136,6 +189,26 @@ import { RelatorioDetalheDialogComponent } from "./relatorio-detalhe-dialog.comp
             <ng-container matColumnDef="total">
               <th mat-header-cell *matHeaderCellDef>Total devedor</th>
               <td mat-cell *matCellDef="let e">{{ e.valorTotal | currency: "BRL" }}</td>
+            </ng-container>
+            <ng-container matColumnDef="situacao">
+              <th mat-header-cell *matHeaderCellDef>Situação</th>
+              <td mat-cell *matCellDef="let e">
+                <span class="px-2 py-0.5 rounded text-xs bg-gray-100">{{
+                  e.situacaoCobrancaNome || "—"
+                }}</span>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="acoes">
+              <th mat-header-cell *matHeaderCellDef class="text-right">Ficha</th>
+              <td mat-cell *matCellDef="let e" class="text-right">
+                <a
+                  mat-icon-button
+                  [routerLink]="['/cobranca/matriculas', e.matriculaId]"
+                  aria-label="Ver ficha de cobrança"
+                >
+                  <mat-icon>receipt_long</mat-icon>
+                </a>
+              </td>
             </ng-container>
 
             <tr mat-header-row *matHeaderRowDef="colunasElegiveis"></tr>
@@ -199,6 +272,7 @@ import { RelatorioDetalheDialogComponent } from "./relatorio-detalhe-dialog.comp
 export class RelatoriosGeracaoComponent implements OnInit {
   private readonly service = inject(RelatoriosService);
   private readonly cursosService = inject(CursosService);
+  private readonly cobrancaService = inject(CobrancaService);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   private readonly fb = inject(FormBuilder);
@@ -208,12 +282,28 @@ export class RelatoriosGeracaoComponent implements OnInit {
     diasAtraso: this.fb.control<number | undefined>(undefined),
     valorMinimo: this.fb.control<number | undefined>(undefined),
     cursoId: this.fb.control<string | undefined>(undefined),
+    situacaoCobrancaId: this.fb.control<string | undefined>(undefined),
+    tagId: this.fb.control<string | undefined>(undefined),
+    ignorarSituacoesTratadas: this.fb.nonNullable.control(true),
   });
 
   cursos: Curso[] = [];
+  situacoes: SituacaoCobranca[] = [];
+  tags: Tag[] = [];
   elegiveis: MatriculaElegivel[] = [];
   selecionados = new Set<string>();
-  colunasElegiveis = ["selecionar", "nome", "curso", "parcelas", "diasAtraso", "total"];
+  situacaoLote?: string;
+  tagLote?: string;
+  colunasElegiveis = [
+    "selecionar",
+    "nome",
+    "curso",
+    "parcelas",
+    "diasAtraso",
+    "total",
+    "situacao",
+    "acoes",
+  ];
   carregandoElegiveis = false;
   gerando = false;
   buscou = false;
@@ -224,6 +314,8 @@ export class RelatoriosGeracaoComponent implements OnInit {
 
   ngOnInit(): void {
     this.cursosService.listar({ pageSize: 100 }).subscribe((res) => (this.cursos = res.data));
+    this.cobrancaService.listarSituacoes(true).subscribe((res) => (this.situacoes = res));
+    this.cobrancaService.listarTags().subscribe((res) => (this.tags = res));
     this.carregarHistorico();
   }
 
@@ -234,6 +326,9 @@ export class RelatoriosGeracaoComponent implements OnInit {
       diasAtraso: bruto.diasAtraso ?? undefined,
       valorMinimo: bruto.valorMinimo ?? undefined,
       cursoId: bruto.cursoId ?? undefined,
+      situacaoCobrancaId: bruto.situacaoCobrancaId ?? undefined,
+      tagId: bruto.tagId ?? undefined,
+      ignorarSituacoesTratadas: bruto.ignorarSituacoesTratadas,
     };
   }
 
@@ -266,6 +361,23 @@ export class RelatoriosGeracaoComponent implements OnInit {
 
   algunsSelecionados(): boolean {
     return this.selecionados.size > 0 && !this.todosSelecionados();
+  }
+
+  aplicarLote(): void {
+    this.cobrancaService
+      .aplicarLote({
+        matriculaIds: Array.from(this.selecionados),
+        situacaoCobrancaId: this.situacaoLote,
+        tagIds: this.tagLote ? [this.tagLote] : undefined,
+      })
+      .subscribe((resultado) => {
+        this.snackBar.open(
+          `Aplicado em ${resultado.sucesso} de ${resultado.total} matrículas`,
+          "Fechar",
+          { duration: 4000 },
+        );
+        this.buscarElegiveis();
+      });
   }
 
   gerarRelatorio(): void {

@@ -5,6 +5,10 @@ export const filtrosElegibilidadeSchema = z.object({
   diasAtraso: z.coerce.number().int().min(0).optional(),
   valorMinimo: z.coerce.number().min(0).optional(),
   cursoId: z.string().uuid().optional(),
+  // Filtros de cobrança (PRD seção 23.4/23.6, wireframe 04_relatorio_inadimplencia.html).
+  situacaoCobrancaId: z.string().uuid().optional(),
+  tagId: z.string().uuid().optional(),
+  ignorarSituacoesTratadas: z.coerce.boolean().default(true),
 });
 
 // Se `matriculaIds` for informado, a geração fica restrita a essa seleção

@@ -16,13 +16,7 @@ export interface Importacao {
 }
 
 export type EstadoJobImportacao =
-  | "waiting"
-  | "active"
-  | "completed"
-  | "failed"
-  | "delayed"
-  | "paused"
-  | "unknown";
+  "waiting" | "active" | "completed" | "failed" | "delayed" | "paused" | "unknown";
 
 export interface ResultadoJobImportacao {
   importacaoId: string;

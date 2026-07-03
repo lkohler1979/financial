@@ -4,7 +4,11 @@ import fs from "node:fs";
 import { asyncHandler } from "../../shared/utils/async-handler";
 import { paramString, usuarioAtual } from "../../shared/utils/http";
 import { AppError, NotFoundError } from "../../shared/errors/app-error";
-import { filtrosElegibilidadeSchema, gerarRelatorioSchema, listarRelatoriosSchema } from "./relatorios.schema";
+import {
+  filtrosElegibilidadeSchema,
+  gerarRelatorioSchema,
+  listarRelatoriosSchema,
+} from "./relatorios.schema";
 import { relatoriosService } from "./relatorios.service";
 
 interface ItemRelatorio {
@@ -42,7 +46,9 @@ export const relatoriosController = {
     const relatorio = await relatoriosService.buscarPorId(paramString(req, "id"));
     const matriculaId = paramString(req, "matriculaId");
 
-    const itens = Array.isArray(relatorio.itens) ? (relatorio.itens as unknown as ItemRelatorio[]) : [];
+    const itens = Array.isArray(relatorio.itens)
+      ? (relatorio.itens as unknown as ItemRelatorio[])
+      : [];
     const item = itens.find((i) => i.matriculaId === matriculaId);
 
     if (!item || !item.documentoGerado || !item.caminhoDocumento) {
@@ -51,7 +57,11 @@ export const relatoriosController = {
 
     const caminhoAbsoluto = path.resolve(item.caminhoDocumento);
     if (!fs.existsSync(caminhoAbsoluto)) {
-      throw new AppError("Documento não está mais disponível em disco", 410, "DOCUMENTO_INDISPONIVEL");
+      throw new AppError(
+        "Documento não está mais disponível em disco",
+        410,
+        "DOCUMENTO_INDISPONIVEL",
+      );
     }
 
     res.download(caminhoAbsoluto, path.basename(caminhoAbsoluto));

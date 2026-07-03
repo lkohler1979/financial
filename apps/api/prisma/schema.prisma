@@ -153,6 +153,16 @@ model Configuracao {
   padraoNomeArquivo      String  @default("{NOME}_{CPF}_{CURSO}.docx") @map("padrao_nome_arquivo")
   frequenciaImportacao   FrequenciaImportacao @default(MANUAL) @map("frequencia_importacao")
 
+  // Multa/juros do relatório de inadimplência e documento de protesto
+  // (seção 15/23 do PRD; fórmula confirmada pelo usuário em 2026-07-03).
+  /// Percentual flat de multa sobre o valor bruto da parcela (ex.: 2 = 2%).
+  multaPercentual        Decimal @default(2) @db.Decimal(5, 2) @map("multa_percentual")
+  /// Percentual de juros por dia de atraso (ex.: 0.033 = 0.033% ao dia).
+  jurosDiarioPercentual  Decimal @default(0.033) @db.Decimal(6, 3) @map("juros_diario_percentual")
+  /// true: conta os dias de atraso até o dia da geração do relatório (inclusive).
+  /// false: conta só até o dia anterior à geração.
+  jurosContarDiaGeracao  Boolean @default(true) @map("juros_contar_dia_geracao")
+
   @@map("configuracoes")
 }
 

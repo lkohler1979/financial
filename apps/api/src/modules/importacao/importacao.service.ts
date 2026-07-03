@@ -23,8 +23,7 @@ export const importacaoService = {
       jobId: job.id,
       estado,
       progresso: typeof job.progress === "number" ? job.progress : 0,
-      resultado:
-        estado === "completed" ? (job.returnvalue as ImportacaoJobResultado) : undefined,
+      resultado: estado === "completed" ? (job.returnvalue as ImportacaoJobResultado) : undefined,
       erro: estado === "failed" ? job.failedReason : undefined,
     };
   },

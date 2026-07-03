@@ -1,15 +1,16 @@
 // Cálculo de multa e juros do relatório de inadimplência (PRD seção 15/23).
 //
-// Fórmula reverso-engenheirada a partir dos documentos de exemplo fornecidos
-// pelo usuário em 2026-07-03 (docs reais gerados pelo sistema legado da
-// Ethos): Multa = 2% flat sobre o valor bruto; Juros = 1% ao mês, pro-rata
-// por dia de atraso (base 30 dias). Bate exatamente com o valor de Multa dos
-// exemplos; Juros ficou próximo mas não idêntico ao centavo (possível
-// diferença de contagem de dias ou arredondamento intermediário do sistema
-// de origem) — ver docs/PENDENCIAS.md, precisa de confirmação da instituição.
-export const MULTA_PERCENTUAL = 0.02;
-export const JUROS_PERCENTUAL_MENSAL = 0.01;
-const DIAS_BASE_MES = 30;
+// Fórmula e parâmetros confirmados pelo usuário em 2026-07-03: multa flat
+// sobre o valor bruto e juros diários pro-rata desde o vencimento, ambos
+// configuráveis via `Configuracao` (multaPercentual, jurosDiarioPercentual,
+// jurosContarDiaGeracao) — padrão de fábrica: 2% de multa e 0,033% de juros
+// ao dia. `jurosContarDiaGeracao` decide se o dia da geração do relatório
+// entra ou não na contagem de dias de atraso.
+export interface ConfiguracaoFinanceira {
+  multaPercentual: number;
+  jurosDiarioPercentual: number;
+  jurosContarDiaGeracao: boolean;
+}
 
 export interface CalculoParcela {
   valorBruto: number;
@@ -18,24 +19,43 @@ export interface CalculoParcela {
   total: number;
 }
 
-export function calcularMultaJuros(valorBruto: number, diasAtraso: number): CalculoParcela {
+export function calcularMultaJuros(
+  valorBruto: number,
+  diasAtraso: number,
+  config: ConfiguracaoFinanceira,
+): CalculoParcela {
   const dias = Math.max(diasAtraso, 0);
-  const multa = arredondar(valorBruto * MULTA_PERCENTUAL);
-  const juros = arredondar(valorBruto * (JUROS_PERCENTUAL_MENSAL / DIAS_BASE_MES) * dias);
+  const multa = arredondar(valorBruto * (config.multaPercentual / 100));
+  const juros = arredondar(valorBruto * (config.jurosDiarioPercentual / 100) * dias);
   const total = arredondar(valorBruto + multa + juros);
   return { valorBruto: arredondar(valorBruto), multa, juros, total };
 }
 
-/** Dias corridos entre o vencimento e hoje (0 se ainda não venceu). */
-export function calcularDiasAtraso(vencimento: Date, referencia: Date = new Date()): number {
-  const hoje = new Date(referencia.getFullYear(), referencia.getMonth(), referencia.getDate());
+/**
+ * Dias corridos entre o vencimento e a data de referência (geração do
+ * relatório). Quando `jurosContarDiaGeracao` é false, subtrai 1 dia — ou
+ * seja, os juros contam só até o dia anterior à geração.
+ */
+export function calcularDiasAtraso(
+  vencimento: Date,
+  referencia: Date,
+  jurosContarDiaGeracao: boolean,
+): number {
+  const dataReferencia = new Date(
+    referencia.getFullYear(),
+    referencia.getMonth(),
+    referencia.getDate(),
+  );
   const dataVencimento = new Date(
     vencimento.getFullYear(),
     vencimento.getMonth(),
     vencimento.getDate(),
   );
-  const dias = Math.floor((hoje.getTime() - dataVencimento.getTime()) / (1000 * 60 * 60 * 24));
-  return Math.max(dias, 0);
+  const dias = Math.floor(
+    (dataReferencia.getTime() - dataVencimento.getTime()) / (1000 * 60 * 60 * 24),
+  );
+  const ajuste = jurosContarDiaGeracao ? 0 : 1;
+  return Math.max(dias - ajuste, 0);
 }
 
 function arredondar(valor: number): number {

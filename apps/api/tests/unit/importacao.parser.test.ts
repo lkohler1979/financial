@@ -32,7 +32,10 @@ describe("parsePlanilhaImportacao", () => {
 
     expect(erros).toHaveLength(0);
     expect(validas).toHaveLength(1);
-    expect(validas[0]).toMatchObject({ linha: 2, dados: { NOME: "Maria Silva", CURSO: "Engenharia" } });
+    expect(validas[0]).toMatchObject({
+      linha: 2,
+      dados: { NOME: "Maria Silva", CURSO: "Engenharia" },
+    });
   });
 
   it("reporta erro de linha para campos obrigatórios ausentes, mantendo o número da linha", () => {

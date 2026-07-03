@@ -1,6 +1,10 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../database/prisma";
-import { calcularDiasAtraso, calcularMultaJuros } from "./calculo-financeiro";
+import {
+  calcularDiasAtraso,
+  calcularMultaJuros,
+  ConfiguracaoFinanceira,
+} from "./calculo-financeiro";
 
 function inicioHoje(): Date {
   const agora = new Date();
@@ -34,7 +38,10 @@ export const relatoriosRepository = {
    * aplicação dos critérios de elegibilidade (seção 15/23 do PRD) fica no
    * service — aqui só levantamos os candidatos.
    */
-  async buscarMatriculasComParcelasVencidas(cursoId?: string): Promise<MatriculaElegivel[]> {
+  async buscarMatriculasComParcelasVencidas(
+    cursoId: string | undefined,
+    configFinanceira: ConfiguracaoFinanceira,
+  ): Promise<MatriculaElegivel[]> {
     const hoje = inicioHoje();
 
     const matriculas = await prisma.matricula.findMany({
@@ -52,10 +59,16 @@ export const relatoriosRepository = {
     return matriculas.map((matricula) => {
       const parcelasVencidas = matricula.parcelas;
       const diasAtrasoMaximo = Math.max(
-        ...parcelasVencidas.map((p) => calcularDiasAtraso(p.vencimento, hoje)),
+        ...parcelasVencidas.map((p) =>
+          calcularDiasAtraso(p.vencimento, hoje, configFinanceira.jurosContarDiaGeracao),
+        ),
       );
       const calculos = parcelasVencidas.map((p) =>
-        calcularMultaJuros(Number(p.valor), calcularDiasAtraso(p.vencimento, hoje)),
+        calcularMultaJuros(
+          Number(p.valor),
+          calcularDiasAtraso(p.vencimento, hoje, configFinanceira.jurosContarDiaGeracao),
+          configFinanceira,
+        ),
       );
       const valorBruto = calculos.reduce((soma, c) => soma + c.valorBruto, 0);
       const valorTotal = calculos.reduce((soma, c) => soma + c.total, 0);

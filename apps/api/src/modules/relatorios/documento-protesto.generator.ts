@@ -9,15 +9,15 @@ import {
   TextRun,
   WidthType,
 } from "docx";
-import { calcularMultaJuros } from "./calculo-financeiro";
-
 const FONTE = "Times New Roman";
 const TAMANHO = 28; // half-points = 14pt, igual ao modelo real
 
 export interface ParcelaDocumento {
   vencimento: Date;
   valorBruto: number;
-  diasAtraso: number;
+  multa: number;
+  juros: number;
+  total: number;
 }
 
 export interface DadosDocumentoProtesto {
@@ -58,29 +58,25 @@ function celula(conteudo: string, negrito = true): TableCell {
  * consolidado (só na última coluna da linha "Total" — as demais colunas dessa
  * linha ficam com pontilhado, igual ao modelo) e assinatura.
  *
- * Fórmula de Multa/Juros em `calculo-financeiro.ts` — reverso-engenheirada
- * dos exemplos reais, ainda sem confirmação oficial da instituição no nível
- * de centavos (ver PENDENCIAS.md).
+ * Multa/juros já vêm calculados em `parcelas` (ver `calculo-financeiro.ts`
+ * e `Configuracao.multaPercentual`/`jurosDiarioPercentual`) — este módulo só
+ * formata e desenha o documento.
  */
 export async function gerarDocumentoProtesto(dados: DadosDocumentoProtesto): Promise<Buffer> {
   const credor = process.env.INSTITUICAO_NOME ?? "[Nome da Instituição]";
   const cnpjCredor = process.env.INSTITUICAO_CNPJ ?? "[CNPJ da Instituição]";
 
-  const calculos = dados.parcelas.map((parcela) => ({
-    vencimento: parcela.vencimento,
-    ...calcularMultaJuros(parcela.valorBruto, parcela.diasAtraso),
-  }));
-  const totalConsolidado = calculos.reduce((soma, c) => soma + c.total, 0);
+  const totalConsolidado = dados.parcelas.reduce((soma, p) => soma + p.total, 0);
 
-  const linhasTabela = calculos.map(
-    (calculo) =>
+  const linhasTabela = dados.parcelas.map(
+    (parcela) =>
       new TableRow({
         children: [
-          celula(formatarData(calculo.vencimento)),
-          celula(formatarMoeda(calculo.valorBruto)),
-          celula(formatarMoeda(calculo.multa)),
-          celula(formatarMoeda(calculo.juros)),
-          celula(formatarMoeda(calculo.total)),
+          celula(formatarData(parcela.vencimento)),
+          celula(formatarMoeda(parcela.valorBruto)),
+          celula(formatarMoeda(parcela.multa)),
+          celula(formatarMoeda(parcela.juros)),
+          celula(formatarMoeda(parcela.total)),
         ],
       }),
   );

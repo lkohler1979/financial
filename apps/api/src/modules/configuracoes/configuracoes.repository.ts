@@ -10,6 +10,9 @@ const DEFAULTS: Prisma.ConfiguracaoCreateInput = {
   diasAtraso: Number(process.env.DIAS_ATRASO_MINIMO ?? 0),
   pastaSaidaDocumentos: process.env.PASTA_SAIDA_DOCUMENTOS ?? "./output/relatorios",
   modeloDocx: process.env.MODELO_DOCX_PROTESTO ?? "./templates/modelo-protesto.docx",
+  multaPercentual: Number(process.env.MULTA_PERCENTUAL ?? 2),
+  jurosDiarioPercentual: Number(process.env.JUROS_DIARIO_PERCENTUAL ?? 0.033),
+  jurosContarDiaGeracao: (process.env.JUROS_CONTAR_DIA_GERACAO ?? "true") === "true",
 };
 
 export const configuracoesRepository = {

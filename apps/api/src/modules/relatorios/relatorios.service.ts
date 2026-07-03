@@ -3,6 +3,7 @@ import { NotFoundError } from "../../shared/errors/app-error";
 import { registrarAuditoria } from "../auditoria/auditoria.service";
 import { configuracoesRepository } from "../configuracoes/configuracoes.repository";
 import { geracaoWordQueue } from "../../jobs/queues/geracao-word.queue";
+import { ConfiguracaoFinanceira } from "./calculo-financeiro";
 import { MatriculaElegivel, relatoriosRepository } from "./relatorios.repository";
 import type {
   FiltrosElegibilidadeInput,
@@ -15,6 +16,7 @@ interface FiltrosResolvidos {
   diasAtraso: number;
   valorMinimo?: number;
   cursoId?: string;
+  financeiro: ConfiguracaoFinanceira;
 }
 
 // "Só considerar a condição preenchida" (decisão do usuário, 2026-07-03, ver
@@ -27,6 +29,11 @@ async function resolverFiltros(filtros: FiltrosElegibilidadeInput): Promise<Filt
     diasAtraso: filtros.diasAtraso ?? configuracao.diasAtraso,
     valorMinimo: filtros.valorMinimo,
     cursoId: filtros.cursoId,
+    financeiro: {
+      multaPercentual: Number(configuracao.multaPercentual),
+      jurosDiarioPercentual: Number(configuracao.jurosDiarioPercentual),
+      jurosContarDiaGeracao: configuracao.jurosContarDiaGeracao,
+    },
   };
 }
 
@@ -35,7 +42,10 @@ function aplicarElegibilidade(
   filtros: FiltrosResolvidos,
 ): MatriculaElegivel[] {
   return candidatos.filter((candidato) => {
-    if (filtros.parcelasMinimas > 0 && candidato.quantidadeParcelasVencidas < filtros.parcelasMinimas) {
+    if (
+      filtros.parcelasMinimas > 0 &&
+      candidato.quantidadeParcelasVencidas < filtros.parcelasMinimas
+    ) {
       return false;
     }
     if (filtros.diasAtraso > 0 && candidato.diasAtrasoMaximo < filtros.diasAtraso) {
@@ -54,6 +64,7 @@ export const relatoriosService = {
     const filtros = await resolverFiltros(filtrosInput);
     const candidatos = await relatoriosRepository.buscarMatriculasComParcelasVencidas(
       filtros.cursoId,
+      filtros.financeiro,
     );
     return aplicarElegibilidade(candidatos, filtros);
   },
@@ -62,6 +73,7 @@ export const relatoriosService = {
     const filtros = await resolverFiltros(input);
     let elegiveis = await relatoriosRepository.buscarMatriculasComParcelasVencidas(
       filtros.cursoId,
+      filtros.financeiro,
     );
     elegiveis = aplicarElegibilidade(elegiveis, filtros);
 

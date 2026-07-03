@@ -11,7 +11,14 @@ import { MatTabsModule } from "@angular/material/tabs";
 @Component({
   selector: "app-root",
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, MatToolbarModule, MatIconModule, MatTabsModule],
+  imports: [
+    RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
+    MatToolbarModule,
+    MatIconModule,
+    MatTabsModule,
+  ],
   template: `
     <mat-toolbar color="primary" class="!sticky top-0 z-10">
       <span class="font-medium">EthosFinancial</span>

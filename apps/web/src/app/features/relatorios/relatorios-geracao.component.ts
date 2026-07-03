@@ -74,9 +74,9 @@ import { RelatorioDetalheDialogComponent } from "./relatorio-detalhe-dialog.comp
         <mat-icon>search</mat-icon> Buscar elegíveis
       </button>
       <p class="text-[11px] text-gray-400 mt-3 mb-0">
-        Deixe em branco para usar os padrões configurados no sistema. Módulo de Gestão de
-        Cobranças (situações/TAGs, wireframe <code>04_relatorio_inadimplencia.html</code>) chega
-        no Sprint 4 — ver docs/PENDENCIAS.md.
+        Deixe em branco para usar os padrões configurados no sistema. Módulo de Gestão de Cobranças
+        (situações/TAGs, wireframe <code>04_relatorio_inadimplencia.html</code>) chega no Sprint 4 —
+        ver docs/PENDENCIAS.md.
       </p>
     </div>
 
@@ -172,7 +172,9 @@ import { RelatorioDetalheDialogComponent } from "./relatorio-detalhe-dialog.comp
           </ng-container>
           <ng-container matColumnDef="totalDocumentosGerados">
             <th mat-header-cell *matHeaderCellDef>Documentos gerados</th>
-            <td mat-cell *matCellDef="let r">{{ r.totalDocumentosGerados }} / {{ r.totalElegiveis }}</td>
+            <td mat-cell *matCellDef="let r">
+              {{ r.totalDocumentosGerados }} / {{ r.totalElegiveis }}
+            </td>
           </ng-container>
           <ng-container matColumnDef="acoes">
             <th mat-header-cell *matHeaderCellDef class="text-right">Ações</th>
@@ -268,21 +270,19 @@ export class RelatoriosGeracaoComponent implements OnInit {
 
   gerarRelatorio(): void {
     this.gerando = true;
-    this.service
-      .gerar(this.valoresFiltro(), Array.from(this.selecionados))
-      .subscribe({
-        next: () => {
-          this.gerando = false;
-          this.snackBar.open(
-            "Geração enfileirada. Os documentos aparecerão no histórico quando prontos.",
-            "Fechar",
-            { duration: 5000 },
-          );
-          this.selecionados.clear();
-          this.carregarHistorico();
-        },
-        error: () => (this.gerando = false),
-      });
+    this.service.gerar(this.valoresFiltro(), Array.from(this.selecionados)).subscribe({
+      next: () => {
+        this.gerando = false;
+        this.snackBar.open(
+          "Geração enfileirada. Os documentos aparecerão no histórico quando prontos.",
+          "Fechar",
+          { duration: 5000 },
+        );
+        this.selecionados.clear();
+        this.carregarHistorico();
+      },
+      error: () => (this.gerando = false),
+    });
   }
 
   carregarHistorico(): void {

@@ -126,7 +126,8 @@ describe("financeiroService.atualizar", () => {
 
   it("lança NotFound quando a parcela não existe", async () => {
     repo.findById.mockResolvedValue(null);
-    await expect(financeiroService.atualizar("x", { status: "CANCELADO" }, USUARIO)).rejects
-      .toBeInstanceOf(NotFoundError);
+    await expect(
+      financeiroService.atualizar("x", { status: "CANCELADO" }, USUARIO),
+    ).rejects.toBeInstanceOf(NotFoundError);
   });
 });

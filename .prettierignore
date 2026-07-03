@@ -4,3 +4,6 @@ node_modules
 coverage
 output
 package-lock.json
+
+# Wireframes são referência estática (baixa fidelidade) — não reformatar.
+docs/wireframes

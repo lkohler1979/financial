@@ -57,6 +57,9 @@ beforeEach(() => {
     modeloDocx: "./templates/modelo.docx",
     padraoNomeArquivo: "{NOME}_{CPF}_{CURSO}.docx",
     frequenciaImportacao: "MANUAL",
+    multaPercentual: 2,
+    jurosDiarioPercentual: 0.033,
+    jurosContarDiaGeracao: true,
   } as never);
 });
 
@@ -79,7 +82,10 @@ describe("relatoriosService.previaElegiveis", () => {
       candidato({ matriculaId: "b", quantidadeParcelasVencidas: 1, diasAtrasoMaximo: 5 }),
     ] as never);
 
-    const resultado = await relatoriosService.previaElegiveis({ parcelasMinimas: 0, diasAtraso: 30 });
+    const resultado = await relatoriosService.previaElegiveis({
+      parcelasMinimas: 0,
+      diasAtraso: 30,
+    });
 
     expect(resultado.map((r) => r.matriculaId)).toEqual(["a"]);
   });
@@ -90,7 +96,10 @@ describe("relatoriosService.previaElegiveis", () => {
       candidato({ matriculaId: "b", quantidadeParcelasVencidas: 5, diasAtrasoMaximo: 40 }),
     ] as never);
 
-    const resultado = await relatoriosService.previaElegiveis({ parcelasMinimas: 3, diasAtraso: 30 });
+    const resultado = await relatoriosService.previaElegiveis({
+      parcelasMinimas: 3,
+      diasAtraso: 30,
+    });
 
     expect(resultado.map((r) => r.matriculaId)).toEqual(["b"]);
   });
@@ -118,9 +127,7 @@ describe("relatoriosService.gerar", () => {
     const resultado = await relatoriosService.gerar({}, USUARIO);
 
     expect(resultado).toMatchObject({ id: "relatorio-1" });
-    expect(repo.create).toHaveBeenCalledWith(
-      expect.objectContaining({ totalElegiveis: 1 }),
-    );
+    expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ totalElegiveis: 1 }));
     expect(auditoria).toHaveBeenCalledWith(
       expect.objectContaining({ entidade: "RelatorioInadimplencia", acao: "CRIACAO" }),
     );

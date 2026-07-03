@@ -6,7 +6,10 @@ import { GERACAO_WORD_QUEUE_NAME, GeracaoWordJobData } from "../queues/geracao-w
 import { configuracoesRepository } from "../../modules/configuracoes/configuracoes.repository";
 import { relatoriosRepository } from "../../modules/relatorios/relatorios.repository";
 import { gerarDocumentoProtesto } from "../../modules/relatorios/documento-protesto.generator";
-import { calcularDiasAtraso } from "../../modules/relatorios/calculo-financeiro";
+import {
+  calcularDiasAtraso,
+  calcularMultaJuros,
+} from "../../modules/relatorios/calculo-financeiro";
 
 interface ItemRelatorio {
   matriculaId: string;
@@ -46,7 +49,16 @@ async function processarJob(job: Job<GeracaoWordJobData>): Promise<void> {
   const pastaSaida = path.resolve(configuracao.pastaSaidaDocumentos);
   await fs.mkdir(pastaSaida, { recursive: true });
 
-  const itens = Array.isArray(relatorio.itens) ? (relatorio.itens as unknown as ItemRelatorio[]) : [];
+  const configFinanceira = {
+    multaPercentual: Number(configuracao.multaPercentual),
+    jurosDiarioPercentual: Number(configuracao.jurosDiarioPercentual),
+    jurosContarDiaGeracao: configuracao.jurosContarDiaGeracao,
+  };
+  const hoje = new Date();
+
+  const itens = Array.isArray(relatorio.itens)
+    ? (relatorio.itens as unknown as ItemRelatorio[])
+    : [];
   let totalDocumentosGerados = 0;
   const erros: Array<{ matriculaId: string; mensagem: string }> = [];
 
@@ -61,11 +73,17 @@ async function processarJob(job: Job<GeracaoWordJobData>): Promise<void> {
         alunoNome: item.alunoNome,
         alunoCpf: item.alunoCpf,
         cursoNome: item.cursoNome,
-        parcelas: parcelas.map((p) => ({
-          vencimento: p.vencimento,
-          valorBruto: Number(p.valor),
-          diasAtraso: calcularDiasAtraso(p.vencimento),
-        })),
+        parcelas: parcelas.map((p) => {
+          const diasAtraso = calcularDiasAtraso(
+            p.vencimento,
+            hoje,
+            configFinanceira.jurosContarDiaGeracao,
+          );
+          return {
+            vencimento: p.vencimento,
+            ...calcularMultaJuros(Number(p.valor), diasAtraso, configFinanceira),
+          };
+        }),
       });
 
       const nomeArquivo = montarNomeArquivo(configuracao.padraoNomeArquivo, item);

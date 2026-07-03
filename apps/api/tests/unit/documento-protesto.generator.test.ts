@@ -8,8 +8,8 @@ describe("gerarDocumentoProtesto", () => {
       alunoCpf: "39053344705",
       cursoNome: "Ethos Digital/Engenharia",
       parcelas: [
-        { vencimento: new Date("2026-05-10"), valorBruto: 100, diasAtraso: 30 },
-        { vencimento: new Date("2026-06-10"), valorBruto: 100, diasAtraso: 10 },
+        { vencimento: new Date("2026-05-10"), valorBruto: 100, multa: 2, juros: 1, total: 103 },
+        { vencimento: new Date("2026-06-10"), valorBruto: 100, multa: 2, juros: 0.5, total: 102.5 },
       ],
     });
 

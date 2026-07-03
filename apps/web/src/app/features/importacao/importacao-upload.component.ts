@@ -54,8 +54,7 @@ import { Importacao, StatusJobImportacao } from "../../core/models/importacao.mo
           Cria o curso automaticamente ao encontrar um nome novo na planilha.
         </p>
         <p class="text-[11px] text-gray-400 mt-3 mb-0">
-          Configuração ainda fixa (módulo Configurações chega no Sprint 5) — ver
-          docs/PENDENCIAS.md.
+          Configuração ainda fixa (módulo Configurações chega no Sprint 5) — ver docs/PENDENCIAS.md.
         </p>
       </div>
     </div>

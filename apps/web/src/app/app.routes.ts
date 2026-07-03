@@ -60,5 +60,12 @@ export const routes: Routes = [
         (m) => m.ImportacaoUploadComponent,
       ),
   },
+  {
+    path: "relatorios",
+    loadComponent: () =>
+      import("./features/relatorios/relatorios-geracao.component").then(
+        (m) => m.RelatoriosGeracaoComponent,
+      ),
+  },
   { path: "**", redirectTo: "alunos" },
 ];

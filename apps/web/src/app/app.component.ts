@@ -54,6 +54,14 @@ import { MatTabsModule } from "@angular/material/tabs";
         [active]="importacao.isActive"
         >Importação</a
       >
+      <a
+        mat-tab-link
+        routerLink="/relatorios"
+        routerLinkActive
+        #relatorios="routerLinkActive"
+        [active]="relatorios.isActive"
+        >Relatórios</a
+      >
       <a mat-tab-link disabled>Cobrança</a>
       <a mat-tab-link disabled>Configurações</a>
     </nav>

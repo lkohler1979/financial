@@ -40,9 +40,10 @@ model Usuario {
   ativo     Boolean       @default(true)
   criadoEm  DateTime      @default(now())
 
-  importacoes         Importacao[]
-  auditorias          Auditoria[]
-  historicosCobranca  HistoricoCobranca[]
+  importacoes             Importacao[]
+  auditorias              Auditoria[]
+  historicosCobranca      HistoricoCobranca[]
+  relatoriosInadimplencia RelatorioInadimplencia[]
 
   @@map("usuarios")
 }
@@ -77,7 +78,8 @@ model Curso {
   situacao    Boolean  @default(true)
   observacoes String?
 
-  matriculas Matricula[]
+  matriculas              Matricula[]
+  relatoriosInadimplencia RelatorioInadimplencia[]
 
   @@map("cursos")
 }
@@ -152,6 +154,28 @@ model Configuracao {
   frequenciaImportacao   FrequenciaImportacao @default(MANUAL) @map("frequencia_importacao")
 
   @@map("configuracoes")
+}
+
+// Histórico de geração do Relatório de Inadimplência (PRD seções 15 e 21).
+// Os itens elegíveis (aluno/matrícula/valores/documento gerado) ficam em JSON
+// em vez de uma tabela filha — mesmo padrão já usado em Importacao.erros.
+model RelatorioInadimplencia {
+  id                     String   @id @default(uuid())
+  usuarioId              String   @map("usuario_id")
+  data                   DateTime @default(now())
+  parcelasMinimas        Int?     @map("parcelas_minimas")
+  diasAtraso             Int?     @map("dias_atraso")
+  valorMinimo            Decimal? @db.Decimal(12, 2) @map("valor_minimo")
+  cursoId                String?  @map("curso_id")
+  totalElegiveis         Int      @default(0) @map("total_elegiveis")
+  totalDocumentosGerados Int      @default(0) @map("total_documentos_gerados")
+  itens                  Json?
+  erros                  Json?
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id])
+  curso   Curso?  @relation(fields: [cursoId], references: [id])
+
+  @@map("relatorios_inadimplencia")
 }
 
 model SituacaoCobranca {

@@ -36,11 +36,11 @@ Ao concluir uma tarefa, marque o checkbox e, se relevante, adicione uma linha cu
 
 ## Sprint 3 — Relatório de Inadimplência e Geração de Word
 
-- [ ] Módulo `relatorios`: cálculo de elegibilidade (parcelas mínimas / dias de atraso, via `Configuracao`)
-- [ ] Fila BullMQ `geracao-word` — worker de geração de documento (biblioteca `docx`)
-- [ ] Template Word fiel ao modelo de protesto anexado na especificação
-- [ ] Endpoint de download do documento gerado + gravação na pasta configurada
-- [ ] Tela Angular de geração/listagem de relatórios de inadimplência
+- [x] Módulo `relatorios`: cálculo de elegibilidade (parcelas mínimas / dias de atraso, via `Configuracao`) — 2026-07-03: `apps/api/src/modules/relatorios`. Regra de combinação de critérios decidida pelo usuário (ver PENDENCIAS.md): cada critério só é exigido se preenchido (>0); se os dois vierem preenchidos na mesma geração, valem juntos (E). Endpoint de prévia síncrona (`GET /elegiveis`) para revisão/seleção antes de gerar. Adicionado model `RelatorioInadimplencia` ao `schema.prisma` (não existia — necessário para o "histórico" pedido nesta tarefa; itens ficam em JSON, mesmo padrão de `Importacao.erros`). Também criado módulo `configuracoes` mínimo (só leitura/get-or-create do singleton; CRUD completo continua Sprint 5). Testes unitários com repositórios mockados.
+- [~] Fila BullMQ `geracao-word` — worker de geração de documento (biblioteca `docx`) — 2026-07-03: código completo (`apps/api/src/jobs/queues/geracao-word.queue.ts`, `apps/api/src/jobs/workers/geracao-word.worker.ts`). Mesma ressalva do Sprint 2: sem Redis local (removido do compose), **não verificado ponta a ponta**.
+- [~] Template Word fiel ao modelo de protesto anexado na especificação — 2026-07-03: **layout provisório**, não fiel a um modelo jurídico real — nenhum arquivo de modelo foi disponibilizado ainda (só a descrição textual do PRD seção 16: credor, CNPJ, devedor, CPF, curso, tabela de parcelas, total consolidado, data de emissão, assinatura). Implementado em `apps/api/src/modules/relatorios/documento-protesto.generator.ts` com a biblioteca `docx`; nome/CNPJ do credor vêm de env (`INSTITUICAO_NOME`/`INSTITUICAO_CNPJ`, ainda não modelados em `Configuracao`). **Não alterar sem confirmar com a instituição quando o modelo real chegar** (CLAUDE.md seção 8) — ver PENDENCIAS.md.
+- [x] Endpoint de download do documento gerado + gravação na pasta configurada — 2026-07-03: `GET /api/relatorios/:id/itens/:matriculaId/documento`; grava em `Configuracao.pastaSaidaDocumentos`, nome via `Configuracao.padraoNomeArquivo`.
+- [~] Tela Angular de geração/listagem de relatórios de inadimplência — 2026-07-03: `apps/web/src/app/features/relatorios/` (filtros financeiros + curso, prévia de elegíveis com seleção em lote, geração, histórico + dialog de detalhes/download por item), nova aba "Relatórios" no menu. Filtros de Cobrança (situações/TAGs) do wireframe `04_relatorio_inadimplencia.html` ficam para o Sprint 4 (dependem do módulo `cobranca`). `ng build` de produção validado. **Não verificado visualmente no navegador** (mesma limitação de tooling do Sprint 2 — sessão associada ao projeto WhatFlow).
 
 ## Sprint 4 — Módulo de Gestão de Cobranças
 

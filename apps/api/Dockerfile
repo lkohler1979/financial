@@ -3,6 +3,9 @@
 # =============================================================================
 
 FROM node:20-alpine AS base
+# Sem isso o Prisma não detecta a versão do OpenSSL da imagem e usa um engine
+# incompatível (node:20-alpine vem sem OpenSSL instalado por padrão).
+RUN apk add --no-cache openssl
 WORKDIR /app
 COPY package.json package-lock.json* ./
 COPY apps/api/package.json ./apps/api/package.json
@@ -29,6 +32,7 @@ RUN npm run build
 
 # ---------------------------------------------------------------------------
 FROM node:20-alpine AS production
+RUN apk add --no-cache openssl
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build /app/apps/api/dist ./dist

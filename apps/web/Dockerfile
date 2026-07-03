@@ -13,7 +13,9 @@ RUN npm install --workspaces --include-workspace-root
 COPY apps/web ./apps/web
 WORKDIR /app/apps/web
 EXPOSE 4200
-CMD ["npm", "run", "start", "--", "--host", "0.0.0.0", "--poll", "2000"]
+# --port sobrescreve o default de angular.json (4210, usado no dev local fora
+# do Docker) — o container sempre escuta em 4200 (ver docker-compose.yml).
+CMD ["npm", "run", "start", "--", "--host", "0.0.0.0", "--port", "4200", "--poll", "2000", "--proxy-config", "proxy.conf.docker.json"]
 
 # ---------------------------------------------------------------------------
 FROM base AS build

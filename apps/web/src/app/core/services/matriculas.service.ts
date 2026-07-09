@@ -15,6 +15,12 @@ export class MatriculasService {
       alunoId?: string;
       cursoId?: string;
       situacao?: string;
+      alunoNome?: string;
+      alunoCpf?: string;
+      dataMatriculaInicio?: string;
+      dataMatriculaFim?: string;
+      situacaoCobrancaId?: string;
+      tagId?: string;
       page?: number;
       pageSize?: number;
     } = {},
@@ -23,6 +29,16 @@ export class MatriculasService {
     if (opcoes.alunoId) params = params.set("alunoId", opcoes.alunoId);
     if (opcoes.cursoId) params = params.set("cursoId", opcoes.cursoId);
     if (opcoes.situacao) params = params.set("situacao", opcoes.situacao);
+    if (opcoes.alunoNome) params = params.set("alunoNome", opcoes.alunoNome);
+    if (opcoes.alunoCpf) params = params.set("alunoCpf", opcoes.alunoCpf);
+    if (opcoes.dataMatriculaInicio) {
+      params = params.set("dataMatriculaInicio", opcoes.dataMatriculaInicio);
+    }
+    if (opcoes.dataMatriculaFim) params = params.set("dataMatriculaFim", opcoes.dataMatriculaFim);
+    if (opcoes.situacaoCobrancaId) {
+      params = params.set("situacaoCobrancaId", opcoes.situacaoCobrancaId);
+    }
+    if (opcoes.tagId) params = params.set("tagId", opcoes.tagId);
     if (opcoes.page) params = params.set("page", opcoes.page);
     if (opcoes.pageSize) params = params.set("pageSize", opcoes.pageSize);
     return this.http.get<Paginado<Matricula>>(this.baseUrl, { params });

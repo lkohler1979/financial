@@ -17,11 +17,13 @@ export const alunosRepository = {
   },
 
   async list({ busca, skip, take }: ListarAlunosParams) {
+    const cpfBusca = busca?.replace(/\D/g, "");
     const where: Prisma.AlunoWhereInput = busca
       ? {
           OR: [
             { nome: { contains: busca, mode: "insensitive" } },
-            { cpf: { contains: busca.replace(/\D/g, "") } },
+            { email: { contains: busca, mode: "insensitive" } },
+            ...(cpfBusca ? [{ cpf: { contains: cpfBusca } }] : []),
           ],
         }
       : {};

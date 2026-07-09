@@ -13,7 +13,6 @@ O EthosFinancial é uma plataforma web de gestão acadêmico-financeira para ins
 - Elimina o retrabalho manual de identificar inadimplentes a cada ciclo;
 - Transforma a cobrança em um fluxo de CRM (situações, TAGs, histórico, ações em lote);
 - Gera automaticamente os documentos de protesto no padrão jurídico da instituição;
-- Permite comunicação automatizada/assistida por IA via WhatsApp (Evolution API + Groq/Ollama);
 - Garante auditoria completa e histórico imutável;
 - Escala via processamento assíncrono (filas).
 
@@ -35,8 +34,6 @@ Importar periodicamente (semanal ou mensal) uma planilha financeira no padrão j
 **Backend:** Node.js 20, Express 5, TypeScript, Prisma ORM, PostgreSQL 16, BullMQ + Redis 7, JWT + bcrypt, Zod, biblioteca `docx`.
 
 **Frontend:** Angular 17+ (Standalone), Angular Material/Tailwind, ngx-charts/Chart.js, RxJS + Signals, Reactive Forms.
-
-**Comunicação/IA:** Evolution API v2 (WhatsApp), Groq API (nuvem, ex. Llama 3.1) ou Ollama (LLM local) — configurável via `AI_PROVIDER`.
 
 **Infra:** Docker + Docker Compose, Nginx (produção do frontend), CI/CD (GitHub Actions/GitLab CI sugerido).
 
@@ -69,7 +66,13 @@ Campos: Código do Título, Parcela, Data de Vencimento, Valor, Tipo do Título,
 
 ## 11. Importação
 
-Formato: Excel (.xlsx). Colunas: `DATA_MATRICULA, TP_PESSOA, CNPJ_CPF, NOME, ENDEREÇO, EMAIL, FONE, CONTRATO ASSINADO, COD_TITULO, PARCELA, DT_VENCIMENTO, VALOR, TIPO_TITULO, CURSO`.
+Formato: Excel (.xlsx). Colunas da planilha real recebida em 2026-07-09 (`docs/PENDENCIAS.md` tem o detalhe de cada uma):
+
+`DATA_MATRICULA, TP_PESSOA, CNPJ_CPF, NOME, ID_CURSO, CURSO, ENDERECO, NUMERO, BAIRRO, COMPLEMENTO, CEP, CIDADE, ESTADO, EMAIL, FONE_1, FONE_2, CONTRATO ASSINADO?, COD_TITULO, PARCELA, DT_VENCIMENTO, VALOR, TITULO_VALOR_JUROS_E_MULTA, TIPO_TITULO`.
+
+Colunas **estruturais** (fixas no código, a lógica de localizar/criar Aluno/Curso/Matrícula/Parcela depende delas): `CNPJ_CPF`, `NOME`, `CURSO`, `ID_CURSO` (opcional — quando presente, localiza/cria o Curso pelo código em vez de só pelo nome), `COD_TITULO`, `PARCELA`, `DT_VENCIMENTO`, `VALOR`. As demais são configuráveis via `MapeamentoImportacao` (tela de Configurações) — o nome da coluna precisa bater exatamente com o cabeçalho da planilha (`CONTRATO ASSINADO?` inclui o `?`). A coluna `TITULO_VALOR_JUROS_E_MULTA` ainda não tem mapeamento (ver PENDENCIAS.md) — não quebra a importação, só não é usada.
+
+As colunas complementares (tudo além de `CNPJ_CPF, NOME, COD_TITULO, PARCELA, DT_VENCIMENTO, VALOR, CURSO`) são configuráveis na tela de Configurações (`MapeamentoImportacao`): para cada coluna define-se a tabela/campo de destino e o que fazer quando a coluna não existir na planilha (usar um valor padrão ou não importar o campo). Ver `docs/PENDENCIAS.md` seção "Regras de Negócio".
 
 Fluxo: Upload → Pré-validação → Leitura → Validação CPF → Aluno existe? (atualiza/cria) → Curso existe? (associa/cria ou pendente) → Cria/atualiza Matrícula → Importa Parcelas → Resumo.
 
@@ -150,7 +153,7 @@ Cadastro configurável (Nome, Cor, Ordem, Ativa, Descrição, `participaNovosRel
 
 ### 23.2 TAGs
 
-Cadastro livre, N:N com Matrícula. Exemplos: Alto Valor, Prioridade, WhatsApp, Jurídico, Bolsa, Convênio, Ex-aluno, Desistente, Cobrança 2026.
+Cadastro livre, N:N com Matrícula. Exemplos: Alto Valor, Prioridade, Ligação, Jurídico, Bolsa, Convênio, Ex-aluno, Desistente, Cobrança 2026.
 
 ### 23.3 Histórico da Cobrança
 
@@ -186,7 +189,7 @@ Ver árvore completa em `CLAUDE.md` e no `docker-compose.yml`. Resumo: monorepo 
 
 ## 25. Docker e Ambiente de Desenvolvimento
 
-Serviços: `postgres`, `redis`, `evolution-api`, `ollama` (opcional, profile `ia-local`), `api`, `worker`, `web`, `adminer` (opcional, profile `tools`). Subir tudo: `docker compose up -d`.
+Serviços: `postgres`, `redis`, `api`, `worker`, `web`, `adminer` (opcional, profile `tools`). Subir tudo: `docker compose up -d`.
 
 ## 26. Roadmap de Releases (sugestão)
 

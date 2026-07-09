@@ -15,9 +15,15 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ADMINISTRADOR: acesso irrestrito a todas as funções.
+// FINANCEIRO: cursos, alunos, matrículas, importação e geração de documentos
+// em relatórios (inclui o módulo `financeiro`/Parcela — decisão registrada em
+// docs/PENDENCIAS.md, já que o perfil leva esse nome).
+// USUARIO: alunos, matrículas e geração de documentos em relatórios.
 enum PerfilUsuario {
   ADMINISTRADOR
-  OPERADOR
+  FINANCEIRO
+  USUARIO
 }
 
 enum StatusParcela {
@@ -34,12 +40,23 @@ enum FrequenciaImportacao {
   MENSAL
 }
 
+enum TabelaDestinoImportacao {
+  ALUNO
+  MATRICULA
+  PARCELA
+}
+
+enum AcaoColunaAusente {
+  VALOR_PADRAO
+  NAO_IMPORTAR
+}
+
 model Usuario {
   id        String        @id @default(uuid())
   nome      String
   email     String        @unique
   senhaHash String
-  perfil    PerfilUsuario @default(OPERADOR)
+  perfil    PerfilUsuario @default(USUARIO)
   ativo     Boolean       @default(true)
   criadoEm  DateTime      @default(now())
 
@@ -123,6 +140,12 @@ model Parcela {
   dataPagamento DateTime?     @map("data_pagamento")
   valorPago     Decimal?      @db.Decimal(12, 2) @map("valor_pago")
   observacoes   String?
+  /// Valor com juros e multa já calculado pelo sistema de origem da planilha
+  /// (coluna TITULO_VALOR_JUROS_E_MULTA) — só para referência/conferência.
+  /// NÃO substitui o cálculo próprio do sistema (Configuracao.multaPercentual/
+  /// jurosDiarioPercentual), decisão do usuário registrada em
+  /// docs/PENDENCIAS.md (2026-07-09).
+  valorOrigemComJurosEMulta Decimal? @db.Decimal(12, 2) @map("valor_origem_com_juros_e_multa")
 
   matricula Matricula @relation(fields: [matriculaId], references: [id])
 
@@ -149,8 +172,10 @@ model Importacao {
 
 model Configuracao {
   id                     String  @id @default(uuid())
-  parcelasMinimas        Int     @default(3) @map("parcelas_minimas")
-  diasAtraso             Int     @default(0) @map("dias_atraso")
+  /// Único critério de elegibilidade para o relatório de inadimplência —
+  /// "parcelas mínimas vencidas" foi removido (decisão do usuário, 2026-07-06):
+  /// dias de atraso já é suficiente para detectar parcela atrasada ou não.
+  diasAtraso             Int     @default(90) @map("dias_atraso")
   pastaSaidaDocumentos   String  @map("pasta_saida_documentos")
   modeloDocx             String  @map("modelo_docx")
   padraoNomeArquivo      String  @default("{NOME}_{CPF}_{CURSO}.docx") @map("padrao_nome_arquivo")
@@ -169,6 +194,27 @@ model Configuracao {
   @@map("configuracoes")
 }
 
+// Mapeamento configurável coluna da planilha → tabela/campo de destino
+// (tela de Configurações). Os campos "estruturais" da importação (CNPJ_CPF,
+// NOME, COD_TITULO, PARCELA, DT_VENCIMENTO, VALOR, CURSO) não são
+// configuráveis aqui porque a lógica de localizar/criar Aluno, Curso,
+// Matrícula e Parcela depende deles — só os campos complementares (contato,
+// endereço, dados da matrícula/parcela) passam por este mapeamento.
+model MapeamentoImportacao {
+  id             String                   @id @default(uuid())
+  colunaPlanilha String                   @unique @map("coluna_planilha")
+  tabelaDestino  TabelaDestinoImportacao  @map("tabela_destino")
+  campoDestino   String                   @map("campo_destino")
+  acaoAusente    AcaoColunaAusente        @default(NAO_IMPORTAR) @map("acao_ausente")
+  valorPadrao    String?                  @map("valor_padrao")
+  ativo          Boolean                  @default(true)
+  criadoEm       DateTime                 @default(now()) @map("criado_em")
+  atualizadoEm   DateTime                 @updatedAt @map("atualizado_em")
+
+  @@unique([tabelaDestino, campoDestino])
+  @@map("mapeamentos_importacao")
+}
+
 // Histórico de geração do Relatório de Inadimplência (PRD seções 15 e 21).
 // Os itens elegíveis (aluno/matrícula/valores/documento gerado) ficam em JSON
 // em vez de uma tabela filha — mesmo padrão já usado em Importacao.erros.
@@ -176,10 +222,14 @@ model RelatorioInadimplencia {
   id                     String   @id @default(uuid())
   usuarioId              String   @map("usuario_id")
   data                   DateTime @default(now())
-  parcelasMinimas        Int?     @map("parcelas_minimas")
   diasAtraso             Int?     @map("dias_atraso")
   valorMinimo            Decimal? @db.Decimal(12, 2) @map("valor_minimo")
   cursoId                String?  @map("curso_id")
+  /// Decisão do usuário, 2026-07-07: por padrão o documento de protesto só
+  /// inclui parcelas vencidas há mais de `diasAtraso` dias (Configuracao);
+  /// quando true, inclui também as parcelas só "vencidas" (menos que o
+  /// mínimo) da mesma matrícula, no mesmo documento.
+  incluirParcelasVencidasRecentes Boolean @default(false) @map("incluir_parcelas_vencidas_recentes")
   totalElegiveis         Int      @default(0) @map("total_elegiveis")
   totalDocumentosGerados Int      @default(0) @map("total_documentos_gerados")
   itens                  Json?

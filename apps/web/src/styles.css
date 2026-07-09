@@ -13,3 +13,42 @@ body {
   font-family: Roboto, "Helvetica Neue", sans-serif;
   background-color: #f5f5f5;
 }
+
+/* Linhas mais baixas nas tabelas de listagem, para caber mais registros na
+   tela sem precisar rolar — aplicar via [class.table-compact] nas tabelas de
+   listagem (mat-table). As variáveis --mat-table-* cobrem a maior parte, mas
+   sozinhas não são suficientes: botões de ícone (48px de área de toque) e o
+   padding interno das células ainda forçavam a linha a ficar alta, então
+   também fixamos altura/padding diretamente nos elementos e reduzimos os
+   ícones de ação dentro da tabela. */
+.table-compact {
+  --mat-table-header-container-height: 32px;
+  --mat-table-row-item-container-height: 28px;
+  --mat-table-header-headline-size: 11px;
+  --mat-table-row-item-label-text-size: 12px;
+}
+
+.table-compact .mat-mdc-header-row,
+.table-compact .mat-mdc-row {
+  height: 28px;
+}
+
+.table-compact .mat-mdc-header-cell,
+.table-compact .mat-mdc-cell {
+  padding: 2px 8px;
+  line-height: 1.15;
+}
+
+.table-compact .mat-mdc-icon-button {
+  --mdc-icon-button-state-layer-size: 28px;
+  width: 28px;
+  height: 28px;
+  padding: 2px;
+}
+
+.table-compact .mat-mdc-icon-button .mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  line-height: 18px;
+}

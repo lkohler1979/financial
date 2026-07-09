@@ -17,6 +17,14 @@ export const tagsRepository = {
     return prisma.tag.create({ data: { nome } });
   },
 
+  /** Busca por nome ou cria, se ainda não existir (mesmo padrão de
+   * situacoesRepository.obterOuCriarPorNome). */
+  async obterOuCriarPorNome(nome: string) {
+    const existente = await prisma.tag.findUnique({ where: { nome } });
+    if (existente) return existente;
+    return prisma.tag.create({ data: { nome } });
+  },
+
   delete(id: string) {
     return prisma.tag.delete({ where: { id } });
   },

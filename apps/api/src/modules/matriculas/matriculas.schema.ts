@@ -28,6 +28,12 @@ export const listarMatriculasSchema = z.object({
   alunoId: z.string().uuid().optional(),
   cursoId: z.string().uuid().optional(),
   situacao: z.string().trim().optional(),
+  alunoNome: z.string().trim().optional(),
+  alunoCpf: z.string().trim().optional(),
+  dataMatriculaInicio: z.coerce.date().optional(),
+  dataMatriculaFim: z.coerce.date().optional(),
+  situacaoCobrancaId: z.string().uuid().optional(),
+  tagId: z.string().uuid().optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
 });

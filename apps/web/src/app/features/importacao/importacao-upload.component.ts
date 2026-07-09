@@ -4,15 +4,24 @@ import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressBarModule } from "@angular/material/progress-bar";
 import { MatTableModule } from "@angular/material/table";
+import { MatDialog, MatDialogModule } from "@angular/material/dialog";
 import { MatSnackBar } from "@angular/material/snack-bar";
 import { Subscription, interval, switchMap, takeWhile } from "rxjs";
 import { ImportacaoService } from "../../core/services/importacao.service";
 import { Importacao, StatusJobImportacao } from "../../core/models/importacao.model";
+import { ImportacaoLogDialogComponent } from "./importacao-log-dialog.component";
 
 @Component({
   selector: "app-importacao-upload",
   standalone: true,
-  imports: [DatePipe, MatButtonModule, MatIconModule, MatProgressBarModule, MatTableModule],
+  imports: [
+    DatePipe,
+    MatButtonModule,
+    MatIconModule,
+    MatProgressBarModule,
+    MatTableModule,
+    MatDialogModule,
+  ],
   template: `
     <h1 class="text-2xl font-medium mb-4">Importação</h1>
 
@@ -54,7 +63,7 @@ import { Importacao, StatusJobImportacao } from "../../core/models/importacao.mo
           Cria o curso automaticamente ao encontrar um nome novo na planilha.
         </p>
         <p class="text-[11px] text-gray-400 mt-3 mb-0">
-          Configuração ainda fixa (módulo Configurações chega no Sprint 5) — ver docs/PENDENCIAS.md.
+          Frequência, documentos e regras de elegibilidade são ajustados em Configurações.
         </p>
       </div>
     </div>
@@ -79,8 +88,8 @@ import { Importacao, StatusJobImportacao } from "../../core/models/importacao.mo
         <mat-progress-bar mode="indeterminate"></mat-progress-bar>
       }
 
-      <div class="bg-white rounded shadow-sm overflow-auto">
-        <table mat-table [dataSource]="historico" class="w-full">
+      <div class="bg-white rounded shadow-sm overflow-x-auto w-full">
+        <table mat-table [dataSource]="historico" class="w-full table-compact">
           <ng-container matColumnDef="arquivo">
             <th mat-header-cell *matHeaderCellDef>Arquivo</th>
             <td mat-cell *matCellDef="let i">{{ i.arquivo }}</td>
@@ -108,9 +117,20 @@ import { Importacao, StatusJobImportacao } from "../../core/models/importacao.mo
           <ng-container matColumnDef="erros">
             <th mat-header-cell *matHeaderCellDef>Erros</th>
             <td mat-cell *matCellDef="let i">
-              <span [class.text-red-700]="(i.erros?.length ?? 0) > 0">{{
-                i.erros?.length ?? 0
-              }}</span>
+              @if ((i.erros?.length ?? 0) > 0) {
+                <button
+                  mat-button
+                  color="warn"
+                  class="!min-w-0 !px-2"
+                  (click)="verLog(i)"
+                  [attr.aria-label]="'Ver log de erros de ' + i.arquivo"
+                >
+                  <mat-icon class="!text-base align-middle">error_outline</mat-icon>
+                  {{ i.erros?.length }}
+                </button>
+              } @else {
+                <span class="text-gray-400">0</span>
+              }
             </td>
           </ng-container>
 
@@ -128,6 +148,7 @@ import { Importacao, StatusJobImportacao } from "../../core/models/importacao.mo
 export class ImportacaoUploadComponent implements OnInit, OnDestroy {
   private readonly service = inject(ImportacaoService);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly dialog = inject(MatDialog);
   private pollingSub?: Subscription;
 
   arrastando = false;
@@ -176,6 +197,13 @@ export class ImportacaoUploadComponent implements OnInit, OnDestroy {
     const arquivo = input.files?.[0];
     if (arquivo) this.enviarArquivo(arquivo);
     input.value = "";
+  }
+
+  verLog(importacao: Importacao): void {
+    this.dialog.open(ImportacaoLogDialogComponent, {
+      data: { importacao },
+      width: "560px",
+    });
   }
 
   carregarHistorico(): void {

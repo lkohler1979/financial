@@ -1,17 +1,19 @@
-import { Component, inject, OnInit } from "@angular/core";
+import { Component, inject, OnDestroy, OnInit } from "@angular/core";
 import { CurrencyPipe, DatePipe } from "@angular/common";
-import { RouterLink } from "@angular/router";
+import { ActivatedRoute, Router, RouterLink } from "@angular/router";
 import { FormBuilder, ReactiveFormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
 import { MatCheckboxModule } from "@angular/material/checkbox";
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatInputModule } from "@angular/material/input";
+import { MatMenuModule } from "@angular/material/menu";
 import { MatSelectModule } from "@angular/material/select";
 import { MatTableModule } from "@angular/material/table";
 import { MatProgressBarModule } from "@angular/material/progress-bar";
 import { MatDialog, MatDialogModule } from "@angular/material/dialog";
 import { MatSnackBar } from "@angular/material/snack-bar";
+import { Subscription, interval, switchMap, takeWhile } from "rxjs";
 import { RelatoriosService } from "../../core/services/relatorios.service";
 import { CursosService } from "../../core/services/cursos.service";
 import { CobrancaService } from "../../core/services/cobranca.service";
@@ -23,6 +25,12 @@ import {
 import { Curso } from "../../core/models/curso.model";
 import { SituacaoCobranca, Tag } from "../../core/models/cobranca.model";
 import { RelatorioDetalheDialogComponent } from "./relatorio-detalhe-dialog.component";
+import {
+  ConfirmDialogComponent,
+  ConfirmDialogData,
+} from "../../shared/components/confirm-dialog.component";
+
+const TAMANHO_PAGINA_HISTORICO = 10;
 
 @Component({
   selector: "app-relatorios-geracao",
@@ -41,6 +49,7 @@ import { RelatorioDetalheDialogComponent } from "./relatorio-detalhe-dialog.comp
     MatTableModule,
     MatProgressBarModule,
     MatDialogModule,
+    MatMenuModule,
   ],
   template: `
     <h1 class="text-2xl font-medium mb-4">Relatório de inadimplência</h1>
@@ -49,11 +58,7 @@ import { RelatorioDetalheDialogComponent } from "./relatorio-detalhe-dialog.comp
       <p class="text-xs font-medium text-gray-600 mb-3">Financeiro</p>
       <form [formGroup]="filtros" class="grid grid-cols-2 md:grid-cols-4 gap-3 items-start">
         <mat-form-field appearance="outline">
-          <mat-label>Parcelas mínimas vencidas</mat-label>
-          <input matInput type="number" min="0" formControlName="parcelasMinimas" />
-        </mat-form-field>
-        <mat-form-field appearance="outline">
-          <mat-label>Dias de atraso</mat-label>
+          <mat-label>Dias de atraso mínimo</mat-label>
           <input matInput type="number" min="0" formControlName="diasAtraso" />
         </mat-form-field>
         <mat-form-field appearance="outline">
@@ -96,6 +101,11 @@ import { RelatorioDetalheDialogComponent } from "./relatorio-detalhe-dialog.comp
             Excluir situações já tratadas
           </mat-checkbox>
         </div>
+        <div class="flex items-center">
+          <mat-checkbox formControlName="incluirParcelasVencidasRecentes">
+            Incluir parcelas só vencidas (menos que o mínimo) no mesmo documento
+          </mat-checkbox>
+        </div>
       </form>
       <button mat-raised-button color="primary" type="button" (click)="buscarElegiveis()">
         <mat-icon>search</mat-icon> Buscar elegíveis
@@ -103,7 +113,10 @@ import { RelatorioDetalheDialogComponent } from "./relatorio-detalhe-dialog.comp
       <p class="text-[11px] text-gray-400 mt-3 mb-0">
         Deixe em branco para usar os padrões configurados no sistema. "Excluir situações já
         tratadas" ignora matrículas cuja situação atual está marcada como
-        "não participa de novos relatórios" (ex.: Quitado).
+        "não participa de novos relatórios", além de sempre ignorar matrículas com a situação
+        "Quitado". Por padrão, o documento de protesto só inclui parcelas vencidas há mais do que
+        o mínimo de dias configurado — "Incluir parcelas só vencidas" também inclui, no mesmo
+        documento, as parcelas da matrícula que estão vencidas mas ainda dentro desse mínimo.
       </p>
     </div>
 
@@ -153,8 +166,8 @@ import { RelatorioDetalheDialogComponent } from "./relatorio-detalhe-dialog.comp
           </div>
         </div>
 
-        <div class="bg-white rounded shadow-sm overflow-auto mb-6">
-          <table mat-table [dataSource]="elegiveis" class="w-full">
+        <div class="bg-white rounded shadow-sm overflow-x-auto mb-6 w-full">
+          <table mat-table [dataSource]="elegiveis" class="w-full table-compact">
             <ng-container matColumnDef="selecionar">
               <th mat-header-cell *matHeaderCellDef>
                 <mat-checkbox
@@ -198,6 +211,30 @@ import { RelatorioDetalheDialogComponent } from "./relatorio-detalhe-dialog.comp
                 }}</span>
               </td>
             </ng-container>
+            <ng-container matColumnDef="documento">
+              <th mat-header-cell *matHeaderCellDef>Documento</th>
+              <td mat-cell *matCellDef="let e">
+                @if (documentosGerados.has(e.matriculaId)) {
+                  <button
+                    mat-stroked-button
+                    class="!min-w-0 !px-2 !h-7 !text-xs"
+                    [matMenuTriggerFor]="menuDocumento"
+                  >
+                    <mat-icon class="!text-base !w-4 !h-4">download</mat-icon> Baixar
+                  </button>
+                  <mat-menu #menuDocumento="matMenu">
+                    <button mat-menu-item (click)="baixarDocumentoGerado(e.matriculaId, 'docx')">
+                      Word (.docx)
+                    </button>
+                    <button mat-menu-item (click)="baixarDocumentoGerado(e.matriculaId, 'pdf')">
+                      PDF
+                    </button>
+                  </mat-menu>
+                } @else {
+                  <span class="text-gray-400 text-xs">—</span>
+                }
+              </td>
+            </ng-container>
             <ng-container matColumnDef="acoes">
               <th mat-header-cell *matHeaderCellDef class="text-right">Ficha</th>
               <td mat-cell *matCellDef="let e" class="text-right">
@@ -229,8 +266,8 @@ import { RelatorioDetalheDialogComponent } from "./relatorio-detalhe-dialog.comp
         <mat-progress-bar mode="indeterminate"></mat-progress-bar>
       }
 
-      <div class="bg-white rounded shadow-sm overflow-auto">
-        <table mat-table [dataSource]="historico" class="w-full">
+      <div class="bg-white rounded shadow-sm overflow-x-auto w-full">
+        <table mat-table [dataSource]="historico" class="w-full table-compact">
           <ng-container matColumnDef="data">
             <th mat-header-cell *matHeaderCellDef>Data</th>
             <td mat-cell *matCellDef="let r">{{ r.data | date: "dd/MM/yyyy HH:mm" }}</td>
@@ -246,15 +283,64 @@ import { RelatorioDetalheDialogComponent } from "./relatorio-detalhe-dialog.comp
           <ng-container matColumnDef="totalDocumentosGerados">
             <th mat-header-cell *matHeaderCellDef>Documentos gerados</th>
             <td mat-cell *matCellDef="let r">
-              {{ r.totalDocumentosGerados }} / {{ r.totalElegiveis }}
+              <div class="flex items-center gap-2">
+                <span>{{ r.totalDocumentosGerados }} / {{ r.totalElegiveis }}</span>
+                @if (r.totalDocumentosGerados > 0) {
+                  <button
+                    mat-stroked-button
+                    class="!min-w-0 !px-2 !h-7 !text-xs"
+                    [matMenuTriggerFor]="menuDocumentos"
+                  >
+                    <mat-icon class="!text-base !w-4 !h-4">download</mat-icon> Documentos
+                  </button>
+                  <mat-menu #menuDocumentos="matMenu">
+                    <button mat-menu-item (click)="baixarTodos(r, 'docx')">
+                      Baixar todos (Word)
+                    </button>
+                    <button mat-menu-item (click)="baixarTodos(r, 'pdf')">
+                      Baixar todos (PDF)
+                    </button>
+                  </mat-menu>
+                }
+              </div>
             </td>
           </ng-container>
           <ng-container matColumnDef="acoes">
             <th mat-header-cell *matHeaderCellDef class="text-right">Ações</th>
             <td mat-cell *matCellDef="let r" class="text-right">
-              <button mat-icon-button (click)="verDetalhes(r)" aria-label="Ver detalhes">
-                <mat-icon>visibility</mat-icon>
+              <button
+                mat-icon-button
+                [matMenuTriggerFor]="menuAcoes"
+                aria-label="Ações do relatório"
+              >
+                <mat-icon>more_vert</mat-icon>
               </button>
+              <mat-menu #menuAcoes="matMenu">
+                <button mat-menu-item (click)="verDetalhes(r)">
+                  <mat-icon>visibility</mat-icon>
+                  <span>Ver detalhes</span>
+                </button>
+                <button
+                  mat-menu-item
+                  [disabled]="r.totalDocumentosGerados === 0"
+                  (click)="baixarTodos(r, 'docx')"
+                >
+                  <mat-icon>download</mat-icon>
+                  <span>Baixar todos (Word)</span>
+                </button>
+                <button
+                  mat-menu-item
+                  [disabled]="r.totalDocumentosGerados === 0"
+                  (click)="baixarTodos(r, 'pdf')"
+                >
+                  <mat-icon>download</mat-icon>
+                  <span>Baixar todos (PDF)</span>
+                </button>
+                <button mat-menu-item (click)="excluirRegistro(r)">
+                  <mat-icon color="warn">delete</mat-icon>
+                  <span>Excluir do histórico</span>
+                </button>
+              </mat-menu>
             </td>
           </ng-container>
 
@@ -265,26 +351,40 @@ import { RelatorioDetalheDialogComponent } from "./relatorio-detalhe-dialog.comp
         @if (!carregandoHistorico && historico.length === 0) {
           <p class="p-6 text-center text-gray-500">Nenhum relatório gerado ainda.</p>
         }
+
+        @if (!carregandoHistorico && historico.length < historicoTotal) {
+          <div class="flex justify-center p-3">
+            <button mat-stroked-button [disabled]="carregandoMaisHistorico" (click)="carregarMaisHistorico()">
+              @if (carregandoMaisHistorico) {
+                Carregando...
+              } @else {
+                Carregar mais ({{ historico.length }} de {{ historicoTotal }})
+              }
+            </button>
+          </div>
+        }
       </div>
     </div>
   `,
 })
-export class RelatoriosGeracaoComponent implements OnInit {
+export class RelatoriosGeracaoComponent implements OnInit, OnDestroy {
   private readonly service = inject(RelatoriosService);
   private readonly cursosService = inject(CursosService);
   private readonly cobrancaService = inject(CobrancaService);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   private readonly fb = inject(FormBuilder);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   readonly filtros = this.fb.nonNullable.group({
-    parcelasMinimas: this.fb.control<number | undefined>(undefined),
     diasAtraso: this.fb.control<number | undefined>(undefined),
     valorMinimo: this.fb.control<number | undefined>(undefined),
     cursoId: this.fb.control<string | undefined>(undefined),
     situacaoCobrancaId: this.fb.control<string | undefined>(undefined),
     tagId: this.fb.control<string | undefined>(undefined),
     ignorarSituacoesTratadas: this.fb.nonNullable.control(true),
+    incluirParcelasVencidasRecentes: this.fb.nonNullable.control(false),
   });
 
   cursos: Curso[] = [];
@@ -302,44 +402,115 @@ export class RelatoriosGeracaoComponent implements OnInit {
     "diasAtraso",
     "total",
     "situacao",
+    "documento",
     "acoes",
   ];
   carregandoElegiveis = false;
   gerando = false;
   buscou = false;
 
+  /** matriculaId -> relatorioId, só das matrículas que tiveram documento
+   * gerado com sucesso na última geração desta sessão (PRD: mostrar um botão
+   * de download direto na grade de elegíveis assim que o documento sai). */
+  documentosGerados = new Map<string, string>();
+
   historico: RelatorioInadimplencia[] = [];
+  historicoTotal = 0;
+  historicoPage = 1;
   colunasHistorico = ["data", "curso", "totalElegiveis", "totalDocumentosGerados", "acoes"];
   carregandoHistorico = false;
+  carregandoMaisHistorico = false;
+
+  private pollingSub?: Subscription;
 
   ngOnInit(): void {
     this.cursosService.listar({ pageSize: 100 }).subscribe((res) => (this.cursos = res.data));
     this.cobrancaService.listarSituacoes(true).subscribe((res) => (this.situacoes = res));
     this.cobrancaService.listarTags().subscribe((res) => (this.tags = res));
     this.carregarHistorico();
+    this.restaurarFiltrosDaUrl();
+  }
+
+  /**
+   * Restaura filtros/busca a partir da query string — permite que, ao voltar
+   * da ficha de cobrança (botão "Voltar"), a pesquisa anterior seja mantida
+   * em vez de reiniciar a tela do zero.
+   */
+  private restaurarFiltrosDaUrl(): void {
+    const qp = this.route.snapshot.queryParamMap;
+    if (qp.keys.length === 0) return;
+
+    this.filtros.patchValue(
+      {
+        diasAtraso: qp.get("diasAtraso") ? Number(qp.get("diasAtraso")) : undefined,
+        valorMinimo: qp.get("valorMinimo") ? Number(qp.get("valorMinimo")) : undefined,
+        cursoId: qp.get("cursoId") ?? undefined,
+        situacaoCobrancaId: qp.get("situacaoCobrancaId") ?? undefined,
+        tagId: qp.get("tagId") ?? undefined,
+        ignorarSituacoesTratadas: qp.get("ignorarSituacoesTratadas") !== "false",
+        incluirParcelasVencidasRecentes: qp.get("incluirParcelasVencidasRecentes") === "true",
+      },
+      { emitEvent: false },
+    );
+    this.buscarElegiveis();
+  }
+
+  /** Reflete os filtros atuais na URL (sem empilhar histórico) para que o
+   * botão "Voltar" da ficha de cobrança retorne para esta mesma busca. */
+  private sincronizarQueryParams(): void {
+    const v = this.valoresFiltro();
+    const queryParams: Record<string, string> = {
+      ignorarSituacoesTratadas: String(v.ignorarSituacoesTratadas),
+      incluirParcelasVencidasRecentes: String(v.incluirParcelasVencidasRecentes),
+    };
+    if (v.diasAtraso !== undefined) queryParams["diasAtraso"] = String(v.diasAtraso);
+    if (v.valorMinimo !== undefined) queryParams["valorMinimo"] = String(v.valorMinimo);
+    if (v.cursoId) queryParams["cursoId"] = v.cursoId;
+    if (v.situacaoCobrancaId) queryParams["situacaoCobrancaId"] = v.situacaoCobrancaId;
+    if (v.tagId) queryParams["tagId"] = v.tagId;
+
+    this.router.navigate([], { relativeTo: this.route, queryParams, replaceUrl: true });
+  }
+
+  ngOnDestroy(): void {
+    this.pollingSub?.unsubscribe();
   }
 
   private valoresFiltro(): FiltrosRelatorio {
     const bruto = this.filtros.getRawValue();
     return {
-      parcelasMinimas: bruto.parcelasMinimas ?? undefined,
       diasAtraso: bruto.diasAtraso ?? undefined,
       valorMinimo: bruto.valorMinimo ?? undefined,
       cursoId: bruto.cursoId ?? undefined,
       situacaoCobrancaId: bruto.situacaoCobrancaId ?? undefined,
       tagId: bruto.tagId ?? undefined,
       ignorarSituacoesTratadas: bruto.ignorarSituacoesTratadas,
+      incluirParcelasVencidasRecentes: bruto.incluirParcelasVencidasRecentes,
     };
   }
 
   buscarElegiveis(): void {
+    this.selecionados.clear();
+    this.documentosGerados.clear();
+    this.sincronizarQueryParams();
+    this.buscarElegiveisPreservandoSelecao();
+  }
+
+  /** Reconsulta os elegíveis sem descartar a seleção atual — usado após ações
+   * em lote, que não devem forçar o usuário a reselecionar tudo de novo.
+   * Matrículas que saíram da lista (ex.: mudaram de situação e passaram a ser
+   * filtradas por "excluir situações já tratadas") são removidas da seleção. */
+  private buscarElegiveisPreservandoSelecao(): void {
     this.carregandoElegiveis = true;
     this.buscou = true;
-    this.selecionados.clear();
 
     this.service.previaElegiveis(this.valoresFiltro()).subscribe({
       next: (res) => {
         this.elegiveis = res.data;
+        const idsAtuais = new Set(this.elegiveis.map((e) => e.matriculaId));
+        this.selecionados = new Set(
+          Array.from(this.selecionados).filter((id) => idsAtuais.has(id)),
+        );
         this.carregandoElegiveis = false;
       },
       error: () => (this.carregandoElegiveis = false),
@@ -376,15 +547,15 @@ export class RelatoriosGeracaoComponent implements OnInit {
           "Fechar",
           { duration: 4000 },
         );
-        this.buscarElegiveis();
+        this.buscarElegiveisPreservandoSelecao();
       });
   }
 
   gerarRelatorio(): void {
     this.gerando = true;
+    this.documentosGerados.clear();
     this.service.gerar(this.valoresFiltro(), Array.from(this.selecionados)).subscribe({
-      next: () => {
-        this.gerando = false;
+      next: ({ id: relatorioId, jobId }) => {
         this.snackBar.open(
           "Geração enfileirada. Os documentos aparecerão no histórico quando prontos.",
           "Fechar",
@@ -392,20 +563,112 @@ export class RelatoriosGeracaoComponent implements OnInit {
         );
         this.selecionados.clear();
         this.carregarHistorico();
+
+        if (jobId) this.acompanharGeracao(jobId, relatorioId);
+        else this.gerando = false;
       },
       error: () => (this.gerando = false),
     });
   }
 
+  private acompanharGeracao(jobId: string, relatorioId: string): void {
+    this.pollingSub?.unsubscribe();
+    this.pollingSub = interval(1500)
+      .pipe(
+        switchMap(() => this.service.statusJob(jobId)),
+        takeWhile((status) => status.estado !== "completed" && status.estado !== "failed", true),
+      )
+      .subscribe({
+        next: (status) => {
+          if (status.estado === "completed") {
+            this.gerando = false;
+            this.snackBar.open("Geração de documentos concluída", "Fechar", { duration: 4000 });
+            this.carregarHistorico();
+            this.marcarDocumentosGerados(relatorioId);
+          }
+
+          if (status.estado === "failed") {
+            this.gerando = false;
+            this.snackBar.open(
+              `Falha na geração: ${status.erro ?? "erro desconhecido"}`,
+              "Fechar",
+              { duration: 6000 },
+            );
+            this.carregarHistorico();
+          }
+        },
+        error: () => (this.gerando = false),
+      });
+  }
+
+  /** Recarrega o histórico do zero, mostrando só a primeira página (últimos
+   * 10 relatórios) — usado ao entrar na tela e depois de gerar um novo
+   * relatório, para não acumular páginas antigas sobre um estado que já mudou. */
   carregarHistorico(): void {
     this.carregandoHistorico = true;
-    this.service.listar({ page: 1, pageSize: 10 }).subscribe({
+    this.historicoPage = 1;
+    this.service.listar({ page: 1, pageSize: TAMANHO_PAGINA_HISTORICO }).subscribe({
       next: (res) => {
         this.historico = res.data;
+        this.historicoTotal = res.total;
         this.carregandoHistorico = false;
       },
       error: () => (this.carregandoHistorico = false),
     });
+  }
+
+  /** Busca a próxima página e acrescenta ao final da lista já carregada — o
+   * usuário só vê os últimos 10 até clicar em "Carregar mais". */
+  carregarMaisHistorico(): void {
+    this.carregandoMaisHistorico = true;
+    const proximaPagina = this.historicoPage + 1;
+    this.service.listar({ page: proximaPagina, pageSize: TAMANHO_PAGINA_HISTORICO }).subscribe({
+      next: (res) => {
+        this.historico = [...this.historico, ...res.data];
+        this.historicoTotal = res.total;
+        this.historicoPage = proximaPagina;
+        this.carregandoMaisHistorico = false;
+      },
+      error: () => (this.carregandoMaisHistorico = false),
+    });
+  }
+
+  /** Exclui o registro do histórico e os documentos (.docx/.pdf) já gerados
+   * por ele em disco (apps/api/src/modules/relatorios/relatorios.service.ts). */
+  excluirRegistro(relatorio: RelatorioInadimplencia): void {
+    const data: ConfirmDialogData = {
+      titulo: "Excluir do histórico",
+      mensagem: `Deseja excluir este relatório do histórico? Os ${relatorio.totalDocumentosGerados} documento(s) já gerados também serão apagados. Esta ação não pode ser desfeita.`,
+      confirmarTexto: "Excluir",
+    };
+    this.dialog
+      .open(ConfirmDialogComponent, { data, width: "460px" })
+      .afterClosed()
+      .subscribe((ok) => {
+        if (!ok) return;
+        this.service.excluir(relatorio.id).subscribe(() => {
+          this.historico = this.historico.filter((r) => r.id !== relatorio.id);
+          this.historicoTotal = Math.max(0, this.historicoTotal - 1);
+          this.snackBar.open("Relatório excluído do histórico", "Fechar", { duration: 3000 });
+        });
+      });
+  }
+
+  /** Depois que a geração conclui, marca na grade de elegíveis quais
+   * matrículas ganharam documento — permite baixar direto ali, sem precisar
+   * abrir o histórico. */
+  private marcarDocumentosGerados(relatorioId: string): void {
+    this.service.buscarPorId(relatorioId).subscribe((relatorio) => {
+      for (const item of relatorio.itens ?? []) {
+        if (item.documentoGerado) this.documentosGerados.set(item.matriculaId, relatorioId);
+      }
+    });
+  }
+
+  baixarDocumentoGerado(matriculaId: string, formato: "docx" | "pdf"): void {
+    const relatorioId = this.documentosGerados.get(matriculaId);
+    if (!relatorioId) return;
+    window.open(this.service.urlDownload(relatorioId, matriculaId, formato), "_blank");
   }
 
   verDetalhes(relatorio: RelatorioInadimplencia): void {
@@ -413,6 +676,32 @@ export class RelatoriosGeracaoComponent implements OnInit {
       this.dialog.open(RelatorioDetalheDialogComponent, {
         data: { relatorio: completo },
         width: "640px",
+      });
+    });
+  }
+
+  /** Baixa, um após o outro, todos os documentos já gerados deste relatório —
+   * evita ter que abrir "Ver detalhes" e clicar item por item. */
+  baixarTodos(relatorio: RelatorioInadimplencia, formato: "docx" | "pdf"): void {
+    this.service.buscarPorId(relatorio.id).subscribe((completo) => {
+      const itensComDocumento = (completo.itens ?? []).filter((item) => item.documentoGerado);
+
+      if (itensComDocumento.length === 0) {
+        this.snackBar.open("Nenhum documento gerado neste relatório ainda", "Fechar", {
+          duration: 4000,
+        });
+        return;
+      }
+
+      itensComDocumento.forEach((item, indice) => {
+        setTimeout(() => {
+          const link = document.createElement("a");
+          link.href = this.service.urlDownload(completo.id, item.matriculaId, formato);
+          link.download = "";
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+        }, indice * 400);
       });
     });
   }

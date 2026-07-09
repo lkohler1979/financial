@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 export const filtrosElegibilidadeSchema = z.object({
-  parcelasMinimas: z.coerce.number().int().min(0).optional(),
   diasAtraso: z.coerce.number().int().min(0).optional(),
   valorMinimo: z.coerce.number().min(0).optional(),
   cursoId: z.string().uuid().optional(),
@@ -9,6 +8,11 @@ export const filtrosElegibilidadeSchema = z.object({
   situacaoCobrancaId: z.string().uuid().optional(),
   tagId: z.string().uuid().optional(),
   ignorarSituacoesTratadas: z.coerce.boolean().default(true),
+  // Decisão do usuário, 2026-07-07: por padrão o protesto só inclui parcelas
+  // vencidas há mais de `diasAtraso` dias; esta opção estende o documento
+  // para incluir também as parcelas só "vencidas" (dentro do mínimo) da
+  // mesma matrícula. Só importa no momento da geração (relatorios.gerar).
+  incluirParcelasVencidasRecentes: z.coerce.boolean().default(false),
 });
 
 // Se `matriculaIds` for informado, a geração fica restrita a essa seleção

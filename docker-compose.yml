@@ -2,14 +2,13 @@ version: "3.9"
 
 # =============================================================================
 # EthosFinancial 1.0 — Ambiente de Desenvolvimento / Homologação
-# Sobe: PostgreSQL, Ollama (LLM local, opcional), API (Node/Express/Prisma),
-# Web (Angular) e Adminer (admin de banco, opcional).
+# Sobe: PostgreSQL, Redis (fila BullMQ), API (Node/Express/Prisma), Web
+# (Angular) e Adminer (admin de banco, opcional).
 #
-# NOTA: Redis e Evolution API foram removidos deste compose por decisão do
-# usuário (2026-07-02). Isso deixa a fila BullMQ (módulo `importacao`, worker)
-# sem broker disponível localmente até que uma alternativa seja definida —
-# ver docs/PENDENCIAS.md. REDIS_URL/EVOLUTION_API_URL no .env devem apontar
-# para uma instância externa quando/se necessário.
+# NOTA: WhatsApp/Evolution API e Inteligência Artificial (Groq/Ollama) foram
+# retirados do escopo do 1.0 (decisão do usuário, 2026-07-07) — não fazem
+# parte deste projeto. Redis é próprio deste projeto (decisão do usuário,
+# 2026-07-03) — não depende do Redis do WhatFlow.
 # =============================================================================
 
 services:
@@ -38,17 +37,22 @@ services:
       - ethos-network
 
   # ---------------------------------------------------------------------------
-  # Ollama — LLM local (opcional, alternativa on-premise ao Groq)
+  # Redis — broker da fila BullMQ (importação, geração de Word)
   # ---------------------------------------------------------------------------
-  ollama:
-    image: ollama/ollama:latest
-    container_name: ethos-ollama
+  redis:
+    image: redis:7-alpine
+    container_name: ethos-redis
     restart: unless-stopped
-    profiles: ["ia-local"]
+    command: ["redis-server", "--appendonly", "yes"]
     ports:
-      - "${OLLAMA_PORT:-11434}:11434"
+      - "${REDIS_PORT:-6391}:6379"
     volumes:
-      - ethos_ollama_data:/root/.ollama
+      - ethos_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - ethos-network
 
@@ -65,9 +69,8 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-ethos}:${POSTGRES_PASSWORD:-ethos_secret}@postgres:5432/${POSTGRES_DB:-ethos_financial}
-      OLLAMA_URL: http://ollama:11434
-      GROQ_API_KEY: ${GROQ_API_KEY:-}
-      AI_PROVIDER: ${AI_PROVIDER:-groq}
+      # Nome do serviço na rede do compose (não a porta publicada no host).
+      REDIS_URL: redis://redis:6379/0
       JWT_SECRET: ${JWT_SECRET:-change-me-jwt-secret}
       NODE_ENV: ${NODE_ENV:-development}
       PORT: 3000
@@ -81,11 +84,13 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - ethos-network
 
   # ---------------------------------------------------------------------------
-  # Worker — processa filas BullMQ (importação, geração de Word, envio WhatsApp)
+  # Worker — processa filas BullMQ (importação, geração de Word)
   # ---------------------------------------------------------------------------
   worker:
     build:
@@ -98,9 +103,7 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-ethos}:${POSTGRES_PASSWORD:-ethos_secret}@postgres:5432/${POSTGRES_DB:-ethos_financial}
-      OLLAMA_URL: http://ollama:11434
-      GROQ_API_KEY: ${GROQ_API_KEY:-}
-      AI_PROVIDER: ${AI_PROVIDER:-groq}
+      REDIS_URL: redis://redis:6379/0
       NODE_ENV: ${NODE_ENV:-development}
     volumes:
       - ./apps/api:/app/apps/api
@@ -109,6 +112,8 @@ services:
       - ethos_documents_output:/app/apps/api/output
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - ethos-network
@@ -156,7 +161,7 @@ networks:
 
 volumes:
   ethos_postgres_data:
-  ethos_ollama_data:
+  ethos_redis_data:
   ethos_api_node_modules:
   ethos_web_node_modules:
   ethos_documents_output:

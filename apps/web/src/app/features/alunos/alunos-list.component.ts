@@ -43,7 +43,7 @@ import { formatarCpf } from "../../shared/utils/cpf.util";
     </div>
 
     <mat-form-field appearance="outline" class="w-full max-w-md">
-      <mat-label>Buscar por nome ou CPF</mat-label>
+      <mat-label>Buscar por nome, CPF ou e-mail</mat-label>
       <input matInput [formControl]="busca" placeholder="Digite para filtrar" />
       <mat-icon matSuffix>search</mat-icon>
     </mat-form-field>
@@ -52,8 +52,8 @@ import { formatarCpf } from "../../shared/utils/cpf.util";
       <mat-progress-bar mode="indeterminate"></mat-progress-bar>
     }
 
-    <div class="bg-white rounded shadow-sm overflow-auto mt-2">
-      <table mat-table [dataSource]="alunos" class="w-full">
+    <div class="bg-white rounded shadow-sm overflow-x-auto mt-2 w-full">
+      <table mat-table [dataSource]="alunos" class="w-full table-compact">
         <ng-container matColumnDef="nome">
           <th mat-header-cell *matHeaderCellDef>Nome</th>
           <td mat-cell *matCellDef="let a">{{ a.nome }}</td>
@@ -96,7 +96,7 @@ import { formatarCpf } from "../../shared/utils/cpf.util";
         [length]="total"
         [pageSize]="pageSize"
         [pageIndex]="page - 1"
-        [pageSizeOptions]="[10, 20, 50]"
+        [pageSizeOptions]="[20, 50, 100]"
         (page)="mudarPagina($event)"
       ></mat-paginator>
     </div>

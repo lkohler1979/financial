@@ -1,11 +1,14 @@
 import { HttpClient, HttpParams } from "@angular/common/http";
 import { inject, Injectable } from "@angular/core";
-import { Observable } from "rxjs";
+import { Observable, catchError, of } from "rxjs";
 import { environment } from "../../../environments/environment";
 import {
   FiltrosRelatorio,
+  GerarRelatorioResultado,
   MatriculaElegivel,
   RelatorioInadimplencia,
+  StatusJobRelatorio,
+  UltimoDocumentoMatricula,
 } from "../models/relatorio.model";
 import { Paginado } from "../models/paginado.model";
 
@@ -16,12 +19,16 @@ export class RelatoriosService {
 
   private paramsDeFiltros(filtros: FiltrosRelatorio): HttpParams {
     let params = new HttpParams();
-    if (filtros.parcelasMinimas !== undefined) {
-      params = params.set("parcelasMinimas", filtros.parcelasMinimas);
-    }
     if (filtros.diasAtraso !== undefined) params = params.set("diasAtraso", filtros.diasAtraso);
     if (filtros.valorMinimo !== undefined) params = params.set("valorMinimo", filtros.valorMinimo);
     if (filtros.cursoId) params = params.set("cursoId", filtros.cursoId);
+    if (filtros.situacaoCobrancaId) {
+      params = params.set("situacaoCobrancaId", filtros.situacaoCobrancaId);
+    }
+    if (filtros.tagId) params = params.set("tagId", filtros.tagId);
+    if (filtros.ignorarSituacoesTratadas !== undefined) {
+      params = params.set("ignorarSituacoesTratadas", filtros.ignorarSituacoesTratadas);
+    }
     return params;
   }
 
@@ -34,8 +41,12 @@ export class RelatoriosService {
     );
   }
 
-  gerar(filtros: FiltrosRelatorio, matriculaIds?: string[]): Observable<RelatorioInadimplencia> {
-    return this.http.post<RelatorioInadimplencia>(this.baseUrl, { ...filtros, matriculaIds });
+  gerar(filtros: FiltrosRelatorio, matriculaIds?: string[]): Observable<GerarRelatorioResultado> {
+    return this.http.post<GerarRelatorioResultado>(this.baseUrl, { ...filtros, matriculaIds });
+  }
+
+  statusJob(jobId: string): Observable<StatusJobRelatorio> {
+    return this.http.get<StatusJobRelatorio>(`${this.baseUrl}/jobs/${jobId}/status`);
   }
 
   listar(
@@ -51,7 +62,20 @@ export class RelatoriosService {
     return this.http.get<RelatorioInadimplencia>(`${this.baseUrl}/${id}`);
   }
 
-  urlDownload(relatorioId: string, matriculaId: string): string {
-    return `${this.baseUrl}/${relatorioId}/itens/${matriculaId}/documento`;
+  excluir(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  }
+
+  urlDownload(relatorioId: string, matriculaId: string, formato: "docx" | "pdf" = "docx"): string {
+    return `${this.baseUrl}/${relatorioId}/itens/${matriculaId}/documento?formato=${formato}`;
+  }
+
+  /** Último documento já gerado para a matrícula (qualquer relatório), ou
+   * `null` se nunca foi gerado — usado quando não há mais parcela elegível
+   * para oferecer o documento existente em vez de simplesmente falhar. */
+  buscarUltimoDocumentoDaMatricula(matriculaId: string): Observable<UltimoDocumentoMatricula | null> {
+    return this.http
+      .get<UltimoDocumentoMatricula>(`${this.baseUrl}/matriculas/${matriculaId}/ultimo-documento`)
+      .pipe(catchError(() => of(null)));
   }
 }

@@ -27,8 +27,8 @@ export interface RelatorioInadimplencia {
   id: string;
   usuarioId: string;
   data: string;
-  parcelasMinimas?: number | null;
   diasAtraso?: number | null;
+  incluirParcelasVencidasRecentes?: boolean;
   valorMinimo?: number | null;
   cursoId?: string | null;
   curso?: { id: string; nome: string } | null;
@@ -38,12 +38,32 @@ export interface RelatorioInadimplencia {
   erros?: ErroItemRelatorio[] | null;
 }
 
+export interface GerarRelatorioResultado extends RelatorioInadimplencia {
+  jobId?: string;
+}
+
+export interface StatusJobRelatorio {
+  jobId: string;
+  estado: string;
+  progresso: number;
+  erro?: string;
+}
+
+export interface UltimoDocumentoMatricula {
+  relatorioId: string;
+  temDocx: boolean;
+  temPdf: boolean;
+}
+
 export interface FiltrosRelatorio {
-  parcelasMinimas?: number;
   diasAtraso?: number;
   valorMinimo?: number;
   cursoId?: string;
   situacaoCobrancaId?: string;
   tagId?: string;
   ignorarSituacoesTratadas?: boolean;
+  /** Por padrão, só entra no protesto a parcela vencida há mais de
+   * `diasAtraso` dias; quando true, inclui também a parcela só "vencida" da
+   * mesma matrícula, no mesmo documento (decisão do usuário, 2026-07-07). */
+  incluirParcelasVencidasRecentes?: boolean;
 }

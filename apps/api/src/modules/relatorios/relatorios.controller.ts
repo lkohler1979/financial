@@ -16,6 +16,7 @@ interface ItemRelatorio {
   alunoNome: string;
   documentoGerado?: boolean;
   caminhoDocumento?: string | null;
+  caminhoDocumentoPdf?: string | null;
 }
 
 export const relatoriosController = {
@@ -31,6 +32,11 @@ export const relatoriosController = {
     res.status(202).json(relatorio);
   }),
 
+  statusJob: asyncHandler(async (req: Request, res: Response) => {
+    const status = await relatoriosService.statusJob(paramString(req, "jobId"));
+    res.json(status);
+  }),
+
   listar: asyncHandler(async (req: Request, res: Response) => {
     const params = listarRelatoriosSchema.parse(req.query);
     const resultado = await relatoriosService.listar(params);
@@ -42,9 +48,20 @@ export const relatoriosController = {
     res.json(relatorio);
   }),
 
+  buscarUltimoDocumentoDaMatricula: asyncHandler(async (req: Request, res: Response) => {
+    const resultado = await relatoriosService.buscarUltimoDocumentoGeradoPorMatricula(
+      paramString(req, "matriculaId"),
+    );
+    if (!resultado) {
+      throw new NotFoundError("Nenhum documento foi gerado para esta matrícula ainda");
+    }
+    res.json(resultado);
+  }),
+
   baixarDocumento: asyncHandler(async (req: Request, res: Response) => {
     const relatorio = await relatoriosService.buscarPorId(paramString(req, "id"));
     const matriculaId = paramString(req, "matriculaId");
+    const formato = req.query.formato === "pdf" ? "pdf" : "docx";
 
     const itens = Array.isArray(relatorio.itens)
       ? (relatorio.itens as unknown as ItemRelatorio[])
@@ -55,7 +72,19 @@ export const relatoriosController = {
       throw new NotFoundError("Documento não encontrado para esta matrícula neste relatório");
     }
 
-    const caminhoAbsoluto = path.resolve(item.caminhoDocumento);
+    // O PDF é gerado junto com o .docx no momento da geração (ver
+    // geracao-word.worker.ts) — sem conversão sob demanda. Relatórios
+    // gerados antes desta mudança não têm `caminhoDocumentoPdf` salvo.
+    const caminhoRelativo = formato === "pdf" ? item.caminhoDocumentoPdf : item.caminhoDocumento;
+    if (!caminhoRelativo) {
+      throw new NotFoundError(
+        formato === "pdf"
+          ? "PDF não disponível para este documento (gerado antes do suporte a PDF)"
+          : "Documento não encontrado para esta matrícula neste relatório",
+      );
+    }
+
+    const caminhoAbsoluto = path.resolve(caminhoRelativo);
     if (!fs.existsSync(caminhoAbsoluto)) {
       throw new AppError(
         "Documento não está mais disponível em disco",
@@ -65,5 +94,10 @@ export const relatoriosController = {
     }
 
     res.download(caminhoAbsoluto, path.basename(caminhoAbsoluto));
+  }),
+
+  excluir: asyncHandler(async (req: Request, res: Response) => {
+    await relatoriosService.excluir(paramString(req, "id"), usuarioAtual(req));
+    res.status(204).send();
   }),
 };

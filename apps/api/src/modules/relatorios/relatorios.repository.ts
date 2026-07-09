@@ -11,6 +11,18 @@ function inicioHoje(): Date {
   return new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
 }
 
+/**
+ * Data-limite de vencimento para considerar uma parcela "vencida há mais de
+ * X dias" (Configuracao.diasAtraso). Com diasAtrasoMinimo <= 0 (não
+ * configurado), mantém o comportamento anterior: qualquer parcela vencida.
+ */
+function dataLimiteAtraso(hoje: Date, diasAtrasoMinimo: number): Date {
+  if (diasAtrasoMinimo <= 0) return hoje;
+  const limite = new Date(hoje);
+  limite.setDate(limite.getDate() - diasAtrasoMinimo);
+  return limite;
+}
+
 export interface MatriculaElegivel {
   matriculaId: string;
   alunoId: string;
@@ -52,8 +64,10 @@ export const relatoriosRepository = {
     cursoId: string | undefined,
     configFinanceira: ConfiguracaoFinanceira,
     filtrosCobranca: FiltrosCobrancaElegibilidade,
+    diasAtrasoMinimo: number,
   ): Promise<MatriculaElegivel[]> {
     const hoje = inicioHoje();
+    const limiteVencimento = dataLimiteAtraso(hoje, diasAtrasoMinimo);
 
     const matriculas = await prisma.matricula.findMany({
       where: {
@@ -66,16 +80,21 @@ export const relatoriosRepository = {
           ? {
               OR: [
                 { situacaoCobrancaId: null },
-                { situacaoCobranca: { participaNovosRelatorios: true } },
+                {
+                  situacaoCobranca: {
+                    participaNovosRelatorios: true,
+                    NOT: { nome: { equals: "Quitado", mode: "insensitive" } },
+                  },
+                },
               ],
             }
           : {}),
-        parcelas: { some: { status: "EM_ABERTO", vencimento: { lt: hoje } } },
+        parcelas: { some: { status: "EM_ABERTO", vencimento: { lt: limiteVencimento } } },
       },
       include: {
         aluno: { select: { id: true, nome: true, cpf: true } },
         curso: { select: { id: true, nome: true } },
-        parcelas: { where: { status: "EM_ABERTO", vencimento: { lt: hoje } } },
+        parcelas: { where: { status: "EM_ABERTO", vencimento: { lt: limiteVencimento } } },
         situacaoCobranca: { select: { id: true, nome: true } },
         tags: { select: { tag: { select: { id: true, nome: true } } } },
       },
@@ -120,11 +139,53 @@ export const relatoriosRepository = {
     return prisma.relatorioInadimplencia.findUnique({ where: { id } });
   },
 
-  /** Parcelas vencidas de uma matrícula, para montar a tabela do documento de protesto. */
-  buscarParcelasVencidasDaMatricula(matriculaId: string) {
+  /**
+   * Último documento já gerado para uma matrícula, em qualquer relatório
+   * (mais recente primeiro) — usado quando o usuário tenta gerar de novo
+   * para uma matrícula que não tem mais parcela elegível (ex.: já protestada
+   * por completo), para oferecer o documento existente em vez de falhar
+   * silenciosamente. `itens` é JSON (sem índice), então filtramos em
+   * memória — a query já reduz ao mínimo com `totalDocumentosGerados > 0`.
+   */
+  async buscarUltimoDocumentoGeradoPorMatricula(matriculaId: string) {
+    const relatorios = await prisma.relatorioInadimplencia.findMany({
+      where: { totalDocumentosGerados: { gt: 0 } },
+      orderBy: { data: "desc" },
+      select: { id: true, itens: true },
+    });
+
+    for (const relatorio of relatorios) {
+      const itens = Array.isArray(relatorio.itens)
+        ? (relatorio.itens as unknown as Array<{
+            matriculaId: string;
+            documentoGerado?: boolean;
+            caminhoDocumento?: string | null;
+            caminhoDocumentoPdf?: string | null;
+          }>)
+        : [];
+      const item = itens.find((i) => i.matriculaId === matriculaId && i.documentoGerado);
+      if (item) {
+        return {
+          relatorioId: relatorio.id,
+          temDocx: Boolean(item.caminhoDocumento),
+          temPdf: Boolean(item.caminhoDocumentoPdf),
+        };
+      }
+    }
+
+    return null;
+  },
+
+  /**
+   * Parcelas vencidas de uma matrícula, para montar a tabela do documento de
+   * protesto — só as vencidas há mais de `diasAtrasoMinimo` dias
+   * (Configuracao.diasAtraso), mesmo critério usado para levantar os elegíveis.
+   */
+  buscarParcelasVencidasDaMatricula(matriculaId: string, diasAtrasoMinimo = 0) {
     const hoje = inicioHoje();
+    const limiteVencimento = dataLimiteAtraso(hoje, diasAtrasoMinimo);
     return prisma.parcela.findMany({
-      where: { matriculaId, status: "EM_ABERTO", vencimento: { lt: hoje } },
+      where: { matriculaId, status: "EM_ABERTO", vencimento: { lt: limiteVencimento } },
       orderBy: { vencimento: "asc" },
     });
   },
@@ -148,5 +209,9 @@ export const relatoriosRepository = {
 
   update(id: string, data: Prisma.RelatorioInadimplenciaUpdateInput) {
     return prisma.relatorioInadimplencia.update({ where: { id }, data });
+  },
+
+  delete(id: string) {
+    return prisma.relatorioInadimplencia.delete({ where: { id } });
   },
 };

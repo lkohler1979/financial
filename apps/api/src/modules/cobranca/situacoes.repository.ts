@@ -10,6 +10,16 @@ export const situacoesRepository = {
     return prisma.situacaoCobranca.findUnique({ where: { nome } });
   },
 
+  /** Busca por nome ou cria com os valores padrão informados, se ainda não existir. */
+  async obterOuCriarPorNome(
+    nome: string,
+    padrao: Omit<Prisma.SituacaoCobrancaCreateInput, "nome">,
+  ) {
+    const existente = await prisma.situacaoCobranca.findUnique({ where: { nome } });
+    if (existente) return existente;
+    return prisma.situacaoCobranca.create({ data: { nome, ...padrao } });
+  },
+
   list(ativa?: boolean) {
     return prisma.situacaoCobranca.findMany({
       where: ativa !== undefined ? { ativa } : {},

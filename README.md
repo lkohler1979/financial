@@ -1,6 +1,6 @@
 # EthosFinancial 1.0
 
-Sistema web de gestão de alunos, cursos, matrículas, financeiro e cobrança de inadimplência, com geração automática de documentos de protesto e comunicação de cobrança via WhatsApp assistida por IA.
+Sistema web de gestão de alunos, cursos, matrículas, financeiro e cobrança de inadimplência, com geração automática de documentos de protesto.
 
 ## Documentação
 
@@ -12,7 +12,7 @@ Sistema web de gestão de alunos, cursos, matrículas, financeiro e cobrança de
 
 ## Stack
 
-Node.js 20 + Express 5 + TypeScript · Angular 17+ · PostgreSQL 16 · Prisma ORM · BullMQ + Redis · Evolution API v2 · Groq/Ollama · Docker.
+Node.js 20 + Express 5 + TypeScript · Angular 17+ · PostgreSQL 16 · Prisma ORM · BullMQ + Redis · Docker.
 
 ## Como rodar
 

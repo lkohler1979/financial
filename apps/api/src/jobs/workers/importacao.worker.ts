@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import { Prisma } from "@prisma/client";
 import { Job, Worker } from "bullmq";
 import { redisConnection } from "../redis-connection";
 import {
@@ -32,7 +33,7 @@ async function processarJob(job: Job<ImportacaoJobData>): Promise<ImportacaoJobR
     alunosAtualizados: resultado.alunosAtualizados,
     parcelasNovas: resultado.parcelasNovas,
     parcelasAtualizadas: resultado.parcelasAtualizadas,
-    erros: erros.length > 0 ? erros : undefined,
+    erros: erros.length > 0 ? (erros as unknown as Prisma.InputJsonValue) : undefined,
   });
 
   // Auditoria em nível de lote (não por registro individual) — decisão

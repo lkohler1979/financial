@@ -22,7 +22,11 @@ const upload = multer({
   limits: { fileSize: 20 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const ok = EXTENSOES_PERMITIDAS.includes(path.extname(file.originalname).toLowerCase());
-    cb(ok ? null : new Error("Apenas arquivos .xlsx/.xls são aceitos"));
+    if (!ok) {
+      cb(new Error("Apenas arquivos .xlsx/.xls são aceitos"));
+      return;
+    }
+    cb(null, true);
   },
 });
 

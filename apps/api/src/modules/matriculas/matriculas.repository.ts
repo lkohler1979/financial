@@ -5,6 +5,12 @@ export interface ListarMatriculasParams {
   alunoId?: string;
   cursoId?: string;
   situacao?: string;
+  alunoNome?: string;
+  alunoCpf?: string;
+  dataMatriculaInicio?: Date;
+  dataMatriculaFim?: Date;
+  situacaoCobrancaId?: string;
+  tagId?: string;
   skip: number;
   take: number;
 }
@@ -13,6 +19,11 @@ const incluiAlunoCurso = {
   aluno: { select: { id: true, cpf: true, nome: true } },
   curso: { select: { id: true, codigo: true, nome: true } },
   situacaoCobranca: { select: { id: true, nome: true, cor: true } },
+} satisfies Prisma.MatriculaInclude;
+
+const incluiListaMatriculas = {
+  ...incluiAlunoCurso,
+  parcelas: { select: { status: true, vencimento: true } },
 } satisfies Prisma.MatriculaInclude;
 
 export const matriculasRepository = {
@@ -36,11 +47,35 @@ export const matriculasRepository = {
     return prisma.matricula.findFirst({ where: { alunoId, cursoId } });
   },
 
-  async list({ alunoId, cursoId, situacao, skip, take }: ListarMatriculasParams) {
+  async list({
+    alunoId,
+    cursoId,
+    situacao,
+    alunoNome,
+    alunoCpf,
+    dataMatriculaInicio,
+    dataMatriculaFim,
+    situacaoCobrancaId,
+    tagId,
+    skip,
+    take,
+  }: ListarMatriculasParams) {
     const where: Prisma.MatriculaWhereInput = {
       ...(alunoId ? { alunoId } : {}),
       ...(cursoId ? { cursoId } : {}),
-      ...(situacao ? { situacao } : {}),
+      ...(situacao ? { situacao: { contains: situacao, mode: "insensitive" } } : {}),
+      ...(alunoNome ? { aluno: { nome: { contains: alunoNome, mode: "insensitive" } } } : {}),
+      ...(alunoCpf ? { aluno: { cpf: { contains: alunoCpf.replace(/\D/g, "") } } } : {}),
+      ...(dataMatriculaInicio || dataMatriculaFim
+        ? {
+            dataMatricula: {
+              ...(dataMatriculaInicio ? { gte: dataMatriculaInicio } : {}),
+              ...(dataMatriculaFim ? { lte: dataMatriculaFim } : {}),
+            },
+          }
+        : {}),
+      ...(situacaoCobrancaId ? { situacaoCobrancaId } : {}),
+      ...(tagId ? { tags: { some: { tagId } } } : {}),
     };
 
     const [data, total] = await Promise.all([
@@ -49,7 +84,7 @@ export const matriculasRepository = {
         skip,
         take,
         orderBy: { dataMatricula: "desc" },
-        include: incluiAlunoCurso,
+        include: incluiListaMatriculas,
       }),
       prisma.matricula.count({ where }),
     ]);

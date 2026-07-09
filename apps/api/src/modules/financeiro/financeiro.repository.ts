@@ -50,6 +50,12 @@ export const financeiroRepository = {
     return { data, total };
   },
 
+  /** Parcelas ainda em aberto (não pagas, não protestadas, não canceladas)
+   * de uma matrícula — usado para decidir se o protesto ficou completo. */
+  contarEmAbertoPorMatricula(matriculaId: string) {
+    return prisma.parcela.count({ where: { matriculaId, status: "EM_ABERTO" } });
+  },
+
   create(data: Prisma.ParcelaCreateInput) {
     return prisma.parcela.create({ data, include: incluiMatricula });
   },

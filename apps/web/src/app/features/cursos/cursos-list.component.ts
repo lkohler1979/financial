@@ -53,8 +53,8 @@ import {
       <mat-progress-bar mode="indeterminate"></mat-progress-bar>
     }
 
-    <div class="bg-white rounded shadow-sm overflow-auto mt-2">
-      <table mat-table [dataSource]="cursos" class="w-full">
+    <div class="bg-white rounded shadow-sm overflow-x-auto mt-2 w-full">
+      <table mat-table [dataSource]="cursos" class="w-full table-compact">
         <ng-container matColumnDef="codigo">
           <th mat-header-cell *matHeaderCellDef>Código</th>
           <td mat-cell *matCellDef="let c">{{ c.codigo }}</td>
@@ -101,7 +101,7 @@ import {
         [length]="total"
         [pageSize]="pageSize"
         [pageIndex]="page - 1"
-        [pageSizeOptions]="[10, 20, 50]"
+        [pageSizeOptions]="[20, 50, 100]"
         (page)="mudarPagina($event)"
       ></mat-paginator>
     </div>

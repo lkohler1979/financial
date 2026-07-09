@@ -19,7 +19,7 @@ export interface ImportacaoJobResultado {
   erros: Array<{ linha: number; mensagem: string }>;
 }
 
-export const importacaoQueue = new Queue<ImportacaoJobData, ImportacaoJobResultado>(
+export const importacaoQueue = new Queue<ImportacaoJobData, ImportacaoJobResultado, string>(
   IMPORTACAO_QUEUE_NAME,
   { connection: redisConnection },
 );

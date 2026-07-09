@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../database/prisma";
+import { marcarAuditoriaRegistrada } from "./auditoria.context";
 
 // Ações de auditoria padronizadas (CLAUDE.md seção 4 / PRD seção 18).
 export type AcaoAuditoria = "CRIACAO" | "ATUALIZACAO" | "EXCLUSAO";
@@ -32,4 +33,15 @@ export async function registrarAuditoria(
       detalhes: registro.detalhes,
     },
   });
+  marcarAuditoriaRegistrada();
+}
+
+export interface ListarAuditoriaParams {
+  entidade?: string;
+  usuario?: string;
+  acao?: AcaoAuditoria;
+  dataInicio?: Date;
+  dataFim?: Date;
+  page: number;
+  pageSize: number;
 }

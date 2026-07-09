@@ -4,13 +4,15 @@ import { alunosRepository } from "../../src/modules/alunos/alunos.repository";
 import { cursosRepository } from "../../src/modules/cursos/cursos.repository";
 import { matriculasRepository } from "../../src/modules/matriculas/matriculas.repository";
 import { financeiroRepository } from "../../src/modules/financeiro/financeiro.repository";
+import { mapeamentoImportacaoRepository } from "../../src/modules/mapeamento-importacao/mapeamento-importacao.repository";
+import { MAPEAMENTOS_PADRAO } from "../../src/modules/mapeamento-importacao/mapeamento-importacao.constants";
 import type { LinhaImportacaoValida } from "../../src/modules/importacao/importacao.parser";
 
 vi.mock("../../src/modules/alunos/alunos.repository", () => ({
   alunosRepository: { findByCpf: vi.fn(), create: vi.fn(), update: vi.fn() },
 }));
 vi.mock("../../src/modules/cursos/cursos.repository", () => ({
-  cursosRepository: { findByNome: vi.fn(), create: vi.fn() },
+  cursosRepository: { findByNome: vi.fn(), findByCodigo: vi.fn(), create: vi.fn() },
 }));
 vi.mock("../../src/modules/matriculas/matriculas.repository", () => ({
   matriculasRepository: { findByAlunoECurso: vi.fn(), create: vi.fn() },
@@ -18,11 +20,15 @@ vi.mock("../../src/modules/matriculas/matriculas.repository", () => ({
 vi.mock("../../src/modules/financeiro/financeiro.repository", () => ({
   financeiroRepository: { findByChaveNatural: vi.fn(), create: vi.fn(), update: vi.fn() },
 }));
+vi.mock("../../src/modules/mapeamento-importacao/mapeamento-importacao.repository", () => ({
+  mapeamentoImportacaoRepository: { listarAtivos: vi.fn() },
+}));
 
 const alunos = vi.mocked(alunosRepository);
 const cursos = vi.mocked(cursosRepository);
 const matriculas = vi.mocked(matriculasRepository);
 const financeiro = vi.mocked(financeiroRepository);
+const mapeamentos = vi.mocked(mapeamentoImportacaoRepository);
 
 function linha(dados: Partial<Record<string, unknown>>, numeroLinha = 2): LinhaImportacaoValida {
   return {
@@ -42,6 +48,7 @@ function linha(dados: Partial<Record<string, unknown>>, numeroLinha = 2): LinhaI
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mapeamentos.listarAtivos.mockResolvedValue(MAPEAMENTOS_PADRAO as never);
 });
 
 describe("processarLinhasImportacao", () => {
@@ -83,6 +90,43 @@ describe("processarLinhasImportacao", () => {
     expect(cursos.create).not.toHaveBeenCalled();
     expect(matriculas.create).not.toHaveBeenCalled();
     expect(financeiro.create).not.toHaveBeenCalled();
+  });
+
+  it("mapeia endereço detalhado e os dois telefones da planilha para o aluno", async () => {
+    alunos.findByCpf.mockResolvedValue(null);
+    alunos.create.mockResolvedValue({ id: "aluno-1" } as never);
+    cursos.findByNome.mockResolvedValue({ id: "curso-1" } as never);
+    matriculas.findByAlunoECurso.mockResolvedValue({ id: "matricula-1" } as never);
+    financeiro.findByChaveNatural.mockResolvedValue(null);
+    financeiro.create.mockResolvedValue({ id: "parcela-1" } as never);
+
+    await processarLinhasImportacao([
+      linha({
+        ENDERECO: "Rua das Flores",
+        NUMERO: "123",
+        BAIRRO: "Centro",
+        COMPLEMENTO: "Apto 45",
+        CEP: "01310-100",
+        CIDADE: "São Paulo",
+        ESTADO: "SP",
+        FONE_1: "11999998888",
+        FONE_2: "1133334444",
+      }),
+    ]);
+
+    expect(alunos.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        endereco: "Rua das Flores",
+        numero: "123",
+        bairro: "Centro",
+        complemento: "Apto 45",
+        cep: "01310-100",
+        cidade: "São Paulo",
+        estado: "SP",
+        telefone1: "11999998888",
+        telefone2: "1133334444",
+      }),
+    );
   });
 
   it("registra erro de linha e continua processando as demais quando o CPF é inválido", async () => {
@@ -128,5 +172,84 @@ describe("processarLinhasImportacao", () => {
 
     expect(aoProgredir).toHaveBeenNthCalledWith(1, 50);
     expect(aoProgredir).toHaveBeenNthCalledWith(2, 100);
+  });
+
+  describe("ID_CURSO (planilha real, 2026-07-09)", () => {
+    it("localiza o curso pelo ID_CURSO (codigo) em vez de pelo nome, quando presente", async () => {
+      alunos.findByCpf.mockResolvedValue({ id: "aluno-1" } as never);
+      alunos.update.mockResolvedValue({ id: "aluno-1" } as never);
+      cursos.findByCodigo.mockResolvedValue({ id: "curso-1" } as never);
+      matriculas.findByAlunoECurso.mockResolvedValue({ id: "matricula-1" } as never);
+      financeiro.findByChaveNatural.mockResolvedValue(null);
+      financeiro.create.mockResolvedValue({ id: "parcela-1" } as never);
+
+      await processarLinhasImportacao([linha({ ID_CURSO: "CURSO-EXTERNO-42" })]);
+
+      expect(cursos.findByCodigo).toHaveBeenCalledWith("CURSO-EXTERNO-42");
+      expect(cursos.findByNome).not.toHaveBeenCalled();
+      expect(cursos.create).not.toHaveBeenCalled();
+    });
+
+    it("cria o curso usando ID_CURSO como codigo quando não encontra por codigo nem por nome", async () => {
+      alunos.findByCpf.mockResolvedValue({ id: "aluno-1" } as never);
+      alunos.update.mockResolvedValue({ id: "aluno-1" } as never);
+      cursos.findByCodigo.mockResolvedValue(null);
+      cursos.findByNome.mockResolvedValue(null);
+      cursos.create.mockResolvedValue({ id: "curso-novo" } as never);
+      matriculas.findByAlunoECurso.mockResolvedValue({ id: "matricula-1" } as never);
+      financeiro.findByChaveNatural.mockResolvedValue(null);
+      financeiro.create.mockResolvedValue({ id: "parcela-1" } as never);
+
+      await processarLinhasImportacao([linha({ ID_CURSO: "CURSO-EXTERNO-99" })]);
+
+      expect(cursos.create).toHaveBeenCalledWith(
+        expect.objectContaining({ codigo: "CURSO-EXTERNO-99" }),
+      );
+    });
+
+    it("cai para a busca por nome quando a linha não traz ID_CURSO", async () => {
+      alunos.findByCpf.mockResolvedValue({ id: "aluno-1" } as never);
+      alunos.update.mockResolvedValue({ id: "aluno-1" } as never);
+      cursos.findByNome.mockResolvedValue({ id: "curso-1" } as never);
+      matriculas.findByAlunoECurso.mockResolvedValue({ id: "matricula-1" } as never);
+      financeiro.findByChaveNatural.mockResolvedValue(null);
+      financeiro.create.mockResolvedValue({ id: "parcela-1" } as never);
+
+      await processarLinhasImportacao([linha({})]);
+
+      expect(cursos.findByCodigo).not.toHaveBeenCalled();
+      expect(cursos.findByNome).toHaveBeenCalledWith("Engenharia");
+    });
+  });
+
+  describe("TITULO_VALOR_JUROS_E_MULTA (planilha real, 2026-07-09)", () => {
+    it("mapeia para Parcela.valorOrigemComJurosEMulta, só como referência", async () => {
+      alunos.findByCpf.mockResolvedValue({ id: "aluno-1" } as never);
+      alunos.update.mockResolvedValue({ id: "aluno-1" } as never);
+      cursos.findByNome.mockResolvedValue({ id: "curso-1" } as never);
+      matriculas.findByAlunoECurso.mockResolvedValue({ id: "matricula-1" } as never);
+      financeiro.findByChaveNatural.mockResolvedValue(null);
+      financeiro.create.mockResolvedValue({ id: "parcela-1" } as never);
+
+      await processarLinhasImportacao([linha({ TITULO_VALOR_JUROS_E_MULTA: "160,50" })]);
+
+      expect(financeiro.create).toHaveBeenCalledWith(
+        expect.objectContaining({ valorOrigemComJurosEMulta: 160.5 }),
+      );
+    });
+
+    it("não grava o campo quando a coluna vem vazia (NAO_IMPORTAR)", async () => {
+      alunos.findByCpf.mockResolvedValue({ id: "aluno-1" } as never);
+      alunos.update.mockResolvedValue({ id: "aluno-1" } as never);
+      cursos.findByNome.mockResolvedValue({ id: "curso-1" } as never);
+      matriculas.findByAlunoECurso.mockResolvedValue({ id: "matricula-1" } as never);
+      financeiro.findByChaveNatural.mockResolvedValue(null);
+      financeiro.create.mockResolvedValue({ id: "parcela-1" } as never);
+
+      await processarLinhasImportacao([linha({})]);
+
+      const dadosCriados = financeiro.create.mock.calls[0][0] as Record<string, unknown>;
+      expect(dadosCriados.valorOrigemComJurosEMulta).toBeUndefined();
+    });
   });
 });

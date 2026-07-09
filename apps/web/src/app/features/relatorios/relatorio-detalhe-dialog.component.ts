@@ -22,7 +22,7 @@ export interface RelatorioDetalheDialogData {
         <p class="text-gray-500">Nenhum item neste relatório.</p>
       }
       @if (itens.length > 0) {
-        <table mat-table [dataSource]="itens" class="w-full">
+        <table mat-table [dataSource]="itens" class="w-full table-compact">
           <ng-container matColumnDef="alunoNome">
             <th mat-header-cell *matHeaderCellDef>Aluno</th>
             <td mat-cell *matCellDef="let i">{{ i.alunoNome }}</td>
@@ -39,8 +39,21 @@ export interface RelatorioDetalheDialogData {
             <th mat-header-cell *matHeaderCellDef>Documento</th>
             <td mat-cell *matCellDef="let i">
               @if (i.documentoGerado) {
-                <button mat-icon-button (click)="baixar(i)" aria-label="Baixar documento">
-                  <mat-icon>download</mat-icon>
+                <button
+                  mat-button
+                  class="!min-w-0 !px-2"
+                  (click)="baixar(i, 'docx')"
+                  aria-label="Baixar Word"
+                >
+                  Word
+                </button>
+                <button
+                  mat-button
+                  class="!min-w-0 !px-2"
+                  (click)="baixar(i, 'pdf')"
+                  aria-label="Baixar PDF"
+                >
+                  PDF
                 </button>
               } @else {
                 <span class="text-gray-400 text-xs">pendente</span>
@@ -65,7 +78,10 @@ export class RelatorioDetalheDialogComponent {
   colunas = ["alunoNome", "cursoNome", "valorTotal", "documento"];
   itens: ItemRelatorio[] = this.data.relatorio.itens ?? [];
 
-  baixar(item: ItemRelatorio): void {
-    window.open(this.service.urlDownload(this.data.relatorio.id, item.matriculaId), "_blank");
+  baixar(item: ItemRelatorio, formato: "docx" | "pdf"): void {
+    window.open(
+      this.service.urlDownload(this.data.relatorio.id, item.matriculaId, formato),
+      "_blank",
+    );
   }
 }

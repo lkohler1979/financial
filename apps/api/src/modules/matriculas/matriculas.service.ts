@@ -12,6 +12,39 @@ import type {
 
 const ENTIDADE = "Matricula";
 
+interface ParcelaResumida {
+  status: string;
+  vencimento: Date;
+}
+
+/**
+ * "Vencida" não é um StatusParcela — é derivada de EM_ABERTO + vencimento no
+ * passado (mesmo critério usado na ficha de cobrança, ficha-cobranca.component.ts).
+ */
+function resumoParcelas(parcelas: ParcelaResumida[]) {
+  const hoje = new Date();
+  const resumo = {
+    vencidas: 0,
+    emAberto: 0,
+    pagas: 0,
+    protestadas: 0,
+    renegociadas: 0,
+    canceladas: 0,
+  };
+
+  for (const parcela of parcelas) {
+    if (parcela.status === "EM_ABERTO") {
+      if (parcela.vencimento < hoje) resumo.vencidas += 1;
+      else resumo.emAberto += 1;
+    } else if (parcela.status === "PAGO") resumo.pagas += 1;
+    else if (parcela.status === "PROTESTADO") resumo.protestadas += 1;
+    else if (parcela.status === "RENEGOCIADO") resumo.renegociadas += 1;
+    else if (parcela.status === "CANCELADO") resumo.canceladas += 1;
+  }
+
+  return resumo;
+}
+
 async function garantirAlunoExiste(alunoId: string): Promise<void> {
   const aluno = await alunosRepository.findById(alunoId);
   if (!aluno) throw new NotFoundError("Aluno não encontrado");
@@ -44,15 +77,37 @@ async function garantirChaveNaturalLivre(
 
 export const matriculasService = {
   async listar(params: ListarMatriculasInput) {
-    const { page, pageSize, alunoId, cursoId, situacao } = params;
+    const {
+      page,
+      pageSize,
+      alunoId,
+      cursoId,
+      situacao,
+      alunoNome,
+      alunoCpf,
+      dataMatriculaInicio,
+      dataMatriculaFim,
+      situacaoCobrancaId,
+      tagId,
+    } = params;
     const { data, total } = await matriculasRepository.list({
       alunoId,
       cursoId,
       situacao,
+      alunoNome,
+      alunoCpf,
+      dataMatriculaInicio,
+      dataMatriculaFim,
+      situacaoCobrancaId,
+      tagId,
       skip: (page - 1) * pageSize,
       take: pageSize,
     });
-    return { data, total, page, pageSize };
+    const dataComResumo = data.map(({ parcelas, ...matricula }) => ({
+      ...matricula,
+      resumoParcelas: resumoParcelas(parcelas),
+    }));
+    return { data: dataComResumo, total, page, pageSize };
   },
 
   async buscarPorId(id: string) {

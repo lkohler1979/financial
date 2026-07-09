@@ -7,6 +7,9 @@ export interface GeracaoWordJobData {
   relatorioId: string;
 }
 
-export const geracaoWordQueue = new Queue<GeracaoWordJobData>(GERACAO_WORD_QUEUE_NAME, {
-  connection: redisConnection,
-});
+export const geracaoWordQueue = new Queue<GeracaoWordJobData, void, string>(
+  GERACAO_WORD_QUEUE_NAME,
+  {
+    connection: redisConnection,
+  },
+);

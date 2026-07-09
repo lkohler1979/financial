@@ -16,6 +16,15 @@ export interface MatriculaResumoSituacaoCobranca {
   cor: string;
 }
 
+export interface MatriculaResumoParcelas {
+  vencidas: number;
+  emAberto: number;
+  pagas: number;
+  protestadas: number;
+  renegociadas: number;
+  canceladas: number;
+}
+
 export interface Matricula {
   id: string;
   alunoId: string;
@@ -29,6 +38,7 @@ export interface Matricula {
   aluno?: MatriculaResumoAluno;
   curso?: MatriculaResumoCurso;
   situacaoCobranca?: MatriculaResumoSituacaoCobranca | null;
+  resumoParcelas?: MatriculaResumoParcelas;
 }
 
 export interface MatriculaPayload {

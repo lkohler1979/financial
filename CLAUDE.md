@@ -4,7 +4,7 @@ Guia de contexto para o Claude (ou qualquer agente de codificação) trabalhar n
 
 ## 1. O que é este projeto
 
-**EthosFinancial 1.0** — sistema web de gestão de alunos, cursos, matrículas, financeiro e cobrança de inadimplência para instituições de ensino, com geração automática de documentos de protesto em Word e comunicação de cobrança via WhatsApp assistida por IA.
+**EthosFinancial 1.0** — sistema web de gestão de alunos, cursos, matrículas, financeiro e cobrança de inadimplência para instituições de ensino, com geração automática de documentos de protesto em Word.
 
 A especificação completa do produto está em `docs/especificacao/EthosFinancial_1.0_Especificacao.docx` e resumida em `docs/PRD.md`. **Sempre consulte o PRD antes de implementar uma funcionalidade nova** — não invente regras de negócio que não estejam lá; se precisar de uma decisão que não está especificada, registre em `docs/PENDENCIAS.md` em vez de assumir.
 
@@ -20,8 +20,6 @@ A especificação completa do produto está em `docs/especificacao/EthosFinancia
 | Filas / background jobs       | BullMQ + Redis 7                                                   |
 | Frontend                      | Angular 17+ (Standalone Components)                                |
 | UI                            | Angular Material + Tailwind                                        |
-| WhatsApp                      | Evolution API v2                                                   |
-| IA para mensagens de cobrança | Groq API (nuvem) ou Ollama (local), configurável via `AI_PROVIDER` |
 | Geração de documentos         | biblioteca `docx` (Node)                                           |
 | Containerização               | Docker + Docker Compose                                            |
 
@@ -37,7 +35,7 @@ ethos-financial/
 └── docker-compose.yml
 ```
 
-Cada módulo de negócio (`alunos`, `cursos`, `matriculas`, `financeiro`, `importacao`, `cobranca`, `relatorios`, `configuracoes`, `auditoria`, `auth`, `notificacoes`, `ia`) deve ser autocontido: controller, service, repository (Prisma), DTOs e testes vivem juntos dentro de `apps/api/src/modules/<nome>/`.
+Cada módulo de negócio (`alunos`, `cursos`, `matriculas`, `financeiro`, `importacao`, `cobranca`, `relatorios`, `configuracoes`, `auditoria`, `auth`) deve ser autocontido: controller, service, repository (Prisma), DTOs e testes vivem juntos dentro de `apps/api/src/modules/<nome>/`.
 
 ## 4. Convenções de código
 
@@ -47,7 +45,7 @@ Cada módulo de negócio (`alunos`, `cursos`, `matriculas`, `financeiro`, `impor
 - Toda alteração em Aluno, Matrícula, Parcela ou Configuração deve gerar um registro em `Auditoria` (ver seção 18 do PRD).
 - Toda alteração de Situação de Cobrança ou TAG em uma Matrícula deve gerar um registro em `HistoricoCobranca` (nunca apagar histórico).
 - Regras de negócio (ex.: quantidade mínima de parcelas vencidas) nunca devem ser hardcoded — sempre ler de `Configuracao`.
-- Operações pesadas (importação de planilha, geração de Word, envio de WhatsApp) **sempre** via fila BullMQ, nunca de forma síncrona numa requisição HTTP.
+- Operações pesadas (importação de planilha, geração de Word) **sempre** via fila BullMQ, nunca de forma síncrona numa requisição HTTP.
 - Nunca commitar segredos — usar `.env` (baseado em `.env.example`), nunca hardcode de chaves de API.
 
 ## 5. Como rodar o projeto localmente
@@ -55,7 +53,7 @@ Cada módulo de negócio (`alunos`, `cursos`, `matriculas`, `financeiro`, `impor
 ```bash
 cp .env.example .env
 npm install
-docker compose up -d postgres redis evolution-api
+docker compose up -d postgres redis
 npm run prisma:migrate --workspace=apps/api
 npm run dev:api
 npm run dev:worker
@@ -66,13 +64,6 @@ Ou tudo via Docker:
 
 ```bash
 docker compose up -d
-```
-
-Para usar IA local (Ollama) em vez do Groq:
-
-```bash
-docker compose --profile ia-local up -d
-# e definir AI_PROVIDER=ollama no .env
 ```
 
 ## 6. Testes

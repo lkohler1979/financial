@@ -1,4 +1,4 @@
-import { HttpClient, HttpParams } from "@angular/common/http";
+import { HttpClient, HttpParams, HttpResponse } from "@angular/common/http";
 import { inject, Injectable } from "@angular/core";
 import { Observable, catchError, of } from "rxjs";
 import { environment } from "../../../environments/environment";
@@ -66,8 +66,22 @@ export class RelatoriosService {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
   }
 
-  urlDownload(relatorioId: string, matriculaId: string, formato: "docx" | "pdf" = "docx"): string {
-    return `${this.baseUrl}/${relatorioId}/itens/${matriculaId}/documento?formato=${formato}`;
+  /**
+   * Baixa o documento gerado via HttpClient (passa pelo interceptor de
+   * autenticação) em vez de uma URL direta — `window.open`/`<a href>` não
+   * enviam o header `Authorization`, então o backend rejeitaria com 401
+   * desde que o login (Sprint 7) passou a exigir token em toda rota.
+   */
+  baixarDocumento(
+    relatorioId: string,
+    matriculaId: string,
+    formato: "docx" | "pdf" = "docx",
+  ): Observable<HttpResponse<Blob>> {
+    return this.http.get(`${this.baseUrl}/${relatorioId}/itens/${matriculaId}/documento`, {
+      params: new HttpParams().set("formato", formato),
+      responseType: "blob",
+      observe: "response",
+    });
   }
 
   /** Último documento já gerado para a matrícula (qualquer relatório), ou

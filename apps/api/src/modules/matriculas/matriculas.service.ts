@@ -37,7 +37,8 @@ function resumoParcelas(parcelas: ParcelaResumida[]) {
       if (parcela.vencimento < hoje) resumo.vencidas += 1;
       else resumo.emAberto += 1;
     } else if (parcela.status === "PAGO") resumo.pagas += 1;
-    else if (parcela.status === "PROTESTADO") resumo.protestadas += 1;
+    else if (parcela.status === "PROTESTADO" || parcela.status === "PROTESTO_ENVIADO")
+      resumo.protestadas += 1;
     else if (parcela.status === "RENEGOCIADO") resumo.renegociadas += 1;
     else if (parcela.status === "CANCELADO") resumo.canceladas += 1;
   }

@@ -1,6 +1,13 @@
 import { z } from "zod";
 
-const statusParcela = z.enum(["EM_ABERTO", "PAGO", "CANCELADO", "PROTESTADO", "RENEGOCIADO"]);
+const statusParcela = z.enum([
+  "EM_ABERTO",
+  "PAGO",
+  "CANCELADO",
+  "PROTESTO_ENVIADO",
+  "PROTESTADO",
+  "RENEGOCIADO",
+]);
 
 // codTitulo + matriculaId compõem a chave natural (PRD seção 12) usada pela
 // importação incremental — não são editáveis após a criação.
@@ -20,12 +27,22 @@ export const criarParcelaSchema = z.object({
 
 // Ao marcar como PAGO, dataPagamento/valorPago são preenchidos com padrão
 // (agora / valor da parcela) pelo service quando não informados.
+//
+// multaProtesto/jurosProtesto/totalProtesto: congelam os valores calculados
+// no momento em que o documento de protesto foi gerado para esta parcela
+// (geracao-word.worker.ts) — nunca recalculados depois, para que a Ficha de
+// Cobrança sempre bata com o documento já gerado (decisão do usuário,
+// 2026-07-09). Normalmente gravados só pelo worker, mas expostos aqui como
+// qualquer outro campo de Parcela para permitir correção manual se preciso.
 export const atualizarParcelaSchema = z
   .object({
     ...dadosParcela,
     status: statusParcela,
     dataPagamento: z.coerce.date(),
     valorPago: z.coerce.number().positive(),
+    multaProtesto: z.coerce.number().min(0),
+    jurosProtesto: z.coerce.number().min(0),
+    totalProtesto: z.coerce.number().min(0),
   })
   .partial()
   .refine((obj) => Object.keys(obj).length > 0, "Informe ao menos um campo para atualizar");

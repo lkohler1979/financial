@@ -252,7 +252,7 @@ export const dashboardRepository = {
         inadimplentes: matriculasInadimplentes.size,
         valorEmAberto: valorStatus("EM_ABERTO"),
         parcelasEmAberto: statusMap.get("EM_ABERTO")?._count._all ?? 0,
-        valorProtestado: valorStatus("PROTESTADO"),
+        valorProtestado: valorStatus("PROTESTADO") + valorStatus("PROTESTO_ENVIADO"),
         valorRenegociado: valorStatus("RENEGOCIADO"),
         valorQuitado: valorStatus("PAGO", "valorPago") || valorStatus("PAGO"),
         relatoriosPeriodo: relatoriosPeriodo.length,

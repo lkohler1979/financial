@@ -30,6 +30,7 @@ enum StatusParcela {
   EM_ABERTO
   PAGO
   CANCELADO
+  PROTESTO_ENVIADO
   PROTESTADO
   RENEGOCIADO
 }
@@ -146,6 +147,16 @@ model Parcela {
   /// jurosDiarioPercentual), decisão do usuário registrada em
   /// docs/PENDENCIAS.md (2026-07-09).
   valorOrigemComJurosEMulta Decimal? @db.Decimal(12, 2) @map("valor_origem_com_juros_e_multa")
+  /// Multa/juros/total efetivamente usados no documento de protesto gerado
+  /// para esta parcela (mesmos valores calculados por
+  /// calculo-financeiro.ts no momento da geração) — gravados quando a
+  /// parcela é marcada PROTESTADO (geracao-word.worker.ts). Sem isso, a
+  /// Ficha de Cobrança recalcularia com a data de hoje, divergindo cada vez
+  /// mais do documento já gerado (congelado) conforme os dias passam.
+  /// Decisão do usuário, 2026-07-09: os dois precisam ser sempre iguais.
+  multaProtesto Decimal? @db.Decimal(12, 2) @map("multa_protesto")
+  jurosProtesto Decimal? @db.Decimal(12, 2) @map("juros_protesto")
+  totalProtesto Decimal? @db.Decimal(12, 2) @map("total_protesto")
 
   matricula Matricula @relation(fields: [matriculaId], references: [id])
 

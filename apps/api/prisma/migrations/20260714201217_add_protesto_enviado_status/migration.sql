@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "StatusParcela" ADD VALUE 'PROTESTO_ENVIADO';

@@ -6,6 +6,7 @@ import { MatIconModule } from "@angular/material/icon";
 import { MatTableModule } from "@angular/material/table";
 import { RelatoriosService } from "../../core/services/relatorios.service";
 import { ItemRelatorio, RelatorioInadimplencia } from "../../core/models/relatorio.model";
+import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/download.util";
 
 export interface RelatorioDetalheDialogData {
   relatorio: RelatorioInadimplencia;
@@ -79,9 +80,14 @@ export class RelatorioDetalheDialogComponent {
   itens: ItemRelatorio[] = this.data.relatorio.itens ?? [];
 
   baixar(item: ItemRelatorio, formato: "docx" | "pdf"): void {
-    window.open(
-      this.service.urlDownload(this.data.relatorio.id, item.matriculaId, formato),
-      "_blank",
-    );
+    this.service
+      .baixarDocumento(this.data.relatorio.id, item.matriculaId, formato)
+      .subscribe((resp) => {
+        const nome = extrairNomeArquivo(
+          resp.headers.get("content-disposition"),
+          `documento.${formato}`,
+        );
+        salvarBlobComoArquivo(resp.body as Blob, nome);
+      });
   }
 }

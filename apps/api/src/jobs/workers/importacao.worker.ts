@@ -18,7 +18,7 @@ async function processarJob(job: Job<ImportacaoJobData>): Promise<ImportacaoJobR
   const buffer = await fs.readFile(caminhoArquivo);
   const { validas, erros: errosParse } = parsePlanilhaImportacao(buffer);
 
-  const resultado = await processarLinhasImportacao(validas, (percentual) =>
+  const resultado = await processarLinhasImportacao(validas, usuarioId, (percentual) =>
     job.updateProgress(percentual),
   );
 

@@ -29,6 +29,7 @@ import {
   ConfirmDialogComponent,
   ConfirmDialogData,
 } from "../../shared/components/confirm-dialog.component";
+import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/download.util";
 
 const TAMANHO_PAGINA_HISTORICO = 10;
 
@@ -668,7 +669,13 @@ export class RelatoriosGeracaoComponent implements OnInit, OnDestroy {
   baixarDocumentoGerado(matriculaId: string, formato: "docx" | "pdf"): void {
     const relatorioId = this.documentosGerados.get(matriculaId);
     if (!relatorioId) return;
-    window.open(this.service.urlDownload(relatorioId, matriculaId, formato), "_blank");
+    this.service.baixarDocumento(relatorioId, matriculaId, formato).subscribe((resp) => {
+      const nome = extrairNomeArquivo(
+        resp.headers.get("content-disposition"),
+        `documento.${formato}`,
+      );
+      salvarBlobComoArquivo(resp.body as Blob, nome);
+    });
   }
 
   verDetalhes(relatorio: RelatorioInadimplencia): void {
@@ -695,12 +702,13 @@ export class RelatoriosGeracaoComponent implements OnInit, OnDestroy {
 
       itensComDocumento.forEach((item, indice) => {
         setTimeout(() => {
-          const link = document.createElement("a");
-          link.href = this.service.urlDownload(completo.id, item.matriculaId, formato);
-          link.download = "";
-          document.body.appendChild(link);
-          link.click();
-          link.remove();
+          this.service.baixarDocumento(completo.id, item.matriculaId, formato).subscribe((resp) => {
+            const nome = extrairNomeArquivo(
+              resp.headers.get("content-disposition"),
+              `documento-${indice + 1}.${formato}`,
+            );
+            salvarBlobComoArquivo(resp.body as Blob, nome);
+          });
         }, indice * 400);
       });
     });

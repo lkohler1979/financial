@@ -1,4 +1,4 @@
-import { MapeamentoImportacao, StatusParcela, TabelaDestinoImportacao } from "@prisma/client";
+import { MapeamentoImportacao, SituacaoCobranca, StatusParcela, TabelaDestinoImportacao } from "@prisma/client";
 import { normalizarCpf, validarCpf } from "../../shared/utils/cpf";
 import { alunosRepository } from "../alunos/alunos.repository";
 import { cursosRepository } from "../cursos/cursos.repository";
@@ -6,8 +6,15 @@ import { matriculasRepository } from "../matriculas/matriculas.repository";
 import { financeiroRepository } from "../financeiro/financeiro.repository";
 import { mapeamentoImportacaoRepository } from "../mapeamento-importacao/mapeamento-importacao.repository";
 import { tipoDoCampo } from "../mapeamento-importacao/mapeamento-importacao.constants";
+import { situacoesRepository } from "../cobranca/situacoes.repository";
+import { historicoRepository } from "../cobranca/historico.repository";
 import type { ErroImportacao, LinhaImportacaoValida } from "./importacao.parser";
 import type { LinhaPlanilha } from "./importacao.schema";
+
+// Mesmo nome/cor/ordem já usados em geracao-word.worker.ts para a situação
+// "PENDENTE" criada automaticamente — mantém consistência entre os dois
+// pontos que a semeiam (auto-cura, mesmo padrão de obterOuCriarPorNome).
+const SITUACAO_PENDENTE = "PENDENTE";
 
 export interface ResultadoProcessamento {
   novosAlunos: number;
@@ -143,6 +150,7 @@ function gerarCodigoCurso(nome: string): string {
  */
 export async function processarLinhasImportacao(
   linhas: LinhaImportacaoValida[],
+  usuarioId: string,
   aoProgredir?: (percentual: number) => Promise<void> | void,
 ): Promise<ResultadoProcessamento> {
   const resultado: ResultadoProcessamento = {
@@ -154,11 +162,20 @@ export async function processarLinhasImportacao(
   };
 
   const mapeamentos = await mapeamentoImportacaoRepository.listarAtivos();
+  // Resolvida uma única vez para o lote inteiro (não por linha) — decisão do
+  // usuário, 2026-07-09: matrícula importada sem situação de cobrança
+  // definida entra automaticamente como "Pendente".
+  const situacaoPendente = await situacoesRepository.obterOuCriarPorNome(SITUACAO_PENDENTE, {
+    cor: "#FAEEDA",
+    ordem: 10,
+    ativa: true,
+    participaNovosRelatorios: true,
+  });
 
   for (let indice = 0; indice < linhas.length; indice++) {
     const { linha, dados } = linhas[indice];
     try {
-      await processarLinha(dados, resultado, mapeamentos);
+      await processarLinha(dados, resultado, mapeamentos, situacaoPendente, usuarioId);
     } catch (err) {
       resultado.erros.push({
         linha,
@@ -178,6 +195,8 @@ async function processarLinha(
   dados: LinhaPlanilha,
   resultado: ResultadoProcessamento,
   mapeamentos: MapeamentoImportacao[],
+  situacaoPendente: SituacaoCobranca,
+  usuarioId: string,
 ): Promise<void> {
   const linhaBruta = dados as unknown as Record<string, unknown>;
   const cpfDigitos = normalizarCpf(String(dados.CNPJ_CPF));
@@ -233,6 +252,20 @@ async function processarLinha(
       curso: { connect: { id: curso.id } },
       ...(resolverCamposDinamicos("MATRICULA", linhaBruta, mapeamentos) as CamposMatriculaDinamicos),
     }));
+
+  // Decisão do usuário, 2026-07-09: matrícula sem situação de cobrança
+  // definida (nova ou já existente) entra como "Pendente" — nunca sobrescreve
+  // uma situação já atribuída manualmente.
+  if (!matricula.situacaoCobrancaId) {
+    await matriculasRepository.update(matricula.id, {
+      situacaoCobranca: { connect: { id: situacaoPendente.id } },
+    });
+    await historicoRepository.registrar(
+      matricula.id,
+      usuarioId,
+      `Situação alterada para "${situacaoPendente.nome}" (importação)`,
+    );
+  }
 
   // --- Parcela: identificada por (matrícula, código do título); existe →
   // atualiza, não existe → insere. Jamais excluída (PRD seção 12). ---

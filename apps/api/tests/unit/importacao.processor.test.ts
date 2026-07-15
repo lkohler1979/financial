@@ -5,6 +5,8 @@ import { cursosRepository } from "../../src/modules/cursos/cursos.repository";
 import { matriculasRepository } from "../../src/modules/matriculas/matriculas.repository";
 import { financeiroRepository } from "../../src/modules/financeiro/financeiro.repository";
 import { mapeamentoImportacaoRepository } from "../../src/modules/mapeamento-importacao/mapeamento-importacao.repository";
+import { situacoesRepository } from "../../src/modules/cobranca/situacoes.repository";
+import { historicoRepository } from "../../src/modules/cobranca/historico.repository";
 import { MAPEAMENTOS_PADRAO } from "../../src/modules/mapeamento-importacao/mapeamento-importacao.constants";
 import type { LinhaImportacaoValida } from "../../src/modules/importacao/importacao.parser";
 
@@ -15,7 +17,7 @@ vi.mock("../../src/modules/cursos/cursos.repository", () => ({
   cursosRepository: { findByNome: vi.fn(), findByCodigo: vi.fn(), create: vi.fn() },
 }));
 vi.mock("../../src/modules/matriculas/matriculas.repository", () => ({
-  matriculasRepository: { findByAlunoECurso: vi.fn(), create: vi.fn() },
+  matriculasRepository: { findByAlunoECurso: vi.fn(), create: vi.fn(), update: vi.fn() },
 }));
 vi.mock("../../src/modules/financeiro/financeiro.repository", () => ({
   financeiroRepository: { findByChaveNatural: vi.fn(), create: vi.fn(), update: vi.fn() },
@@ -23,12 +25,23 @@ vi.mock("../../src/modules/financeiro/financeiro.repository", () => ({
 vi.mock("../../src/modules/mapeamento-importacao/mapeamento-importacao.repository", () => ({
   mapeamentoImportacaoRepository: { listarAtivos: vi.fn() },
 }));
+vi.mock("../../src/modules/cobranca/situacoes.repository", () => ({
+  situacoesRepository: { obterOuCriarPorNome: vi.fn() },
+}));
+vi.mock("../../src/modules/cobranca/historico.repository", () => ({
+  historicoRepository: { registrar: vi.fn() },
+}));
 
 const alunos = vi.mocked(alunosRepository);
 const cursos = vi.mocked(cursosRepository);
 const matriculas = vi.mocked(matriculasRepository);
 const financeiro = vi.mocked(financeiroRepository);
 const mapeamentos = vi.mocked(mapeamentoImportacaoRepository);
+const situacoes = vi.mocked(situacoesRepository);
+const historico = vi.mocked(historicoRepository);
+
+const USUARIO = "usuario-1";
+const SITUACAO_PENDENTE_FAKE = { id: "situacao-pendente-1", nome: "PENDENTE" };
 
 function linha(dados: Partial<Record<string, unknown>>, numeroLinha = 2): LinhaImportacaoValida {
   return {
@@ -49,6 +62,7 @@ function linha(dados: Partial<Record<string, unknown>>, numeroLinha = 2): LinhaI
 beforeEach(() => {
   vi.clearAllMocks();
   mapeamentos.listarAtivos.mockResolvedValue(MAPEAMENTOS_PADRAO as never);
+  situacoes.obterOuCriarPorNome.mockResolvedValue(SITUACAO_PENDENTE_FAKE as never);
 });
 
 describe("processarLinhasImportacao", () => {
@@ -58,11 +72,11 @@ describe("processarLinhasImportacao", () => {
     cursos.findByNome.mockResolvedValue(null);
     cursos.create.mockResolvedValue({ id: "curso-1" } as never);
     matriculas.findByAlunoECurso.mockResolvedValue(null);
-    matriculas.create.mockResolvedValue({ id: "matricula-1" } as never);
+    matriculas.create.mockResolvedValue({ id: "matricula-1", situacaoCobrancaId: null } as never);
     financeiro.findByChaveNatural.mockResolvedValue(null);
     financeiro.create.mockResolvedValue({ id: "parcela-1" } as never);
 
-    const resultado = await processarLinhasImportacao([linha({})]);
+    const resultado = await processarLinhasImportacao([linha({})], USUARIO);
 
     expect(resultado.novosAlunos).toBe(1);
     expect(resultado.alunosAtualizados).toBe(0);
@@ -78,11 +92,14 @@ describe("processarLinhasImportacao", () => {
     alunos.findByCpf.mockResolvedValue({ id: "aluno-1" } as never);
     alunos.update.mockResolvedValue({ id: "aluno-1" } as never);
     cursos.findByNome.mockResolvedValue({ id: "curso-1" } as never);
-    matriculas.findByAlunoECurso.mockResolvedValue({ id: "matricula-1" } as never);
+    matriculas.findByAlunoECurso.mockResolvedValue({
+      id: "matricula-1",
+      situacaoCobrancaId: "situacao-existente",
+    } as never);
     financeiro.findByChaveNatural.mockResolvedValue({ id: "parcela-1" } as never);
     financeiro.update.mockResolvedValue({ id: "parcela-1" } as never);
 
-    const resultado = await processarLinhasImportacao([linha({})]);
+    const resultado = await processarLinhasImportacao([linha({})], USUARIO);
 
     expect(resultado.novosAlunos).toBe(0);
     expect(resultado.alunosAtualizados).toBe(1);
@@ -96,23 +113,29 @@ describe("processarLinhasImportacao", () => {
     alunos.findByCpf.mockResolvedValue(null);
     alunos.create.mockResolvedValue({ id: "aluno-1" } as never);
     cursos.findByNome.mockResolvedValue({ id: "curso-1" } as never);
-    matriculas.findByAlunoECurso.mockResolvedValue({ id: "matricula-1" } as never);
+    matriculas.findByAlunoECurso.mockResolvedValue({
+      id: "matricula-1",
+      situacaoCobrancaId: "situacao-existente",
+    } as never);
     financeiro.findByChaveNatural.mockResolvedValue(null);
     financeiro.create.mockResolvedValue({ id: "parcela-1" } as never);
 
-    await processarLinhasImportacao([
-      linha({
-        ENDERECO: "Rua das Flores",
-        NUMERO: "123",
-        BAIRRO: "Centro",
-        COMPLEMENTO: "Apto 45",
-        CEP: "01310-100",
-        CIDADE: "São Paulo",
-        ESTADO: "SP",
-        FONE_1: "11999998888",
-        FONE_2: "1133334444",
-      }),
-    ]);
+    await processarLinhasImportacao(
+      [
+        linha({
+          ENDERECO: "Rua das Flores",
+          NUMERO: "123",
+          BAIRRO: "Centro",
+          COMPLEMENTO: "Apto 45",
+          CEP: "01310-100",
+          CIDADE: "São Paulo",
+          ESTADO: "SP",
+          FONE_1: "11999998888",
+          FONE_2: "1133334444",
+        }),
+      ],
+      USUARIO,
+    );
 
     expect(alunos.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -133,14 +156,17 @@ describe("processarLinhasImportacao", () => {
     alunos.findByCpf.mockResolvedValue(null);
     alunos.create.mockResolvedValue({ id: "aluno-2" } as never);
     cursos.findByNome.mockResolvedValue({ id: "curso-1" } as never);
-    matriculas.findByAlunoECurso.mockResolvedValue({ id: "matricula-1" } as never);
+    matriculas.findByAlunoECurso.mockResolvedValue({
+      id: "matricula-1",
+      situacaoCobrancaId: "situacao-existente",
+    } as never);
     financeiro.findByChaveNatural.mockResolvedValue(null);
     financeiro.create.mockResolvedValue({ id: "parcela-2" } as never);
 
     const linhaInvalida = linha({ CNPJ_CPF: "11111111111" }, 2);
     const linhaOk = linha({ CNPJ_CPF: "39053344705" }, 3);
 
-    const resultado = await processarLinhasImportacao([linhaInvalida, linhaOk]);
+    const resultado = await processarLinhasImportacao([linhaInvalida, linhaOk], USUARIO);
 
     expect(resultado.erros).toHaveLength(1);
     expect(resultado.erros[0].linha).toBe(2);
@@ -151,9 +177,15 @@ describe("processarLinhasImportacao", () => {
     alunos.findByCpf.mockResolvedValue({ id: "aluno-1" } as never);
     alunos.update.mockResolvedValue({ id: "aluno-1" } as never);
     cursos.findByNome.mockResolvedValue({ id: "curso-1" } as never);
-    matriculas.findByAlunoECurso.mockResolvedValue({ id: "matricula-1" } as never);
+    matriculas.findByAlunoECurso.mockResolvedValue({
+      id: "matricula-1",
+      situacaoCobrancaId: "situacao-existente",
+    } as never);
 
-    const resultado = await processarLinhasImportacao([linha({ DT_VENCIMENTO: "não é uma data" })]);
+    const resultado = await processarLinhasImportacao(
+      [linha({ DT_VENCIMENTO: "não é uma data" })],
+      USUARIO,
+    );
 
     expect(resultado.erros).toHaveLength(1);
     expect(financeiro.create).not.toHaveBeenCalled();
@@ -163,12 +195,15 @@ describe("processarLinhasImportacao", () => {
     alunos.findByCpf.mockResolvedValue({ id: "aluno-1" } as never);
     alunos.update.mockResolvedValue({ id: "aluno-1" } as never);
     cursos.findByNome.mockResolvedValue({ id: "curso-1" } as never);
-    matriculas.findByAlunoECurso.mockResolvedValue({ id: "matricula-1" } as never);
+    matriculas.findByAlunoECurso.mockResolvedValue({
+      id: "matricula-1",
+      situacaoCobrancaId: "situacao-existente",
+    } as never);
     financeiro.findByChaveNatural.mockResolvedValue({ id: "parcela-1" } as never);
     financeiro.update.mockResolvedValue({ id: "parcela-1" } as never);
 
     const aoProgredir = vi.fn();
-    await processarLinhasImportacao([linha({}, 2), linha({}, 3)], aoProgredir);
+    await processarLinhasImportacao([linha({}, 2), linha({}, 3)], USUARIO, aoProgredir);
 
     expect(aoProgredir).toHaveBeenNthCalledWith(1, 50);
     expect(aoProgredir).toHaveBeenNthCalledWith(2, 100);
@@ -179,11 +214,14 @@ describe("processarLinhasImportacao", () => {
       alunos.findByCpf.mockResolvedValue({ id: "aluno-1" } as never);
       alunos.update.mockResolvedValue({ id: "aluno-1" } as never);
       cursos.findByCodigo.mockResolvedValue({ id: "curso-1" } as never);
-      matriculas.findByAlunoECurso.mockResolvedValue({ id: "matricula-1" } as never);
+      matriculas.findByAlunoECurso.mockResolvedValue({
+        id: "matricula-1",
+        situacaoCobrancaId: "situacao-existente",
+      } as never);
       financeiro.findByChaveNatural.mockResolvedValue(null);
       financeiro.create.mockResolvedValue({ id: "parcela-1" } as never);
 
-      await processarLinhasImportacao([linha({ ID_CURSO: "CURSO-EXTERNO-42" })]);
+      await processarLinhasImportacao([linha({ ID_CURSO: "CURSO-EXTERNO-42" })], USUARIO);
 
       expect(cursos.findByCodigo).toHaveBeenCalledWith("CURSO-EXTERNO-42");
       expect(cursos.findByNome).not.toHaveBeenCalled();
@@ -196,11 +234,14 @@ describe("processarLinhasImportacao", () => {
       cursos.findByCodigo.mockResolvedValue(null);
       cursos.findByNome.mockResolvedValue(null);
       cursos.create.mockResolvedValue({ id: "curso-novo" } as never);
-      matriculas.findByAlunoECurso.mockResolvedValue({ id: "matricula-1" } as never);
+      matriculas.findByAlunoECurso.mockResolvedValue({
+        id: "matricula-1",
+        situacaoCobrancaId: "situacao-existente",
+      } as never);
       financeiro.findByChaveNatural.mockResolvedValue(null);
       financeiro.create.mockResolvedValue({ id: "parcela-1" } as never);
 
-      await processarLinhasImportacao([linha({ ID_CURSO: "CURSO-EXTERNO-99" })]);
+      await processarLinhasImportacao([linha({ ID_CURSO: "CURSO-EXTERNO-99" })], USUARIO);
 
       expect(cursos.create).toHaveBeenCalledWith(
         expect.objectContaining({ codigo: "CURSO-EXTERNO-99" }),
@@ -211,11 +252,14 @@ describe("processarLinhasImportacao", () => {
       alunos.findByCpf.mockResolvedValue({ id: "aluno-1" } as never);
       alunos.update.mockResolvedValue({ id: "aluno-1" } as never);
       cursos.findByNome.mockResolvedValue({ id: "curso-1" } as never);
-      matriculas.findByAlunoECurso.mockResolvedValue({ id: "matricula-1" } as never);
+      matriculas.findByAlunoECurso.mockResolvedValue({
+        id: "matricula-1",
+        situacaoCobrancaId: "situacao-existente",
+      } as never);
       financeiro.findByChaveNatural.mockResolvedValue(null);
       financeiro.create.mockResolvedValue({ id: "parcela-1" } as never);
 
-      await processarLinhasImportacao([linha({})]);
+      await processarLinhasImportacao([linha({})], USUARIO);
 
       expect(cursos.findByCodigo).not.toHaveBeenCalled();
       expect(cursos.findByNome).toHaveBeenCalledWith("Engenharia");
@@ -227,11 +271,17 @@ describe("processarLinhasImportacao", () => {
       alunos.findByCpf.mockResolvedValue({ id: "aluno-1" } as never);
       alunos.update.mockResolvedValue({ id: "aluno-1" } as never);
       cursos.findByNome.mockResolvedValue({ id: "curso-1" } as never);
-      matriculas.findByAlunoECurso.mockResolvedValue({ id: "matricula-1" } as never);
+      matriculas.findByAlunoECurso.mockResolvedValue({
+        id: "matricula-1",
+        situacaoCobrancaId: "situacao-existente",
+      } as never);
       financeiro.findByChaveNatural.mockResolvedValue(null);
       financeiro.create.mockResolvedValue({ id: "parcela-1" } as never);
 
-      await processarLinhasImportacao([linha({ TITULO_VALOR_JUROS_E_MULTA: "160,50" })]);
+      await processarLinhasImportacao(
+        [linha({ TITULO_VALOR_JUROS_E_MULTA: "160,50" })],
+        USUARIO,
+      );
 
       expect(financeiro.create).toHaveBeenCalledWith(
         expect.objectContaining({ valorOrigemComJurosEMulta: 160.5 }),
@@ -242,14 +292,79 @@ describe("processarLinhasImportacao", () => {
       alunos.findByCpf.mockResolvedValue({ id: "aluno-1" } as never);
       alunos.update.mockResolvedValue({ id: "aluno-1" } as never);
       cursos.findByNome.mockResolvedValue({ id: "curso-1" } as never);
-      matriculas.findByAlunoECurso.mockResolvedValue({ id: "matricula-1" } as never);
+      matriculas.findByAlunoECurso.mockResolvedValue({
+        id: "matricula-1",
+        situacaoCobrancaId: "situacao-existente",
+      } as never);
       financeiro.findByChaveNatural.mockResolvedValue(null);
       financeiro.create.mockResolvedValue({ id: "parcela-1" } as never);
 
-      await processarLinhasImportacao([linha({})]);
+      await processarLinhasImportacao([linha({})], USUARIO);
 
       const dadosCriados = financeiro.create.mock.calls[0][0] as Record<string, unknown>;
       expect(dadosCriados.valorOrigemComJurosEMulta).toBeUndefined();
+    });
+  });
+
+  describe("Situação de cobrança padrão (planilha real, 2026-07-09)", () => {
+    it("atribui a situação 'PENDENTE' a uma matrícula recém-criada, sem situação", async () => {
+      alunos.findByCpf.mockResolvedValue(null);
+      alunos.create.mockResolvedValue({ id: "aluno-1" } as never);
+      cursos.findByNome.mockResolvedValue({ id: "curso-1" } as never);
+      matriculas.findByAlunoECurso.mockResolvedValue(null);
+      matriculas.create.mockResolvedValue({ id: "matricula-1", situacaoCobrancaId: null } as never);
+      financeiro.findByChaveNatural.mockResolvedValue(null);
+      financeiro.create.mockResolvedValue({ id: "parcela-1" } as never);
+
+      await processarLinhasImportacao([linha({})], USUARIO);
+
+      expect(situacoes.obterOuCriarPorNome).toHaveBeenCalledWith(
+        "PENDENTE",
+        expect.objectContaining({ ativa: true }),
+      );
+      expect(matriculas.update).toHaveBeenCalledWith("matricula-1", {
+        situacaoCobranca: { connect: { id: SITUACAO_PENDENTE_FAKE.id } },
+      });
+      expect(historico.registrar).toHaveBeenCalledWith(
+        "matricula-1",
+        USUARIO,
+        expect.stringContaining("PENDENTE"),
+      );
+    });
+
+    it("atribui 'PENDENTE' a uma matrícula já existente sem situação definida", async () => {
+      alunos.findByCpf.mockResolvedValue({ id: "aluno-1" } as never);
+      alunos.update.mockResolvedValue({ id: "aluno-1" } as never);
+      cursos.findByNome.mockResolvedValue({ id: "curso-1" } as never);
+      matriculas.findByAlunoECurso.mockResolvedValue({
+        id: "matricula-1",
+        situacaoCobrancaId: null,
+      } as never);
+      financeiro.findByChaveNatural.mockResolvedValue(null);
+      financeiro.create.mockResolvedValue({ id: "parcela-1" } as never);
+
+      await processarLinhasImportacao([linha({})], USUARIO);
+
+      expect(matriculas.update).toHaveBeenCalledWith("matricula-1", {
+        situacaoCobranca: { connect: { id: SITUACAO_PENDENTE_FAKE.id } },
+      });
+    });
+
+    it("não sobrescreve a situação de uma matrícula que já tem uma definida", async () => {
+      alunos.findByCpf.mockResolvedValue({ id: "aluno-1" } as never);
+      alunos.update.mockResolvedValue({ id: "aluno-1" } as never);
+      cursos.findByNome.mockResolvedValue({ id: "curso-1" } as never);
+      matriculas.findByAlunoECurso.mockResolvedValue({
+        id: "matricula-1",
+        situacaoCobrancaId: "situacao-ja-definida",
+      } as never);
+      financeiro.findByChaveNatural.mockResolvedValue(null);
+      financeiro.create.mockResolvedValue({ id: "parcela-1" } as never);
+
+      await processarLinhasImportacao([linha({})], USUARIO);
+
+      expect(matriculas.update).not.toHaveBeenCalled();
+      expect(historico.registrar).not.toHaveBeenCalled();
     });
   });
 });

@@ -55,4 +55,28 @@ describe("parsePlanilhaImportacao", () => {
     expect(validas).toHaveLength(0);
     expect(erros).toHaveLength(0);
   });
+
+  it("tolera espaço a mais no nome da coluna estrutural (planilha real, 2026-07-09)", () => {
+    const linhaComEspacoNoCabecalho = { ...linhaValida };
+    delete (linhaComEspacoNoCabecalho as Record<string, unknown>).CURSO;
+    (linhaComEspacoNoCabecalho as Record<string, unknown>)["CURSO "] = "Engenharia";
+
+    const { validas, erros } = parsePlanilhaImportacao(
+      bufferDaPlanilha([linhaComEspacoNoCabecalho]),
+    );
+
+    expect(erros).toHaveLength(0);
+    expect(validas[0].dados).toMatchObject({ CURSO: "Engenharia" });
+  });
+
+  it("aceita NOME_CURSO como alias da coluna estrutural CURSO", () => {
+    const linhaComAlias = { ...linhaValida };
+    delete (linhaComAlias as Record<string, unknown>).CURSO;
+    (linhaComAlias as Record<string, unknown>).NOME_CURSO = "Engenharia";
+
+    const { validas, erros } = parsePlanilhaImportacao(bufferDaPlanilha([linhaComAlias]));
+
+    expect(erros).toHaveLength(0);
+    expect(validas[0].dados).toMatchObject({ CURSO: "Engenharia" });
+  });
 });

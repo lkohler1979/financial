@@ -1,3 +1,5 @@
+import { arredondarAbnt } from "../../shared/utils/arredondamento";
+
 // Cálculo de multa e juros do relatório de inadimplência (PRD seção 15/23).
 //
 // Fórmula e parâmetros confirmados pelo usuário em 2026-07-03: multa flat
@@ -5,7 +7,8 @@
 // configuráveis via `Configuracao` (multaPercentual, jurosDiarioPercentual,
 // jurosContarDiaGeracao) — padrão de fábrica: 2% de multa e 0,033% de juros
 // ao dia. `jurosContarDiaGeracao` decide se o dia da geração do relatório
-// entra ou não na contagem de dias de atraso.
+// entra ou não na contagem de dias de atraso. Arredondamento segue a NBR
+// 5891 (ABNT), decisão do usuário em 2026-07-09.
 export interface ConfiguracaoFinanceira {
   multaPercentual: number;
   jurosDiarioPercentual: number;
@@ -25,10 +28,10 @@ export function calcularMultaJuros(
   config: ConfiguracaoFinanceira,
 ): CalculoParcela {
   const dias = Math.max(diasAtraso, 0);
-  const multa = arredondar(valorBruto * (config.multaPercentual / 100));
-  const juros = arredondar(valorBruto * (config.jurosDiarioPercentual / 100) * dias);
-  const total = arredondar(valorBruto + multa + juros);
-  return { valorBruto: arredondar(valorBruto), multa, juros, total };
+  const multa = arredondarAbnt(valorBruto * (config.multaPercentual / 100));
+  const juros = arredondarAbnt(valorBruto * (config.jurosDiarioPercentual / 100) * dias);
+  const total = arredondarAbnt(valorBruto + multa + juros);
+  return { valorBruto: arredondarAbnt(valorBruto), multa, juros, total };
 }
 
 /**
@@ -56,8 +59,4 @@ export function calcularDiasAtraso(
   );
   const ajuste = jurosContarDiaGeracao ? 0 : 1;
   return Math.max(dias - ajuste, 0);
-}
-
-function arredondar(valor: number): number {
-  return Math.round(valor * 100) / 100;
 }

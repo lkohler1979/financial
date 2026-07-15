@@ -36,8 +36,21 @@ RUN apk add --no-cache openssl
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build /app/apps/api/dist ./dist
-COPY --from=build /app/apps/api/node_modules ./node_modules
+# Copia o node_modules da RAIZ do monorepo, não o de apps/api — com npm
+# workspaces, a maioria das dependências (bullmq, xlsx, docx, pdfkit,
+# @prisma/client gerado, etc.) fica hospedada (hoisted) no node_modules da
+# raiz, e apps/api/node_modules costuma ficar quase vazio. Copiar só o de
+# apps/api causava `MODULE_NOT_FOUND` em runtime (ex.: dist/jobs/worker.js).
+COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/apps/api/prisma ./prisma
 COPY --from=build /app/apps/api/templates ./templates
 EXPOSE 3000
 CMD ["node", "dist/server.js"]
+
+# ---------------------------------------------------------------------------
+# Mesma imagem de produção, só trocando o comando padrão para o worker —
+# existe para plataformas (ex.: EasyPanel) onde não há um campo de "Start
+# Command" fácil de sobrescrever por serviço; nesse caso builda-se esta
+# imagem separada em vez de reaproveitar `production` com override manual.
+FROM production AS production-worker
+CMD ["node", "dist/jobs/worker.js"]

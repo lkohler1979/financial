@@ -24,7 +24,18 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
-app.get("/health", (_req: Request, res: Response) => {
+// Alguns proxies reversos na frente da API (ex.: Traefik/EasyPanel) removem o
+// prefixo público "/api" antes de repassar a requisição pro container. Em
+// dev/docker-compose, sem proxy no meio, o prefixo chega intacto. Recolocamos
+// o prefixo quando ele já não estiver presente, pra funcionar nos dois casos.
+app.use((req, _res, next) => {
+  if (req.url !== "/api" && !req.url.startsWith("/api/")) {
+    req.url = `/api${req.url}`;
+  }
+  next();
+});
+
+app.get("/api/health", (_req: Request, res: Response) => {
   res.json({ status: "ok", service: "ethos-financial-api" });
 });
 

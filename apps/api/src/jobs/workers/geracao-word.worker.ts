@@ -21,10 +21,10 @@ import { financeiroRepository } from "../../modules/financeiro/financeiro.reposi
 // Nomes usados no PRD (seção 23.1) para a situação de cobrança pós-protesto.
 // Se ainda não existirem (ambiente novo, sem cadastro manual), são criados
 // automaticamente com um padrão razoável na primeira geração.
-const SITUACAO_ENVIADO_PARA_PROTESTO = "Enviado para Protesto";
+const SITUACAO_ENVIADO_PARA_PROTESTO = "PROTESTO ENVIADO";
 // Matrícula tem parcelas vencidas enviadas a protesto, mas ainda tem outras
 // parcelas em aberto (ainda não vencidas) — protesto parcial, decisão do
-// usuário em 2026-07-06: fica "Pendente" em vez de "Enviado para Protesto",
+// usuário em 2026-07-06: fica "Pendente" em vez de "PROTESTO ENVIADO",
 // com uma TAG avisando que parte da dívida já foi protestada.
 const SITUACAO_PENDENTE = "Pendente";
 const TAG_TITULOS_ENVIADOS_PARA_PROTESTO = "Existem títulos enviados para protesto";
@@ -82,8 +82,8 @@ async function processarJob(job: Job<GeracaoWordJobData>): Promise<void> {
   // fica "Pendente" com a TAG de aviso em vez de "Enviado para Protesto".
   const [situacaoProtesto, situacaoPendente, tagProtestoParcial] = await Promise.all([
     situacoesRepository.obterOuCriarPorNome(SITUACAO_ENVIADO_PARA_PROTESTO, {
-      cor: "#A32D2D",
-      ordem: 90,
+      cor: "#C0392B",
+      ordem: 92,
       ativa: true,
       participaNovosRelatorios: false,
     }),
@@ -164,18 +164,38 @@ async function processarJob(job: Job<GeracaoWordJobData>): Promise<void> {
       // sucesso independente disto dar certo ou não — só registramos o
       // problema sem marcar erro no item.
 
-      // As parcelas incluídas no documento passam para PROTESTADO — essa é a
-      // base da situação "Vencida e enviada para protesto" na tela.
+      // As parcelas incluídas no documento passam para PROTESTO_ENVIADO — essa
+      // é a base da situação "Vencida e enviada para protesto" na tela. Junto,
+      // gravamos o multa/juros/total efetivamente usados no documento
+      // (mesmo cálculo de `dadosDocumento.parcelas` acima) para a Ficha de
+      // Cobrança nunca divergir do documento já gerado (decisão do usuário,
+      // 2026-07-09).
       for (const parcela of parcelas) {
         try {
+          const diasAtrasoParcela = calcularDiasAtraso(
+            parcela.vencimento,
+            hoje,
+            configFinanceira.jurosContarDiaGeracao,
+          );
+          const { multa, juros, total } = calcularMultaJuros(
+            Number(parcela.valor),
+            diasAtrasoParcela,
+            configFinanceira,
+          );
+
           await financeiroService.atualizar(
             parcela.id,
-            { status: "PROTESTADO" },
+            {
+              status: "PROTESTO_ENVIADO",
+              multaProtesto: multa,
+              jurosProtesto: juros,
+              totalProtesto: total,
+            },
             relatorio.usuarioId,
           );
         } catch (erroParcela) {
           console.error(
-            `[worker:geracao-word] falha ao marcar parcela ${parcela.id} como PROTESTADO`,
+            `[worker:geracao-word] falha ao marcar parcela ${parcela.id} como PROTESTO_ENVIADO`,
             erroParcela,
           );
         }

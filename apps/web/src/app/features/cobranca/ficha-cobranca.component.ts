@@ -19,6 +19,8 @@ import { RelatoriosService } from "../../core/services/relatorios.service";
 import { FichaCobranca, SituacaoCobranca, Tag } from "../../core/models/cobranca.model";
 import { Parcela } from "../../core/models/parcela.model";
 import { formatarCpf } from "../../shared/utils/cpf.util";
+import { arredondarAbnt } from "../../shared/utils/arredondamento.util";
+import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/download.util";
 
 @Component({
   selector: "app-ficha-cobranca",
@@ -124,6 +126,14 @@ import { formatarCpf } from "../../shared/utils/cpf.util";
                 <th class="py-1 font-medium">Tipo de título</th>
                 <th class="py-1 font-medium">Situação</th>
                 <th class="py-1 font-medium text-right">Valor</th>
+                <th class="py-1 font-medium text-right">Multa</th>
+                <th class="py-1 font-medium text-right">Juros</th>
+                <th
+                  class="py-1 font-medium text-right"
+                  title="Valor + multa + juros calculados pelo sistema (Configurações), na data de hoje"
+                >
+                  Total
+                </th>
                 <th
                   class="py-1 font-medium text-right"
                   title="Valor com juros e multa já calculado pelo sistema de origem da planilha — só para conferência, não é usado no cálculo do sistema"
@@ -146,6 +156,9 @@ import { formatarCpf } from "../../shared/utils/cpf.util";
                   >
                 </td>
                 <td class="py-1 text-right">{{ parcela.valor | currency: "BRL" }}</td>
+                <td class="py-1 text-right">{{ calculoParcela(parcela).multa | currency: "BRL" }}</td>
+                <td class="py-1 text-right">{{ calculoParcela(parcela).juros | currency: "BRL" }}</td>
+                <td class="py-1 text-right">{{ calculoParcela(parcela).total | currency: "BRL" }}</td>
                 <td class="py-1 text-right text-gray-400">
                   {{
                     parcela.valorOrigemComJurosEMulta !== undefined &&
@@ -165,6 +178,9 @@ import { formatarCpf } from "../../shared/utils/cpf.util";
               <tr class="border-t font-medium">
                 <td class="py-1" colspan="5">Total devedor</td>
                 <td class="py-1 text-right">{{ totalDevedor() | currency: "BRL" }}</td>
+                <td class="py-1 text-right">{{ totalMultaDevedor() | currency: "BRL" }}</td>
+                <td class="py-1 text-right">{{ totalJurosDevedor() | currency: "BRL" }}</td>
+                <td class="py-1 text-right">{{ totalComMultaEJurosDevedor() | currency: "BRL" }}</td>
                 <td class="py-1"></td>
               </tr>
             }
@@ -228,6 +244,12 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
   gerando = false;
   /** Configuracao.diasAtraso — limiar para "vencida" vs. "vencida há mais de N dias". */
   diasAtrasoMinimo = 0;
+  /** Multa/juros (Configuracao) — mesma fórmula do relatório de inadimplência
+   * (apps/api/src/modules/relatorios/calculo-financeiro.ts), calculados aqui
+   * com a data de hoje para exibir na grade de parcelas. */
+  private multaPercentual = 0;
+  private jurosDiarioPercentual = 0;
+  private jurosContarDiaGeracao = true;
   /** Relatório da última geração de documento nesta sessão — habilita o menu
    * de download (Word/PDF) sem precisar abrir o histórico de relatórios. */
   ultimoRelatorioGeradoId?: string;
@@ -241,7 +263,12 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
     this.matriculaId = this.route.snapshot.paramMap.get("matriculaId") ?? "";
     this.service.listarSituacoes(true).subscribe((res) => (this.situacoes = res));
     this.service.listarTags().subscribe((res) => (this.todasTags = res));
-    this.configuracoesService.obter().subscribe((res) => (this.diasAtrasoMinimo = res.diasAtraso));
+    this.configuracoesService.obter().subscribe((res) => {
+      this.diasAtrasoMinimo = res.diasAtraso;
+      this.multaPercentual = res.multaPercentual;
+      this.jurosDiarioPercentual = res.jurosDiarioPercentual;
+      this.jurosContarDiaGeracao = res.jurosContarDiaGeracao;
+    });
     this.carregar();
   }
 
@@ -281,8 +308,11 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
    * "vencida" não é um StatusParcela — é calculada a partir da data.
    */
   situacaoParcela(parcela: Parcela): { rotulo: string; classe: string } {
-    if (parcela.status === "PROTESTADO") {
+    if (parcela.status === "PROTESTO_ENVIADO") {
       return { rotulo: "Vencida e enviada para protesto", classe: "bg-red-100 text-red-800" };
+    }
+    if (parcela.status === "PROTESTADO") {
+      return { rotulo: "Protestada", classe: "bg-red-100 text-red-800" };
     }
     if (parcela.status === "PAGO") {
       return { rotulo: "Paga", classe: "bg-green-100 text-green-700" };
@@ -314,8 +344,73 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
 
   totalDevedor(): number {
     return this.parcelas
-      .filter((p) => p.status === "EM_ABERTO" || p.status === "PROTESTADO")
+      .filter(
+        (p) => p.status === "EM_ABERTO" || p.status === "PROTESTO_ENVIADO" || p.status === "PROTESTADO",
+      )
       .reduce((soma, p) => soma + Number(p.valor), 0);
+  }
+
+  /**
+   * Multa/juros/total da parcela. Se a parcela já foi protestada (documento
+   * já gerado), usa os valores CONGELADOS naquele momento
+   * (`multaProtesto`/`jurosProtesto`/`totalProtesto`, gravados por
+   * `geracao-word.worker.ts`) — nunca recalculados depois, senão a grade
+   * divergiria cada vez mais do documento já gerado conforme os dias passam
+   * (decisão do usuário, 2026-07-09: os dois precisam ser sempre iguais).
+   * Só para parcelas ainda sem protesto o cálculo é ao vivo, com a mesma
+   * fórmula do relatório de inadimplência (calculo-financeiro.ts): multa
+   * flat sobre o valor bruto, juros pro-rata pelos dias corridos desde o
+   * vencimento até hoje. Parcela ainda "a vencer" não tem multa/juros ainda.
+   */
+  calculoParcela(parcela: Parcela): { multa: number; juros: number; total: number } {
+    if (parcela.totalProtesto !== undefined && parcela.totalProtesto !== null) {
+      return {
+        multa: Number(parcela.multaProtesto ?? 0),
+        juros: Number(parcela.jurosProtesto ?? 0),
+        total: Number(parcela.totalProtesto),
+      };
+    }
+
+    const valor = Number(parcela.valor);
+    const hoje = new Date();
+    const vencimento = new Date(parcela.vencimento);
+
+    if (vencimento >= hoje) {
+      return { multa: 0, juros: 0, total: arredondarAbnt(valor) };
+    }
+
+    const ajuste = this.jurosContarDiaGeracao ? 0 : 1;
+    const diasAtraso = Math.max(
+      Math.floor((this.inicioDoDia(hoje).getTime() - this.inicioDoDia(vencimento).getTime()) / 86_400_000) -
+        ajuste,
+      0,
+    );
+
+    const multa = arredondarAbnt(valor * (this.multaPercentual / 100));
+    const juros = arredondarAbnt(valor * (this.jurosDiarioPercentual / 100) * diasAtraso);
+    return { multa, juros, total: arredondarAbnt(valor + multa + juros) };
+  }
+
+  totalMultaDevedor(): number {
+    return this.parcelasDevedoras().reduce((soma, p) => soma + this.calculoParcela(p).multa, 0);
+  }
+
+  totalJurosDevedor(): number {
+    return this.parcelasDevedoras().reduce((soma, p) => soma + this.calculoParcela(p).juros, 0);
+  }
+
+  totalComMultaEJurosDevedor(): number {
+    return this.parcelasDevedoras().reduce((soma, p) => soma + this.calculoParcela(p).total, 0);
+  }
+
+  private parcelasDevedoras(): Parcela[] {
+    return this.parcelas.filter(
+      (p) => p.status === "EM_ABERTO" || p.status === "PROTESTO_ENVIADO" || p.status === "PROTESTADO",
+    );
+  }
+
+  private inicioDoDia(data: Date): Date {
+    return new Date(data.getFullYear(), data.getMonth(), data.getDate());
   }
 
   mudarSituacao(situacaoCobrancaId: string): void {
@@ -448,9 +543,14 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
 
   baixarUltimoDocumento(formato: "docx" | "pdf"): void {
     if (!this.ultimoRelatorioGeradoId) return;
-    window.open(
-      this.relatoriosService.urlDownload(this.ultimoRelatorioGeradoId, this.matriculaId, formato),
-      "_blank",
-    );
+    this.relatoriosService
+      .baixarDocumento(this.ultimoRelatorioGeradoId, this.matriculaId, formato)
+      .subscribe((resp) => {
+        const nome = extrairNomeArquivo(
+          resp.headers.get("content-disposition"),
+          `documento.${formato}`,
+        );
+        salvarBlobComoArquivo(resp.body as Blob, nome);
+      });
   }
 }

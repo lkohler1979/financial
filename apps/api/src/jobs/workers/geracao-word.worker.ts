@@ -113,6 +113,7 @@ async function processarJob(job: Job<GeracaoWordJobData>): Promise<void> {
       const parcelas = await relatoriosRepository.buscarParcelasVencidasDaMatricula(
         item.matriculaId,
         relatorio.incluirParcelasVencidasRecentes ? 0 : relatorio.diasAtraso ?? 0,
+        relatorio.tipoTituloProtesto,
       );
 
       const dadosDocumento = {

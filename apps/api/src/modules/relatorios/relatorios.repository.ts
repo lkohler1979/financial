@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, TipoTituloProtesto } from "@prisma/client";
 import { prisma } from "../../database/prisma";
 import {
   calcularDiasAtraso,
@@ -21,6 +21,12 @@ function dataLimiteAtraso(hoje: Date, diasAtrasoMinimo: number): Date {
   const limite = new Date(hoje);
   limite.setDate(limite.getDate() - diasAtrasoMinimo);
   return limite;
+}
+
+/** AMBOS (padrão) não restringe — inclui qualquer tipoTitulo, mesmo nulo/outro valor. */
+function filtroTipoTitulo(tipoTituloProtesto: TipoTituloProtesto): Prisma.StringFilter | undefined {
+  if (tipoTituloProtesto === "AMBOS") return undefined;
+  return { equals: tipoTituloProtesto, mode: "insensitive" };
 }
 
 export interface MatriculaElegivel {
@@ -65,9 +71,11 @@ export const relatoriosRepository = {
     configFinanceira: ConfiguracaoFinanceira,
     filtrosCobranca: FiltrosCobrancaElegibilidade,
     diasAtrasoMinimo: number,
+    tipoTituloProtesto: TipoTituloProtesto = "AMBOS",
   ): Promise<MatriculaElegivel[]> {
     const hoje = inicioHoje();
     const limiteVencimento = dataLimiteAtraso(hoje, diasAtrasoMinimo);
+    const tipoTitulo = filtroTipoTitulo(tipoTituloProtesto);
 
     const matriculas = await prisma.matricula.findMany({
       where: {
@@ -89,12 +97,24 @@ export const relatoriosRepository = {
               ],
             }
           : {}),
-        parcelas: { some: { status: "EM_ABERTO", vencimento: { lt: limiteVencimento } } },
+        parcelas: {
+          some: {
+            status: "EM_ABERTO",
+            vencimento: { lt: limiteVencimento },
+            ...(tipoTitulo ? { tipoTitulo } : {}),
+          },
+        },
       },
       include: {
         aluno: { select: { id: true, nome: true, cpf: true } },
         curso: { select: { id: true, nome: true } },
-        parcelas: { where: { status: "EM_ABERTO", vencimento: { lt: limiteVencimento } } },
+        parcelas: {
+          where: {
+            status: "EM_ABERTO",
+            vencimento: { lt: limiteVencimento },
+            ...(tipoTitulo ? { tipoTitulo } : {}),
+          },
+        },
         situacaoCobranca: { select: { id: true, nome: true } },
         tags: { select: { tag: { select: { id: true, nome: true } } } },
       },
@@ -181,11 +201,21 @@ export const relatoriosRepository = {
    * protesto — só as vencidas há mais de `diasAtrasoMinimo` dias
    * (Configuracao.diasAtraso), mesmo critério usado para levantar os elegíveis.
    */
-  buscarParcelasVencidasDaMatricula(matriculaId: string, diasAtrasoMinimo = 0) {
+  buscarParcelasVencidasDaMatricula(
+    matriculaId: string,
+    diasAtrasoMinimo = 0,
+    tipoTituloProtesto: TipoTituloProtesto = "AMBOS",
+  ) {
     const hoje = inicioHoje();
     const limiteVencimento = dataLimiteAtraso(hoje, diasAtrasoMinimo);
+    const tipoTitulo = filtroTipoTitulo(tipoTituloProtesto);
     return prisma.parcela.findMany({
-      where: { matriculaId, status: "EM_ABERTO", vencimento: { lt: limiteVencimento } },
+      where: {
+        matriculaId,
+        status: "EM_ABERTO",
+        vencimento: { lt: limiteVencimento },
+        ...(tipoTitulo ? { tipoTitulo } : {}),
+      },
       orderBy: { vencimento: "asc" },
     });
   },

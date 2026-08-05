@@ -13,6 +13,10 @@ export const filtrosElegibilidadeSchema = z.object({
   // para incluir também as parcelas só "vencidas" (dentro do mínimo) da
   // mesma matrícula. Só importa no momento da geração (relatorios.gerar).
   incluirParcelasVencidasRecentes: z.coerce.boolean().default(false),
+  // Filtro por Parcela.tipoTitulo (pedido do usuário): gerar protesto só com
+  // mensalidade, só com renegociação, ou ambas. Sem valor informado, usa o
+  // padrão de Configuracao.tipoTituloProtestoDefault (relatorios.service.ts).
+  tipoTituloProtesto: z.enum(["MENSALIDADE", "RENEGOCIACAO", "AMBOS"]).optional(),
 });
 
 // Se `matriculaIds` for informado, a geração fica restrita a essa seleção

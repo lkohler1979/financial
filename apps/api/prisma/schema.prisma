@@ -41,6 +41,15 @@ enum FrequenciaImportacao {
   MENSAL
 }
 
+// Filtro de quais parcelas (por Parcela.tipoTitulo) entram no documento de
+// protesto — pedido do usuário: gerar só com mensalidade, só com
+// renegociação, ou com ambas (padrão, sem restrição).
+enum TipoTituloProtesto {
+  MENSALIDADE
+  RENEGOCIACAO
+  AMBOS
+}
+
 enum TabelaDestinoImportacao {
   ALUNO
   MATRICULA
@@ -202,6 +211,11 @@ model Configuracao {
   /// false: conta só até o dia anterior à geração.
   jurosContarDiaGeracao  Boolean @default(true) @map("juros_contar_dia_geracao")
 
+  /// Padrão pré-selecionado nas telas de geração de protesto (/relatorios e
+  /// ficha de cobrança) para qual tipo de título entra no documento — pode
+  /// ser sobrescrito por filtro explícito em cada geração.
+  tipoTituloProtestoDefault TipoTituloProtesto @default(AMBOS) @map("tipo_titulo_protesto_default")
+
   @@map("configuracoes")
 }
 
@@ -241,6 +255,10 @@ model RelatorioInadimplencia {
   /// quando true, inclui também as parcelas só "vencidas" (menos que o
   /// mínimo) da mesma matrícula, no mesmo documento.
   incluirParcelasVencidasRecentes Boolean @default(false) @map("incluir_parcelas_vencidas_recentes")
+  /// Filtro por Parcela.tipoTitulo usado nesta geração (persistido para o
+  /// worker aplicar o mesmo filtro ao montar o documento, de forma
+  /// assíncrona — ver geracao-word.worker.ts).
+  tipoTituloProtesto     TipoTituloProtesto @default(AMBOS) @map("tipo_titulo_protesto")
   totalElegiveis         Int      @default(0) @map("total_elegiveis")
   totalDocumentosGerados Int      @default(0) @map("total_documentos_gerados")
   itens                  Json?

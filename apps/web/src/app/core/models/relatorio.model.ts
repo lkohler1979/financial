@@ -1,3 +1,5 @@
+export type TipoTituloProtesto = "MENSALIDADE" | "RENEGOCIACAO" | "AMBOS";
+
 export interface MatriculaElegivel {
   matriculaId: string;
   alunoId: string;
@@ -29,6 +31,7 @@ export interface RelatorioInadimplencia {
   data: string;
   diasAtraso?: number | null;
   incluirParcelasVencidasRecentes?: boolean;
+  tipoTituloProtesto?: TipoTituloProtesto;
   valorMinimo?: number | null;
   cursoId?: string | null;
   curso?: { id: string; nome: string } | null;
@@ -66,4 +69,8 @@ export interface FiltrosRelatorio {
    * `diasAtraso` dias; quando true, inclui também a parcela só "vencida" da
    * mesma matrícula, no mesmo documento (decisão do usuário, 2026-07-07). */
   incluirParcelasVencidasRecentes?: boolean;
+  /** Filtro por tipo de título (Parcela.tipoTitulo): gerar protesto só com
+   * mensalidade, só com renegociação, ou ambas (padrão). Sem valor, usa
+   * Configuracao.tipoTituloProtestoDefault. */
+  tipoTituloProtesto?: TipoTituloProtesto;
 }

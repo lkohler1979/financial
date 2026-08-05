@@ -15,6 +15,7 @@ import {
   AtualizarConfiguracaoPayload,
   FRASE_CONFIRMACAO_LIMPAR_BASE,
   FrequenciaImportacao,
+  TipoTituloProtesto,
 } from "../../core/models/configuracao.model";
 import {
   AcaoColunaAusente,
@@ -70,6 +71,16 @@ import {
             <mat-label>Dias de atraso mínimo</mat-label>
             <input matInput type="number" min="0" formControlName="diasAtraso" />
             <mat-hint>Único critério para considerar uma parcela atrasada elegível.</mat-hint>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Gerar protesto com</mat-label>
+            <mat-select formControlName="tipoTituloProtestoDefault">
+              <mat-option value="AMBOS">Mensalidade e Renegociação</mat-option>
+              <mat-option value="MENSALIDADE">Somente Mensalidade</mat-option>
+              <mat-option value="RENEGOCIACAO">Somente Renegociação</mat-option>
+            </mat-select>
+            <mat-hint>Padrão pré-selecionado em /relatorios e na ficha de cobrança.</mat-hint>
           </mat-form-field>
         </div>
       </section>
@@ -331,6 +342,7 @@ export class ConfiguracoesComponent implements OnInit {
     multaPercentual: this.fb.nonNullable.control(2, [Validators.min(0)]),
     jurosDiarioPercentual: this.fb.nonNullable.control(0.033, [Validators.min(0)]),
     jurosContarDiaGeracao: this.fb.nonNullable.control(true),
+    tipoTituloProtestoDefault: this.fb.nonNullable.control<TipoTituloProtesto>("AMBOS"),
   });
 
   carregando = false;

@@ -29,6 +29,9 @@ export class RelatoriosService {
     if (filtros.ignorarSituacoesTratadas !== undefined) {
       params = params.set("ignorarSituacoesTratadas", filtros.ignorarSituacoesTratadas);
     }
+    if (filtros.tipoTituloProtesto) {
+      params = params.set("tipoTituloProtesto", filtros.tipoTituloProtesto);
+    }
     return params;
   }
 

@@ -306,8 +306,13 @@ services:
       REDIS_URL: redis://redis:6379/0
       NODE_ENV: production
       PORT: 3000
+    # Compartilhados com o worker: upload da planilha (api grava, worker lê)
+    # e documentos gerados (worker grava, api serve no download) — sem isso,
+    # cada container vê um filesystem próprio e um ENOENT/MODULE_NOT_FOUND
+    # aparece na hora de processar (já vivido no ambiente EasyPanel).
     volumes:
       - ethos_documents_output:/app/output
+      - ethos_uploads:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -331,6 +336,7 @@ services:
       NODE_ENV: production
     volumes:
       - ethos_documents_output:/app/output
+      - ethos_uploads:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -362,6 +368,7 @@ volumes:
   ethos_postgres_data:
   ethos_redis_data:
   ethos_documents_output:
+  ethos_uploads:
 ```
 
 > O container `web` já tem, embutido no seu próprio Nginx (`apps/web/nginx.conf`), o proxy de
@@ -466,31 +473,33 @@ sudo systemctl enable --now redis-server
 redis-cli ping   # deve responder PONG
 ```
 
-### B.4. Enviar os arquivos do projeto (WinSCP) e instalar dependências
+### B.4. Clonar o projeto e instalar dependências
 
-Como na Rota A, o projeto é só local — envie via **WinSCP** em vez de `git clone`:
+O projeto já tem um repositório remoto no GitHub (`origin`) — clone direto por `git`, o que
+também é o que `scripts/deploy.sh` (seção B.11) usa para atualizar o código depois:
 
-1. No VPS (via SSH):
+```bash
+sudo mkdir -p /opt/ethos-financial
+sudo chown SEU_USUARIO:SEU_USUARIO /opt/ethos-financial
+cd /opt/ethos-financial
+git clone https://github.com/lkohler1979/financial.git .
+```
 
-   ```bash
-   sudo mkdir -p /opt/ethos-financial
-   sudo chown SEU_USUARIO:SEU_USUARIO /opt/ethos-financial
-   ```
+> Se preferir não configurar acesso Git no VPS (ex.: repositório privado sem chave configurada
+> lá), você pode enviar os arquivos via **WinSCP** em vez do `git clone` acima — nesse caso use
+> a mesma máscara de exclusão do passo A.2 (`node_modules/`, `dist/`, `.angular/`, `.git/`,
+> `.env`) e pule a etapa de `git pull` do `scripts/deploy.sh` nas atualizações futuras (rode os
+> passos de build/restart manualmente, como na seção 5).
 
-2. No WinSCP, conecte (`SEU_IP` / `SEU_USUARIO` / SFTP, porta 22) e envie o conteúdo da pasta
-   local do projeto (ex.: `C:\DSI\Git\EthosFinancial`) para `/opt/ethos-financial`, usando a
-   mesma máscara de exclusão do passo A.2 (`node_modules/`, `dist/`, `.angular/`, `.git/`,
-   `.env`) — o passo A.2 acima tem o detalhe completo de como configurar isso no WinSCP.
+Garanta que tudo pertence ao `SEU_USUARIO` (qualquer arquivo criado por `root` no meio do
+caminho quebra o `npm run build` mais adiante com `EACCES: permission denied`) e instale as
+dependências:
 
-3. De volta ao SSH, garanta que tudo pertence ao `SEU_USUARIO` (qualquer arquivo criado por
-   `root` no meio do caminho — ex.: se alguma pasta foi criada com `sudo` — quebra o `npm run
-build` mais adiante com `EACCES: permission denied`) e instale as dependências:
-
-   ```bash
-   sudo chown -R SEU_USUARIO:SEU_USUARIO /opt/ethos-financial
-   cd /opt/ethos-financial
-   npm install --workspaces --include-workspace-root
-   ```
+```bash
+sudo chown -R SEU_USUARIO:SEU_USUARIO /opt/ethos-financial
+cd /opt/ethos-financial
+npm install --workspaces --include-workspace-root
+```
 
 ### B.5. Configurar `.env`
 
@@ -559,67 +568,30 @@ npm run build -- --configuration production
 # saída em apps/web/dist/ethos-financial-web/browser
 ```
 
-### B.8. Rodar API e worker como serviços `systemd`
+### B.8. Rodar API e worker com PM2
+
+O repositório já traz `ecosystem.config.js` na raiz, com dois processos (`ethos-api` e
+`ethos-worker`) apontando para `/opt/ethos-financial/apps/api` — não precisa editar nada nele
+se você seguiu os caminhos deste guia (`/opt/ethos-financial`).
 
 ```bash
-sudo nano /etc/systemd/system/ethos-api.service
-```
+sudo npm install -g pm2
 
-```ini
-[Unit]
-Description=EthosFinancial API
-After=network.target postgresql.service redis-server.service
-
-[Service]
-Type=simple
-User=SEU_USUARIO
-WorkingDirectory=/opt/ethos-financial/apps/api
-EnvironmentFile=/opt/ethos-financial/.env
-ExecStart=/usr/bin/node dist/server.js
-Restart=on-failure
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-```
-
-```bash
-sudo nano /etc/systemd/system/ethos-worker.service
-```
-
-```ini
-[Unit]
-Description=EthosFinancial Worker (BullMQ)
-After=network.target postgresql.service redis-server.service
-
-[Service]
-Type=simple
-User=SEU_USUARIO
-WorkingDirectory=/opt/ethos-financial/apps/api
-EnvironmentFile=/opt/ethos-financial/.env
-ExecStart=/usr/bin/node dist/jobs/worker.js
-Restart=on-failure
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-```
-
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable --now ethos-api ethos-worker
-sudo systemctl status ethos-api ethos-worker
+cd /opt/ethos-financial
+pm2 start ecosystem.config.js
+pm2 save
+pm2 startup   # siga a instrução impressa (comando com sudo) para o PM2 subir sozinho no boot
 ```
 
 Confirme que a API responde localmente:
 
 ```bash
+pm2 status
 curl -s http://127.0.0.1:3000/api/health
 ```
 
-> Alternativa ao `systemd`: usar [PM2](https://pm2.keymetrics.io/) (`npm i -g pm2`,
-> `pm2 start dist/server.js --name ethos-api`, `pm2 start dist/jobs/worker.js --name ethos-worker`,
-> `pm2 save`, `pm2 startup`). `systemd` é o padrão do Ubuntu e não exige dependência extra.
+> `scripts/deploy.sh` (seção B.11) usa `pm2 startOrRestart ecosystem.config.js --update-env`
+> para reiniciar os dois processos a cada deploy.
 
 ### B.9. Instalar e configurar o Nginx no host
 
@@ -671,6 +643,24 @@ sudo certbot renew --dry-run
 ```
 
 Acesse `https://financ.unifyhub.com.br` — a aplicação deve carregar.
+
+### B.11. Deploy automatizado (`scripts/deploy.sh`)
+
+Depois da instalação inicial (B.1–B.10), use `scripts/deploy.sh` para atualizar o código em
+produção com um único comando. Ele faz, em ordem, `git pull` (`origin/main`), instala
+dependências, builda o backend, roda `prisma migrate deploy`, builda o frontend e reinicia
+`ethos-api`/`ethos-worker` no PM2 — parando no primeiro erro. Ver seção 5 (Atualizações) para o
+detalhe de cada rota.
+
+```bash
+cd /opt/ethos-financial
+chmod +x scripts/deploy.sh   # só na primeira vez
+./scripts/deploy.sh
+```
+
+Pré-requisitos que o script confere antes de rodar: `/opt/ethos-financial/.env` e o link
+`apps/api/.env` (passo B.5) já criados, e nenhum outro deploy em andamento (usa um lock file em
+`/tmp/ethos-deploy.lock`).
 
 ---
 
@@ -845,19 +835,8 @@ protege contra a perda do servidor.
 
 ## 5. Atualizações / Deploy de novas versões
 
-Sem repositório remoto, uma atualização é: sincronizar os arquivos alterados via WinSCP e então
-reconstruir/reiniciar no VPS.
-
-1. No WinSCP, com a sessão já salva do passo A.2/B.4, use
-   **Commands → Synchronize... → "Local directory" → Remote**, apontando para a pasta local do
-   projeto e `/opt/ethos-financial` no remoto — mantenha a mesma máscara de exclusão
-   (`node_modules/`, `dist/`, `.angular/`, `.git/`, `.env`), senão o `.env` de produção do VPS
-   seria sobrescrito pelo seu `.env` de dev local. O WinSCP mostra um preview do que vai mudar
-   antes de confirmar.
-
-2. Depois de sincronizado, no VPS (via SSH):
-
-**Rota A (Docker):**
+**Rota A (Docker):** sincronize os arquivos alterados via WinSCP (ver máscara de exclusão do
+passo A.2) e, no VPS:
 
 ```bash
 cd /opt/ethos-financial
@@ -866,17 +845,28 @@ docker compose -f docker-compose.prod.yml up -d
 docker compose -f docker-compose.prod.yml exec api npx prisma migrate deploy
 ```
 
-**Rota B (sem Docker):**
+**Rota B (sem Docker):** use `scripts/deploy.sh` (ver detalhe na seção B.11) — ele já faz
+`git pull` + install + build + migrations + restart do PM2:
+
+```bash
+cd /opt/ethos-financial
+./scripts/deploy.sh
+```
+
+Se você optou por enviar os arquivos via WinSCP em vez de `git clone` (nota do passo B.4),
+sincronize antes (**Commands → Synchronize... → "Local directory" → Remote**, mesma máscara de
+exclusão `node_modules/`, `dist/`, `.angular/`, `.git/`, `.env`) e rode os passos manualmente em
+vez do script (ele vai falhar no `git pull` sem um repositório git local):
 
 ```bash
 cd /opt/ethos-financial
 npm install --workspaces --include-workspace-root
 
-cd apps/api && npx prisma migrate deploy && npm run build
+cd apps/api && npx prisma generate && npx prisma migrate deploy && npm run build
 cd ../web && npm run build -- --configuration production
 cd ../..
 
-sudo systemctl restart ethos-api ethos-worker
+pm2 restart ecosystem.config.js --update-env
 ```
 
 **Rota C (EasyPanel):** sincronize os arquivos de novo via WinSCP, rode os três `docker build`
@@ -948,8 +938,8 @@ DDoS e ocultar o IP real do VPS:
 
 | Sintoma                                                                   | Causa provável                                                                                                                                       | Verificar                                                                                                                      |
 | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `502 Bad Gateway` no Nginx                                                | API/web container fora do ar                                                                                                                         | Docker: `docker compose -f docker-compose.prod.yml ps` / `logs api`. Sem Docker: `systemctl status ethos-api`                  |
-| Job de importação/relatório nunca conclui                                 | Worker não está rodando ou sem acesso ao Redis                                                                                                       | Docker: `docker compose -f docker-compose.prod.yml logs worker`. Sem Docker: `systemctl status ethos-worker`, `redis-cli ping` |
+| `502 Bad Gateway` no Nginx                                                | API/web container fora do ar                                                                                                                         | Docker: `docker compose -f docker-compose.prod.yml ps` / `logs api`. Sem Docker: `pm2 status`, `pm2 logs ethos-api`            |
+| Job de importação/relatório nunca conclui                                 | Worker não está rodando ou sem acesso ao Redis                                                                                                       | Docker: `docker compose -f docker-compose.prod.yml logs worker`. Sem Docker: `pm2 logs ethos-worker`, `redis-cli ping`         |
 | Erro `P1001` do Prisma (não conecta ao banco)                             | `DATABASE_URL` errada ou Postgres fora do ar                                                                                                         | Docker: `docker compose -f docker-compose.prod.yml logs postgres`. Sem Docker: `systemctl status postgresql`                   |
 | `401 Não autenticado` ao baixar documento                                 | Token expirado (`JWT_EXPIRES_IN`) — faça login de novo                                                                                               | Confirmar no navegador que a sessão ainda está ativa                                                                           |
 | `526 Invalid SSL certificate` (com proxy Cloudflare ativo)                | Certificado do Nginx expirado/inválido                                                                                                               | `sudo certbot certificates`, `sudo nginx -t`                                                                                   |

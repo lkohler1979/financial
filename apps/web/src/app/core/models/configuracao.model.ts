@@ -1,5 +1,7 @@
 export type FrequenciaImportacao = "MANUAL" | "SEMANAL" | "MENSAL";
 
+export type TipoTituloProtesto = "MENSALIDADE" | "RENEGOCIACAO" | "AMBOS";
+
 export interface Configuracao {
   id: string;
   frequenciaImportacao: FrequenciaImportacao;
@@ -10,6 +12,7 @@ export interface Configuracao {
   multaPercentual: number;
   jurosDiarioPercentual: number;
   jurosContarDiaGeracao: boolean;
+  tipoTituloProtestoDefault: TipoTituloProtesto;
 }
 
 export type AtualizarConfiguracaoPayload = Omit<Configuracao, "id">;

@@ -18,6 +18,7 @@ import { FinanceiroService } from "../../core/services/financeiro.service";
 import { RelatoriosService } from "../../core/services/relatorios.service";
 import { FichaCobranca, SituacaoCobranca, Tag } from "../../core/models/cobranca.model";
 import { Parcela } from "../../core/models/parcela.model";
+import { TipoTituloProtesto } from "../../core/models/relatorio.model";
 import { formatarCpf } from "../../shared/utils/cpf.util";
 import { arredondarAbnt } from "../../shared/utils/arredondamento.util";
 import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/download.util";
@@ -61,7 +62,15 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
             }
           </p>
         </div>
-        <div class="flex gap-2">
+        <div class="flex gap-2 items-center">
+          <mat-form-field appearance="outline" class="!w-52" subscriptSizing="dynamic">
+            <mat-label>Gerar protesto com</mat-label>
+            <mat-select [formControl]="tipoTituloProtestoControl">
+              <mat-option value="AMBOS">Mensalidade e Renegociação</mat-option>
+              <mat-option value="MENSALIDADE">Somente Mensalidade</mat-option>
+              <mat-option value="RENEGOCIACAO">Somente Renegociação</mat-option>
+            </mat-select>
+          </mat-form-field>
           <button mat-stroked-button [disabled]="gerando" (click)="gerarDocumento()">
             <mat-icon>description</mat-icon> Gerar documento
           </button>
@@ -258,6 +267,9 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
 
   readonly situacaoControl = new FormControl<string | undefined>(undefined);
   readonly novaObservacao = new FormControl("", { nonNullable: true });
+  readonly tipoTituloProtestoControl = new FormControl<TipoTituloProtesto>("AMBOS", {
+    nonNullable: true,
+  });
 
   ngOnInit(): void {
     this.matriculaId = this.route.snapshot.paramMap.get("matriculaId") ?? "";
@@ -266,6 +278,7 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
     this.configuracoesService.obter().subscribe((res) => {
       this.diasAtrasoMinimo = res.diasAtraso;
       this.multaPercentual = res.multaPercentual;
+      this.tipoTituloProtestoControl.setValue(res.tipoTituloProtestoDefault);
       this.jurosDiarioPercentual = res.jurosDiarioPercentual;
       this.jurosContarDiaGeracao = res.jurosContarDiaGeracao;
     });
@@ -448,7 +461,9 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
    */
   gerarDocumento(): void {
     this.gerando = true;
-    this.relatoriosService.gerar({}, [this.matriculaId]).subscribe({
+    this.relatoriosService
+      .gerar({ tipoTituloProtesto: this.tipoTituloProtestoControl.value }, [this.matriculaId])
+      .subscribe({
       next: ({ id: relatorioId, jobId, totalElegiveis }) => {
         if (totalElegiveis === 0) {
           // Nenhuma parcela elegível — normalmente porque já foram todas

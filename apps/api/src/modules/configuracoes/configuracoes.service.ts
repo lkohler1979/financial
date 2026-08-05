@@ -17,6 +17,7 @@ function serializarConfiguracao(configuracao: {
   multaPercentual: Prisma.Decimal | number;
   jurosDiarioPercentual: Prisma.Decimal | number;
   jurosContarDiaGeracao: boolean;
+  tipoTituloProtestoDefault: "MENSALIDADE" | "RENEGOCIACAO" | "AMBOS";
 }) {
   return {
     ...configuracao,
@@ -51,6 +52,9 @@ export const configuracoesService = {
         : {}),
       ...(input.jurosContarDiaGeracao !== undefined
         ? { jurosContarDiaGeracao: input.jurosContarDiaGeracao }
+        : {}),
+      ...(input.tipoTituloProtestoDefault !== undefined
+        ? { tipoTituloProtestoDefault: input.tipoTituloProtestoDefault }
         : {}),
     };
 

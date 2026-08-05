@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { Prisma } from "@prisma/client";
+import { Prisma, TipoTituloProtesto } from "@prisma/client";
 import { NotFoundError } from "../../shared/errors/app-error";
 import { registrarAuditoria } from "../auditoria/auditoria.service";
 import { configuracoesRepository } from "../configuracoes/configuracoes.repository";
@@ -20,6 +20,7 @@ interface FiltrosResolvidos {
   situacaoCobrancaId?: string;
   tagId?: string;
   ignorarSituacoesTratadas: boolean;
+  tipoTituloProtesto: TipoTituloProtesto;
   financeiro: ConfiguracaoFinanceira;
 }
 
@@ -35,6 +36,7 @@ async function resolverFiltros(filtros: FiltrosElegibilidadeInput): Promise<Filt
     situacaoCobrancaId: filtros.situacaoCobrancaId,
     tagId: filtros.tagId,
     ignorarSituacoesTratadas: filtros.ignorarSituacoesTratadas,
+    tipoTituloProtesto: filtros.tipoTituloProtesto ?? configuracao.tipoTituloProtestoDefault,
     financeiro: {
       multaPercentual: Number(configuracao.multaPercentual),
       jurosDiarioPercentual: Number(configuracao.jurosDiarioPercentual),
@@ -71,6 +73,7 @@ export const relatoriosService = {
         ignorarSituacoesTratadas: filtros.ignorarSituacoesTratadas,
       },
       filtros.diasAtraso,
+      filtros.tipoTituloProtesto,
     );
     return aplicarElegibilidade(candidatos, filtros);
   },
@@ -86,6 +89,7 @@ export const relatoriosService = {
         ignorarSituacoesTratadas: filtros.ignorarSituacoesTratadas,
       },
       filtros.diasAtraso,
+      filtros.tipoTituloProtesto,
     );
     elegiveis = aplicarElegibilidade(elegiveis, filtros);
 
@@ -98,6 +102,7 @@ export const relatoriosService = {
       usuario: { connect: { id: usuarioId } },
       diasAtraso: filtros.diasAtraso || null,
       incluirParcelasVencidasRecentes: input.incluirParcelasVencidasRecentes,
+      tipoTituloProtesto: filtros.tipoTituloProtesto,
       valorMinimo: filtros.valorMinimo,
       ...(filtros.cursoId ? { curso: { connect: { id: filtros.cursoId } } } : {}),
       totalElegiveis: elegiveis.length,

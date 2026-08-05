@@ -24,6 +24,7 @@ export const atualizarConfiguracaoSchema = z
     multaPercentual: z.coerce.number().min(0).max(100).optional(),
     jurosDiarioPercentual: z.coerce.number().min(0).max(100).optional(),
     jurosContarDiaGeracao: z.boolean().optional(),
+    tipoTituloProtestoDefault: z.enum(["MENSALIDADE", "RENEGOCIACAO", "AMBOS"]).optional(),
   })
   .refine((obj) => Object.keys(obj).length > 0, "Informe ao menos um campo para atualizar");
 

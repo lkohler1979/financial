@@ -17,10 +17,12 @@ import { Subscription, interval, switchMap, takeWhile } from "rxjs";
 import { RelatoriosService } from "../../core/services/relatorios.service";
 import { CursosService } from "../../core/services/cursos.service";
 import { CobrancaService } from "../../core/services/cobranca.service";
+import { ConfiguracoesService } from "../../core/services/configuracoes.service";
 import {
   FiltrosRelatorio,
   MatriculaElegivel,
   RelatorioInadimplencia,
+  TipoTituloProtesto,
 } from "../../core/models/relatorio.model";
 import { Curso } from "../../core/models/curso.model";
 import { SituacaoCobranca, Tag } from "../../core/models/cobranca.model";
@@ -107,6 +109,14 @@ const TAMANHO_PAGINA_HISTORICO = 10;
             Incluir parcelas só vencidas (menos que o mínimo) no mesmo documento
           </mat-checkbox>
         </div>
+        <mat-form-field appearance="outline">
+          <mat-label>Gerar protesto com</mat-label>
+          <mat-select formControlName="tipoTituloProtesto">
+            <mat-option value="AMBOS">Mensalidade e Renegociação</mat-option>
+            <mat-option value="MENSALIDADE">Somente Mensalidade</mat-option>
+            <mat-option value="RENEGOCIACAO">Somente Renegociação</mat-option>
+          </mat-select>
+        </mat-form-field>
       </form>
       <button mat-raised-button color="primary" type="button" (click)="buscarElegiveis()">
         <mat-icon>search</mat-icon> Buscar elegíveis
@@ -372,6 +382,7 @@ export class RelatoriosGeracaoComponent implements OnInit, OnDestroy {
   private readonly service = inject(RelatoriosService);
   private readonly cursosService = inject(CursosService);
   private readonly cobrancaService = inject(CobrancaService);
+  private readonly configuracoesService = inject(ConfiguracoesService);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   private readonly fb = inject(FormBuilder);
@@ -386,6 +397,7 @@ export class RelatoriosGeracaoComponent implements OnInit, OnDestroy {
     tagId: this.fb.control<string | undefined>(undefined),
     ignorarSituacoesTratadas: this.fb.nonNullable.control(true),
     incluirParcelasVencidasRecentes: this.fb.nonNullable.control(false),
+    tipoTituloProtesto: this.fb.nonNullable.control<TipoTituloProtesto>("AMBOS"),
   });
 
   cursos: Curso[] = [];
@@ -429,7 +441,12 @@ export class RelatoriosGeracaoComponent implements OnInit, OnDestroy {
     this.cobrancaService.listarSituacoes(true).subscribe((res) => (this.situacoes = res));
     this.cobrancaService.listarTags().subscribe((res) => (this.tags = res));
     this.carregarHistorico();
-    this.restaurarFiltrosDaUrl();
+    this.configuracoesService.obter().subscribe((config) => {
+      this.filtros.controls.tipoTituloProtesto.setValue(config.tipoTituloProtestoDefault, {
+        emitEvent: false,
+      });
+      this.restaurarFiltrosDaUrl();
+    });
   }
 
   /**
@@ -450,6 +467,9 @@ export class RelatoriosGeracaoComponent implements OnInit, OnDestroy {
         tagId: qp.get("tagId") ?? undefined,
         ignorarSituacoesTratadas: qp.get("ignorarSituacoesTratadas") !== "false",
         incluirParcelasVencidasRecentes: qp.get("incluirParcelasVencidasRecentes") === "true",
+        tipoTituloProtesto:
+          (qp.get("tipoTituloProtesto") as TipoTituloProtesto | null) ??
+          this.filtros.controls.tipoTituloProtesto.value,
       },
       { emitEvent: false },
     );
@@ -463,6 +483,7 @@ export class RelatoriosGeracaoComponent implements OnInit, OnDestroy {
     const queryParams: Record<string, string> = {
       ignorarSituacoesTratadas: String(v.ignorarSituacoesTratadas),
       incluirParcelasVencidasRecentes: String(v.incluirParcelasVencidasRecentes),
+      tipoTituloProtesto: String(v.tipoTituloProtesto),
     };
     if (v.diasAtraso !== undefined) queryParams["diasAtraso"] = String(v.diasAtraso);
     if (v.valorMinimo !== undefined) queryParams["valorMinimo"] = String(v.valorMinimo);
@@ -487,6 +508,7 @@ export class RelatoriosGeracaoComponent implements OnInit, OnDestroy {
       tagId: bruto.tagId ?? undefined,
       ignorarSituacoesTratadas: bruto.ignorarSituacoesTratadas,
       incluirParcelasVencidasRecentes: bruto.incluirParcelasVencidasRecentes,
+      tipoTituloProtesto: bruto.tipoTituloProtesto,
     };
   }
 

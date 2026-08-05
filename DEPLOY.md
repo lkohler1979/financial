@@ -156,8 +156,8 @@ seu computador Windows para o VPS usando o **WinSCP**.
 1. No VPS (via SSH), crie a pasta de destino já com o dono certo:
 
    ```bash
-   sudo mkdir -p /opt/ethos-financial
-   sudo chown SEU_USUARIO:SEU_USUARIO /opt/ethos-financial
+   sudo mkdir -p /opt/financial
+   sudo chown SEU_USUARIO:SEU_USUARIO /opt/financial
    ```
 
 2. Abra o WinSCP e crie uma nova sessão:
@@ -170,7 +170,7 @@ seu computador Windows para o VPS usando o **WinSCP**.
 
 3. Conecte. No painel **esquerdo** (local), navegue até a pasta do projeto no seu computador
    (ex.: `C:\DSI\Git\EthosFinancial`). No painel **direito** (remoto), entre em
-   `/opt/ethos-financial`.
+   `/opt/financial`.
 
 4. **Antes de enviar**, configure uma máscara de exclusão para não subir o que será
    reinstalado/gerado no próprio VPS (deixa a transferência bem mais rápida e evita subir
@@ -205,16 +205,16 @@ Ajuste, no mínimo:
 ```bash
 NODE_ENV=production
 
-POSTGRES_USER=ethos
-POSTGRES_PASSWORD=<SENHA_FORTE_AQUI>
-POSTGRES_DB=ethos_financial
+POSTGRES_USER=financial
+POSTGRES_PASSWORD=financial
+POSTGRES_DB=financial
 POSTGRES_PORT=5432
-DATABASE_URL=postgresql://ethos:<SENHA_FORTE_AQUI>@postgres:5432/ethos_financial
+DATABASE_URL=postgresql://financial:financial@postgres:5432/financial
 
 REDIS_PORT=6379
 REDIS_URL=redis://redis:6379/0
 
-API_PORT=3000
+API_PORT=3070
 JWT_SECRET=<GERAR_COM_openssl_rand_-hex_32>
 JWT_EXPIRES_IN=1h
 JWT_REFRESH_EXPIRES_IN=7d
@@ -224,7 +224,7 @@ JWT_REFRESH_EXPIRES_IN=7d
 ADMIN_EMAIL=admin@financ.local
 ADMIN_PASSWORD=<SENHA_FORTE_AQUI>
 
-WEB_PORT=4200
+WEB_PORT=3071
 
 DIAS_ATRASO_MINIMO=90
 PASTA_SAIDA_DOCUMENTOS=./output/relatorios
@@ -305,7 +305,11 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       REDIS_URL: redis://redis:6379/0
       NODE_ENV: production
-      PORT: 3000
+      # Fixo em 3070 (não ${API_PORT}) porque o Nginx embutido na imagem `web`
+      # (apps/web/nginx.conf) tem esse valor hardcoded no proxy_pass, definido
+      # em tempo de build da imagem — mudar aqui sem mudar o nginx.conf (e
+      # rebuildar a imagem `web`) quebra o proxy.
+      PORT: 3070
     # Compartilhados com o worker: upload da planilha (api grava, worker lê)
     # e documentos gerados (worker grava, api serve no download) — sem isso,
     # cada container vê um filesystem próprio e um ENOENT/MODULE_NOT_FOUND
@@ -354,7 +358,7 @@ services:
     restart: unless-stopped
     ports:
       # Só em loopback — o Nginx do HOST é quem fica exposto na internet (portas 80/443).
-      - "127.0.0.1:8080:80"
+      - "127.0.0.1:3071:80"
     depends_on:
       - api
     networks:
@@ -373,7 +377,7 @@ volumes:
 
 > O container `web` já tem, embutido no seu próprio Nginx (`apps/web/nginx.conf`), o proxy de
 > `/api/*` para o container `api` — por isso o Nginx do host só precisa apontar para
-> `127.0.0.1:8080`, sem se preocupar em separar rotas de API e de frontend.
+> `127.0.0.1:3071`, sem se preocupar em separar rotas de API e de frontend.
 
 ### A.5. Build, subida dos containers e migrations
 
@@ -388,7 +392,7 @@ docker compose -f docker-compose.prod.yml exec api npx prisma migrate deploy
 Confirme que a API está respondendo (dentro do VPS, sem passar pelo Nginx ainda):
 
 ```bash
-curl -s http://127.0.0.1:8080/api/health
+curl -s http://127.0.0.1:3071/api/health
 ```
 
 ### A.6. Instalar e configurar o Nginx no host
@@ -404,7 +408,7 @@ server {
     server_name financ.unifyhub.com.br;
 
     location / {
-        proxy_pass http://127.0.0.1:8080;
+        proxy_pass http://127.0.0.1:3071;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -459,8 +463,8 @@ sudo apt install -y postgresql postgresql-contrib
 sudo systemctl enable --now postgresql
 
 sudo -u postgres psql <<'EOF'
-CREATE USER ethos WITH PASSWORD 'SENHA_FORTE_AQUI';
-CREATE DATABASE ethos_financial OWNER ethos;
+CREATE USER financial WITH PASSWORD 'financial';
+CREATE DATABASE financial OWNER financial;
 EOF
 ```
 
@@ -479,9 +483,9 @@ O projeto já tem um repositório remoto no GitHub (`origin`) — clone direto p
 também é o que `scripts/deploy.sh` (seção B.11) usa para atualizar o código depois:
 
 ```bash
-sudo mkdir -p /opt/ethos-financial
-sudo chown SEU_USUARIO:SEU_USUARIO /opt/ethos-financial
-cd /opt/ethos-financial
+sudo mkdir -p /opt/financial
+sudo chown SEU_USUARIO:SEU_USUARIO /opt/financial
+cd /opt/financial
 git clone https://github.com/lkohler1979/financial.git .
 ```
 
@@ -496,8 +500,8 @@ caminho quebra o `npm run build` mais adiante com `EACCES: permission denied`) e
 dependências:
 
 ```bash
-sudo chown -R SEU_USUARIO:SEU_USUARIO /opt/ethos-financial
-cd /opt/ethos-financial
+sudo chown -R SEU_USUARIO:SEU_USUARIO /opt/financial
+cd /opt/financial
 npm install --workspaces --include-workspace-root
 ```
 
@@ -513,11 +517,14 @@ Como aqui tudo roda no próprio host (sem rede Docker), aponte para `localhost`:
 ```bash
 NODE_ENV=production
 
-DATABASE_URL=postgresql://ethos:SENHA_FORTE_AQUI@localhost:5432/ethos_financial
+DATABASE_URL=postgresql://financial:financial@localhost:5432/financial
 
 REDIS_URL=redis://localhost:6379/0
 
-API_PORT=3000
+# Atenção: a API lê a variável `PORT` (apps/api/src/server.ts), não `API_PORT`
+# (esse nome só é usado no docker-compose.yml de desenvolvimento, pra mapear
+# a porta do host — não existe no código da aplicação).
+PORT=3070
 JWT_SECRET=<GERAR_COM_openssl_rand_-hex_32>
 JWT_EXPIRES_IN=1h
 JWT_REFRESH_EXPIRES_IN=7d
@@ -526,8 +533,8 @@ ADMIN_EMAIL=admin@financ.local
 ADMIN_PASSWORD=<SENHA_FORTE_AQUI>
 
 DIAS_ATRASO_MINIMO=90
-PASTA_SAIDA_DOCUMENTOS=/opt/ethos-financial/output/relatorios
-MODELO_DOCX_PROTESTO=/opt/ethos-financial/apps/api/templates/modelo-protesto.docx
+PASTA_SAIDA_DOCUMENTOS=/opt/financial/output/relatorios
+MODELO_DOCX_PROTESTO=/opt/financial/apps/api/templates/modelo-protesto.docx
 
 INSTITUICAO_NOME=<NOME_DA_INSTITUICAO>
 INSTITUICAO_CNPJ=<CNPJ_DA_INSTITUICAO>
@@ -537,24 +544,24 @@ JUROS_CONTAR_DIA_GERACAO=true
 ```
 
 ```bash
-mkdir -p /opt/ethos-financial/output/relatorios
+mkdir -p /opt/financial/output/relatorios
 openssl rand -hex 32   # usar como JWT_SECRET
 ```
 
-O `.env` fica na **raiz** do projeto (`/opt/ethos-financial/.env`), mas os comandos do Prisma
+O `.env` fica na **raiz** do projeto (`/opt/financial/.env`), mas os comandos do Prisma
 e o `dotenv/config` que a API usa procuram `.env` relativo ao diretório onde o comando é
 executado — que nos próximos passos é `apps/api/`. Crie um link simbólico para o Prisma CLI e o
 Node encontrarem o mesmo arquivo dali (evita o erro `Environment variable not found:
 DATABASE_URL` do Prisma):
 
 ```bash
-ln -s ../../.env /opt/ethos-financial/apps/api/.env
+ln -s ../../.env /opt/financial/apps/api/.env
 ```
 
 ### B.6. Build da API e migrations
 
 ```bash
-cd /opt/ethos-financial/apps/api
+cd /opt/financial/apps/api
 npx prisma generate
 npx prisma migrate deploy
 npm run build     # gera apps/api/dist
@@ -563,7 +570,7 @@ npm run build     # gera apps/api/dist
 ### B.7. Build do frontend Angular
 
 ```bash
-cd /opt/ethos-financial/apps/web
+cd /opt/financial/apps/web
 npm run build -- --configuration production
 # saída em apps/web/dist/ethos-financial-web/browser
 ```
@@ -571,13 +578,13 @@ npm run build -- --configuration production
 ### B.8. Rodar API e worker com PM2
 
 O repositório já traz `ecosystem.config.js` na raiz, com dois processos (`ethos-api` e
-`ethos-worker`) apontando para `/opt/ethos-financial/apps/api` — não precisa editar nada nele
-se você seguiu os caminhos deste guia (`/opt/ethos-financial`).
+`ethos-worker`) apontando para `/opt/financial/apps/api` — não precisa editar nada nele
+se você seguiu os caminhos deste guia (`/opt/financial`).
 
 ```bash
 sudo npm install -g pm2
 
-cd /opt/ethos-financial
+cd /opt/financial
 pm2 start ecosystem.config.js
 pm2 save
 pm2 startup   # siga a instrução impressa (comando com sudo) para o PM2 subir sozinho no boot
@@ -587,7 +594,7 @@ Confirme que a API responde localmente:
 
 ```bash
 pm2 status
-curl -s http://127.0.0.1:3000/api/health
+curl -s http://127.0.0.1:3070/api/health
 ```
 
 > `scripts/deploy.sh` (seção B.11) usa `pm2 startOrRestart ecosystem.config.js --update-env`
@@ -605,7 +612,7 @@ server {
     listen 80;
     server_name financ.unifyhub.com.br;
 
-    root /opt/ethos-financial/apps/web/dist/ethos-financial-web/browser;
+    root /opt/financial/apps/web/dist/ethos-financial-web/browser;
     index index.html;
 
     location / {
@@ -613,7 +620,7 @@ server {
     }
 
     location /api/ {
-        proxy_pass http://127.0.0.1:3000/;
+        proxy_pass http://127.0.0.1:3070/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -653,12 +660,12 @@ dependências, builda o backend, roda `prisma migrate deploy`, builda o frontend
 detalhe de cada rota.
 
 ```bash
-cd /opt/ethos-financial
+cd /opt/financial
 chmod +x scripts/deploy.sh   # só na primeira vez
 ./scripts/deploy.sh
 ```
 
-Pré-requisitos que o script confere antes de rodar: `/opt/ethos-financial/.env` e o link
+Pré-requisitos que o script confere antes de rodar: `/opt/financial/.env` e o link
 `apps/api/.env` (passo B.5) já criados, e nenhum outro deploy em andamento (usa um lock file em
 `/tmp/ethos-deploy.lock`).
 
@@ -692,7 +699,7 @@ Image"**, sem precisar de registry).
 
 1. Envie os arquivos via WinSCP para o VPS (mesmo processo do passo A.2 — sessão SFTP, mesma
    máscara de exclusão `node_modules/`, `dist/`, `.angular/`, `.git/`, `.env`), por exemplo para
-   `/opt/ethos-financial`.
+   `/opt/financial`.
 
 2. Via SSH, builde as três imagens que os serviços vão usar (o `apps/api/Dockerfile` tem um
    estágio `production-worker` dedicado — mesma imagem da API, só com o comando padrão trocado
@@ -700,7 +707,7 @@ Image"**, sem precisar de registry).
    sobrescrever por serviço quando a origem é "Docker Image"):
 
    ```bash
-   cd /opt/ethos-financial
+   cd /opt/financial
    docker build -f apps/api/Dockerfile --target production -t ethos-api:latest .
    docker build -f apps/api/Dockerfile --target production-worker -t ethos-worker:latest .
    docker build -f apps/web/Dockerfile --target production -t ethos-web:latest .
@@ -722,7 +729,7 @@ Crie um **Project** novo (ex.: `financ`) e, dentro dele, os seguintes **Services
 
 | Serviço    | Tipo                           | Origem / imagem (ver passo C.1) | Observação                                                                                                                            |
 | ---------- | ------------------------------ | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `postgres` | Template **Postgres 16**       | template pronto do EasyPanel    | Defina usuário/senha/nome do banco (ex.: `ethos` / `SENHA_FORTE_AQUI` / `ethos_financial`)                                            |
+| `postgres` | Template **Postgres 16**       | template pronto do EasyPanel    | Defina usuário/senha/nome do banco (ex.: `financial` / `financial` / `financial`)                                                     |
 | `redis`    | Template **Redis**             | template pronto do EasyPanel    | Sem configuração extra necessária                                                                                                     |
 | `api`      | **App** (origem: Docker Image) | `ethos-api:latest`              | Ver variáveis de ambiente abaixo                                                                                                      |
 | `worker`   | **App** (origem: Docker Image) | `ethos-worker:latest`           | Imagem já roda `node dist/jobs/worker.js` por padrão (estágio `production-worker` do Dockerfile) — não precisa mexer em Start Command |
@@ -735,9 +742,9 @@ pela rede interna, de forma parecida com o `docker-compose.yml` do projeto):
 
 ```bash
 NODE_ENV=production
-DATABASE_URL=postgresql://ethos:SENHA_FORTE_AQUI@postgres:5432/ethos_financial
+DATABASE_URL=postgresql://financial:financial@postgres:5432/financial
 REDIS_URL=redis://redis:6379/0
-JWT_SECRET=023b2fdae7cc65072b1dc94cf59a4dd6499d1a8784e0611c7dc2187e24e6f6c6
+JWT_SECRET=<GERAR_COM_openssl_rand_-hex_32>
 JWT_EXPIRES_IN=1h
 JWT_REFRESH_EXPIRES_IN=7d
 ADMIN_EMAIL=admin@financ.local
@@ -750,11 +757,16 @@ INSTITUICAO_CNPJ=<CNPJ_DA_INSTITUICAO>
 MULTA_PERCENTUAL=2
 JUROS_DIARIO_PERCENTUAL=0.033
 JUROS_CONTAR_DIA_GERACAO=true
-PORT=3000
+PORT=3070
 ```
 
 > Ajuste `postgres`/`redis` acima para o nome real que o EasyPanel deu aos serviços dentro do
 > Project, se for diferente.
+
+> ⚠️ Se mudar `PORT` (acima, 3070), atualize também o **destino** configurado na aba
+> **Domínios** dos serviços `api`/`worker` no EasyPanel (ex.: `http://financial_api:3000` →
+> `http://financial_api:3070`) — o EasyPanel não lê essa variável automaticamente, o roteamento
+> interno é configurado manualmente na UI.
 
 ### C.3. Rodar as migrations do Prisma
 
@@ -815,13 +827,13 @@ curl -s https://financ.unifyhub.com.br/api/health
 ```bash
 # Rota A (Docker)
 docker compose -f docker-compose.prod.yml exec postgres \
-  pg_dump -U ethos ethos_financial > backup_$(date +%F).sql
+  pg_dump -U financial financial > backup_$(date +%F).sql
 
 # Rota B (sem Docker)
-pg_dump -U ethos -h localhost ethos_financial > backup_$(date +%F).sql
+pg_dump -U financial -h localhost financial > backup_$(date +%F).sql
 
 # Rota C (EasyPanel) — via console do serviço "postgres", ou docker exec direto:
-sudo docker exec <container_do_postgres> pg_dump -U ethos ethos_financial > backup_$(date +%F).sql
+sudo docker exec <container_do_postgres> pg_dump -U financial financial > backup_$(date +%F).sql
 ```
 
 Agende isso via `cron` (ex.: diariamente, retendo os últimos N dias) e copie os backups para
@@ -829,7 +841,7 @@ fora do VPS (outro storage, bucket, etc.) — um backup que só existe no mesmo 
 protege contra a perda do servidor.
 
 **Documentos gerados** (`PASTA_SAIDA_DOCUMENTOS`): inclua o volume `ethos_documents_output`
-(Docker) ou a pasta `/opt/ethos-financial/output` (sem Docker) na rotina de backup também.
+(Docker) ou a pasta `/opt/financial/output` (sem Docker) na rotina de backup também.
 
 ---
 
@@ -839,7 +851,7 @@ protege contra a perda do servidor.
 passo A.2) e, no VPS:
 
 ```bash
-cd /opt/ethos-financial
+cd /opt/financial
 docker compose -f docker-compose.prod.yml build
 docker compose -f docker-compose.prod.yml up -d
 docker compose -f docker-compose.prod.yml exec api npx prisma migrate deploy
@@ -849,7 +861,7 @@ docker compose -f docker-compose.prod.yml exec api npx prisma migrate deploy
 `git pull` + install + build + migrations + restart do PM2:
 
 ```bash
-cd /opt/ethos-financial
+cd /opt/financial
 ./scripts/deploy.sh
 ```
 
@@ -859,7 +871,7 @@ exclusão `node_modules/`, `dist/`, `.angular/`, `.git/`, `.env`) e rode os pass
 vez do script (ele vai falhar no `git pull` sem um repositório git local):
 
 ```bash
-cd /opt/ethos-financial
+cd /opt/financial
 npm install --workspaces --include-workspace-root
 
 cd apps/api && npx prisma generate && npx prisma migrate deploy && npm run build
@@ -946,5 +958,5 @@ DDoS e ocultar o IP real do VPS:
 | Certbot falha o desafio HTTP-01                                           | Registro DNS ainda em "Proxied" (laranja) durante a emissão inicial                                                                                  | Volte para "DNS only" (cinza) só durante a emissão, depois pode voltar a "Proxied"                                             |
 | Upload de planilha grande falha com 413                                   | `client_max_body_size` do Nginx menor que o arquivo                                                                                                  | Aumentar em `/etc/nginx/sites-available/financ`                                                                        |
 | `CURSO: Required` em todas as linhas da importação                        | Cabeçalho da coluna na planilha não bate com `CURSO`/`NOME_CURSO` (ver `docs/PENDENCIAS.md`)                                                         | Confirmar o nome exato da coluna no arquivo `.xlsx`                                                                            |
-| `Environment variable not found: DATABASE_URL` (Prisma, Rota B)           | `.env` está na raiz do projeto, mas o comando foi rodado dentro de `apps/api/` — Prisma/dotenv procuram `.env` relativo ao diretório atual           | Criar o link `ln -s ../../.env /opt/ethos-financial/apps/api/.env` (passo B.5) e rodar de novo                                 |
-| `error TS5033: ... EACCES: permission denied` no `npm run build` (Rota B) | Algum arquivo/pasta (ex.: `dist/` de um build anterior) ficou com dono `root` — geralmente por um `sudo` rodado dentro do projeto no meio do caminho | `sudo chown -R SEU_USUARIO:SEU_USUARIO /opt/ethos-financial` e rodar o build de novo (passo B.4)                               |
+| `Environment variable not found: DATABASE_URL` (Prisma, Rota B)           | `.env` está na raiz do projeto, mas o comando foi rodado dentro de `apps/api/` — Prisma/dotenv procuram `.env` relativo ao diretório atual           | Criar o link `ln -s ../../.env /opt/financial/apps/api/.env` (passo B.5) e rodar de novo                                 |
+| `error TS5033: ... EACCES: permission denied` no `npm run build` (Rota B) | Algum arquivo/pasta (ex.: `dist/` de um build anterior) ficou com dono `root` — geralmente por um `sudo` rodado dentro do projeto no meio do caminho | `sudo chown -R SEU_USUARIO:SEU_USUARIO /opt/financial` e rodar o build de novo (passo B.4)                               |

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Redeploy do EthosFinancial na VPS depois de uma mudanca de codigo (Rota B - sem Docker).
 #
-# Uso (na VPS, dentro de /opt/ethos-financial):
+# Uso (na VPS, dentro de /opt/financial):
 #   ./scripts/deploy.sh
 #
 # O que faz, em ordem: git pull, instala dependencias (npm workspaces), build
@@ -11,7 +11,7 @@
 
 set -euo pipefail
 
-ROOT_DIR="/opt/ethos-financial"
+ROOT_DIR="/opt/financial"
 API_DIR="$ROOT_DIR/apps/api"
 WEB_DIR="$ROOT_DIR/apps/web"
 LOCK_FILE="/tmp/ethos-deploy.lock"
@@ -71,7 +71,7 @@ log "Verificando os processos"
 pm2 status
 
 log "Checando as portas locais"
-curl -fsS -o /dev/null -w "api    (127.0.0.1:3000/api/health): %{http_code}\n" http://127.0.0.1:3000/api/health || echo "api    (127.0.0.1:3000/api/health): SEM RESPOSTA"
+curl -fsS -o /dev/null -w "api    (127.0.0.1:3070/api/health): %{http_code}\n" http://127.0.0.1:3070/api/health || echo "api    (127.0.0.1:3070/api/health): SEM RESPOSTA"
 curl -fsS -o /dev/null -w "web/nginx (127.0.0.1:80): %{http_code}\n" http://127.0.0.1:80/ || echo "web/nginx (127.0.0.1:80): SEM RESPOSTA"
 
 log "Deploy concluido"

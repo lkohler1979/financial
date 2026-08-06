@@ -669,6 +669,12 @@ Pré-requisitos que o script confere antes de rodar: `/opt/financial/.env` e o l
 `apps/api/.env` (passo B.5) já criados, e nenhum outro deploy em andamento (usa um lock file em
 `/tmp/ethos-deploy.lock`).
 
+> Rode como `SEU_USUARIO` (o dono da pasta, passo B.4) — **não como `root`**. Rodar como um
+> usuário diferente do dono da pasta faz o Git recusar com `detected dubious ownership in
+> repository`. O script já se protege disso (`git config --global --add safe.directory`), mas
+> isso só cobre o usuário que efetivamente rodou o script — trocar de usuário a cada execução
+> exigiria repetir esse ajuste para cada um.
+
 ---
 
 ## Rota C — Via EasyPanel (VPS compartilhado com Traefik)

@@ -32,6 +32,14 @@ flock -n 200 || fail "ja existe um deploy em andamento (lock: $LOCK_FILE)"
 [ -f "$ROOT_DIR/.env" ] || fail "faltando $ROOT_DIR/.env (veja DEPLOY.md, secao B.5)"
 [ -f "$API_DIR/.env" ] || fail "faltando o link $API_DIR/.env -> ../../.env (veja DEPLOY.md, secao B.5)"
 
+# Evita o erro "detected dubious ownership" do Git quando o script roda com
+# um usuario diferente do dono da pasta (ex.: root por engano em vez do
+# usuario da aplicacao). Confere antes de adicionar para nao duplicar a
+# entrada em ~/.gitconfig a cada execucao.
+if ! git config --global --get-all safe.directory 2>/dev/null | grep -qx "$ROOT_DIR"; then
+  git config --global --add safe.directory "$ROOT_DIR"
+fi
+
 log "1/6 - Atualizando o repositorio (git pull)"
 cd "$ROOT_DIR"
 

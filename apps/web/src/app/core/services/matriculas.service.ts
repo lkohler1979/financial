@@ -21,6 +21,7 @@ export class MatriculasService {
       dataMatriculaFim?: string;
       situacaoCobrancaId?: string;
       tagId?: string;
+      tcdAssinado?: boolean;
       page?: number;
       pageSize?: number;
     } = {},
@@ -39,6 +40,7 @@ export class MatriculasService {
       params = params.set("situacaoCobrancaId", opcoes.situacaoCobrancaId);
     }
     if (opcoes.tagId) params = params.set("tagId", opcoes.tagId);
+    if (opcoes.tcdAssinado !== undefined) params = params.set("tcdAssinado", opcoes.tcdAssinado);
     if (opcoes.page) params = params.set("page", opcoes.page);
     if (opcoes.pageSize) params = params.set("pageSize", opcoes.pageSize);
     return this.http.get<Paginado<Matricula>>(this.baseUrl, { params });

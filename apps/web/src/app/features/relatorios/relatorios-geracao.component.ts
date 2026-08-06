@@ -99,6 +99,14 @@ const TAMANHO_PAGINA_HISTORICO = 10;
             }
           </mat-select>
         </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>TCD assinado</mat-label>
+          <mat-select formControlName="tcdAssinado">
+            <mat-option [value]="undefined">Todos</mat-option>
+            <mat-option [value]="true">Sim</mat-option>
+            <mat-option [value]="false">Não</mat-option>
+          </mat-select>
+        </mat-form-field>
         <div class="flex items-center">
           <mat-checkbox formControlName="ignorarSituacoesTratadas">
             Excluir situações já tratadas
@@ -117,6 +125,13 @@ const TAMANHO_PAGINA_HISTORICO = 10;
             <mat-option value="RENEGOCIACAO">Somente Renegociação</mat-option>
           </mat-select>
         </mat-form-field>
+        @if (filtros.controls.tipoTituloProtesto.value === "AMBOS") {
+          <div class="flex items-center">
+            <mat-checkbox formControlName="separarDocumentosPorTipo">
+              Separar em dois documentos (um de Mensalidade, um de Renegociação)
+            </mat-checkbox>
+          </div>
+        }
       </form>
       <button mat-raised-button color="primary" type="button" (click)="buscarElegiveis()">
         <mat-icon>search</mat-icon> Buscar elegíveis
@@ -395,9 +410,11 @@ export class RelatoriosGeracaoComponent implements OnInit, OnDestroy {
     cursoId: this.fb.control<string | undefined>(undefined),
     situacaoCobrancaId: this.fb.control<string | undefined>(undefined),
     tagId: this.fb.control<string | undefined>(undefined),
+    tcdAssinado: this.fb.control<boolean | undefined>(undefined),
     ignorarSituacoesTratadas: this.fb.nonNullable.control(true),
     incluirParcelasVencidasRecentes: this.fb.nonNullable.control(false),
     tipoTituloProtesto: this.fb.nonNullable.control<TipoTituloProtesto>("AMBOS"),
+    separarDocumentosPorTipo: this.fb.nonNullable.control(false),
   });
 
   cursos: Curso[] = [];
@@ -465,11 +482,13 @@ export class RelatoriosGeracaoComponent implements OnInit, OnDestroy {
         cursoId: qp.get("cursoId") ?? undefined,
         situacaoCobrancaId: qp.get("situacaoCobrancaId") ?? undefined,
         tagId: qp.get("tagId") ?? undefined,
+        tcdAssinado: qp.get("tcdAssinado") ? qp.get("tcdAssinado") === "true" : undefined,
         ignorarSituacoesTratadas: qp.get("ignorarSituacoesTratadas") !== "false",
         incluirParcelasVencidasRecentes: qp.get("incluirParcelasVencidasRecentes") === "true",
         tipoTituloProtesto:
           (qp.get("tipoTituloProtesto") as TipoTituloProtesto | null) ??
           this.filtros.controls.tipoTituloProtesto.value,
+        separarDocumentosPorTipo: qp.get("separarDocumentosPorTipo") === "true",
       },
       { emitEvent: false },
     );
@@ -484,12 +503,14 @@ export class RelatoriosGeracaoComponent implements OnInit, OnDestroy {
       ignorarSituacoesTratadas: String(v.ignorarSituacoesTratadas),
       incluirParcelasVencidasRecentes: String(v.incluirParcelasVencidasRecentes),
       tipoTituloProtesto: String(v.tipoTituloProtesto),
+      separarDocumentosPorTipo: String(v.separarDocumentosPorTipo),
     };
     if (v.diasAtraso !== undefined) queryParams["diasAtraso"] = String(v.diasAtraso);
     if (v.valorMinimo !== undefined) queryParams["valorMinimo"] = String(v.valorMinimo);
     if (v.cursoId) queryParams["cursoId"] = v.cursoId;
     if (v.situacaoCobrancaId) queryParams["situacaoCobrancaId"] = v.situacaoCobrancaId;
     if (v.tagId) queryParams["tagId"] = v.tagId;
+    if (v.tcdAssinado !== undefined) queryParams["tcdAssinado"] = String(v.tcdAssinado);
 
     this.router.navigate([], { relativeTo: this.route, queryParams, replaceUrl: true });
   }
@@ -506,9 +527,11 @@ export class RelatoriosGeracaoComponent implements OnInit, OnDestroy {
       cursoId: bruto.cursoId ?? undefined,
       situacaoCobrancaId: bruto.situacaoCobrancaId ?? undefined,
       tagId: bruto.tagId ?? undefined,
+      tcdAssinado: bruto.tcdAssinado ?? undefined,
       ignorarSituacoesTratadas: bruto.ignorarSituacoesTratadas,
       incluirParcelasVencidasRecentes: bruto.incluirParcelasVencidasRecentes,
       tipoTituloProtesto: bruto.tipoTituloProtesto,
+      separarDocumentosPorTipo: bruto.separarDocumentosPorTipo,
     };
   }
 

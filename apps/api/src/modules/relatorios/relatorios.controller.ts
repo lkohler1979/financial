@@ -17,6 +17,7 @@ interface ItemRelatorio {
   documentoGerado?: boolean;
   caminhoDocumento?: string | null;
   caminhoDocumentoPdf?: string | null;
+  tipoTituloDocumento?: "MENSALIDADE" | "RENEGOCIACAO";
 }
 
 export const relatoriosController = {
@@ -63,10 +64,20 @@ export const relatoriosController = {
     const matriculaId = paramString(req, "matriculaId");
     const formato = req.query.formato === "pdf" ? "pdf" : "docx";
 
+    // Quando o relatório separa documentos por tipo, uma mesma matrícula
+    // pode ter 2 itens (MENSALIDADE e RENEGOCIACAO) — o parâmetro `tipo`
+    // desambigua; sem ele, cai no primeiro (compatível com relatórios sem
+    // separação, que só têm 1 item por matrícula).
+    const tipo =
+      req.query.tipo === "MENSALIDADE" || req.query.tipo === "RENEGOCIACAO"
+        ? req.query.tipo
+        : undefined;
     const itens = Array.isArray(relatorio.itens)
       ? (relatorio.itens as unknown as ItemRelatorio[])
       : [];
-    const item = itens.find((i) => i.matriculaId === matriculaId);
+    const item = itens.find(
+      (i) => i.matriculaId === matriculaId && (!tipo || i.tipoTituloDocumento === tipo),
+    );
 
     if (!item || !item.documentoGerado || !item.caminhoDocumento) {
       throw new NotFoundError("Documento não encontrado para esta matrícula neste relatório");

@@ -83,6 +83,14 @@ import {
         </mat-select>
       </mat-form-field>
       <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>TCD assinado</mat-label>
+        <mat-select formControlName="tcdAssinado">
+          <mat-option [value]="undefined">Todos</mat-option>
+          <mat-option [value]="true">Sim</mat-option>
+          <mat-option [value]="false">Não</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
         <mat-label>Matrícula de</mat-label>
         <input matInput type="date" formControlName="dataMatriculaInicio" />
       </mat-form-field>
@@ -189,6 +197,7 @@ export class MatriculasListComponent implements OnInit {
     situacao: this.fb.control<string | undefined>(undefined),
     situacaoCobrancaId: this.fb.control<string | undefined>(undefined),
     tagId: this.fb.control<string | undefined>(undefined),
+    tcdAssinado: this.fb.control<boolean | undefined>(undefined),
     dataMatriculaInicio: this.fb.control<string | undefined>(undefined),
     dataMatriculaFim: this.fb.control<string | undefined>(undefined),
   });
@@ -222,6 +231,7 @@ export class MatriculasListComponent implements OnInit {
         situacao: valores.situacao || undefined,
         situacaoCobrancaId: valores.situacaoCobrancaId || undefined,
         tagId: valores.tagId || undefined,
+        tcdAssinado: valores.tcdAssinado ?? undefined,
         dataMatriculaInicio: valores.dataMatriculaInicio || undefined,
         dataMatriculaFim: valores.dataMatriculaFim || undefined,
         page: this.page,

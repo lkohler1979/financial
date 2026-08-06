@@ -26,6 +26,9 @@ export class RelatoriosService {
       params = params.set("situacaoCobrancaId", filtros.situacaoCobrancaId);
     }
     if (filtros.tagId) params = params.set("tagId", filtros.tagId);
+    if (filtros.tcdAssinado !== undefined) {
+      params = params.set("tcdAssinado", filtros.tcdAssinado);
+    }
     if (filtros.ignorarSituacoesTratadas !== undefined) {
       params = params.set("ignorarSituacoesTratadas", filtros.ignorarSituacoesTratadas);
     }
@@ -79,9 +82,12 @@ export class RelatoriosService {
     relatorioId: string,
     matriculaId: string,
     formato: "docx" | "pdf" = "docx",
+    tipoTituloDocumento?: "MENSALIDADE" | "RENEGOCIACAO",
   ): Observable<HttpResponse<Blob>> {
+    let params = new HttpParams().set("formato", formato);
+    if (tipoTituloDocumento) params = params.set("tipo", tipoTituloDocumento);
     return this.http.get(`${this.baseUrl}/${relatorioId}/itens/${matriculaId}/documento`, {
-      params: new HttpParams().set("formato", formato),
+      params,
       responseType: "blob",
       observe: "response",
     });

@@ -121,6 +121,7 @@ model Matricula {
   numeroMatricula  String?   @map("numero_matricula")
   dataMatricula    DateTime? @map("data_matricula")
   contratoAssinado Boolean   @default(false) @map("contrato_assinado")
+  tcdAssinado      Boolean   @default(false) @map("tcd_assinado")
   situacao         String    @default("ATIVA")
   observacoes      String?
 
@@ -259,6 +260,11 @@ model RelatorioInadimplencia {
   /// worker aplicar o mesmo filtro ao montar o documento, de forma
   /// assíncrona — ver geracao-word.worker.ts).
   tipoTituloProtesto     TipoTituloProtesto @default(AMBOS) @map("tipo_titulo_protesto")
+  /// Só tem efeito quando tipoTituloProtesto = AMBOS: gera um único
+  /// documento combinando mensalidade+renegociação (false, padrão) ou um
+  /// documento separado para cada tipo, com o nome do arquivo identificando
+  /// qual é qual (pedido do usuário).
+  separarDocumentosPorTipo Boolean @default(false) @map("separar_documentos_por_tipo")
   totalElegiveis         Int      @default(0) @map("total_elegiveis")
   totalDocumentosGerados Int      @default(0) @map("total_documentos_gerados")
   itens                  Json?

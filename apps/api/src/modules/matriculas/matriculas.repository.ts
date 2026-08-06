@@ -11,6 +11,7 @@ export interface ListarMatriculasParams {
   dataMatriculaFim?: Date;
   situacaoCobrancaId?: string;
   tagId?: string;
+  tcdAssinado?: boolean;
   skip: number;
   take: number;
 }
@@ -57,6 +58,7 @@ export const matriculasRepository = {
     dataMatriculaFim,
     situacaoCobrancaId,
     tagId,
+    tcdAssinado,
     skip,
     take,
   }: ListarMatriculasParams) {
@@ -76,6 +78,7 @@ export const matriculasRepository = {
         : {}),
       ...(situacaoCobrancaId ? { situacaoCobrancaId } : {}),
       ...(tagId ? { tags: { some: { tagId } } } : {}),
+      ...(tcdAssinado !== undefined ? { tcdAssinado } : {}),
     };
 
     const [data, total] = await Promise.all([

@@ -4,6 +4,7 @@ const dadosMatricula = {
   numeroMatricula: z.string().trim().max(50).optional(),
   dataMatricula: z.coerce.date().optional(),
   contratoAssinado: z.boolean().optional(),
+  tcdAssinado: z.boolean().optional(),
   situacao: z.string().trim().min(1).max(50).optional(),
   observacoes: z.string().trim().max(1000).optional(),
 };
@@ -34,6 +35,7 @@ export const listarMatriculasSchema = z.object({
   dataMatriculaFim: z.coerce.date().optional(),
   situacaoCobrancaId: z.string().uuid().optional(),
   tagId: z.string().uuid().optional(),
+  tcdAssinado: z.coerce.boolean().optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
 });

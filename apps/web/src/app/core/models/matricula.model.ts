@@ -32,6 +32,7 @@ export interface Matricula {
   numeroMatricula?: string | null;
   dataMatricula?: string | null;
   contratoAssinado: boolean;
+  tcdAssinado: boolean;
   situacao: string;
   observacoes?: string | null;
   situacaoCobrancaId?: string | null;
@@ -47,6 +48,7 @@ export interface MatriculaPayload {
   numeroMatricula?: string;
   dataMatricula?: string;
   contratoAssinado?: boolean;
+  tcdAssinado?: boolean;
   situacao?: string;
   observacoes?: string;
 }

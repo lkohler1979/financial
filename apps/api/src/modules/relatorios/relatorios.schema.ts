@@ -7,6 +7,7 @@ export const filtrosElegibilidadeSchema = z.object({
   // Filtros de cobrança (PRD seção 23.4/23.6, wireframe 04_relatorio_inadimplencia.html).
   situacaoCobrancaId: z.string().uuid().optional(),
   tagId: z.string().uuid().optional(),
+  tcdAssinado: z.coerce.boolean().optional(),
   ignorarSituacoesTratadas: z.coerce.boolean().default(true),
   // Decisão do usuário, 2026-07-07: por padrão o protesto só inclui parcelas
   // vencidas há mais de `diasAtraso` dias; esta opção estende o documento
@@ -17,6 +18,11 @@ export const filtrosElegibilidadeSchema = z.object({
   // mensalidade, só com renegociação, ou ambas. Sem valor informado, usa o
   // padrão de Configuracao.tipoTituloProtestoDefault (relatorios.service.ts).
   tipoTituloProtesto: z.enum(["MENSALIDADE", "RENEGOCIACAO", "AMBOS"]).optional(),
+  // Só tem efeito quando tipoTituloProtesto = AMBOS (pedido do usuário): em
+  // vez de um único documento combinando mensalidade+renegociação, gera um
+  // documento separado para cada tipo, com o nome do arquivo identificando
+  // qual é qual. Só importa no momento da geração (relatorios.gerar).
+  separarDocumentosPorTipo: z.coerce.boolean().default(false),
 });
 
 // Se `matriculaIds` for informado, a geração fica restrita a essa seleção

@@ -90,6 +90,7 @@ export const matriculasService = {
       dataMatriculaFim,
       situacaoCobrancaId,
       tagId,
+      tcdAssinado,
     } = params;
     const { data, total } = await matriculasRepository.list({
       alunoId,
@@ -101,6 +102,7 @@ export const matriculasService = {
       dataMatriculaFim,
       situacaoCobrancaId,
       tagId,
+      tcdAssinado,
       skip: (page - 1) * pageSize,
       take: pageSize,
     });
@@ -131,6 +133,7 @@ export const matriculasService = {
       numeroMatricula: input.numeroMatricula,
       dataMatricula: input.dataMatricula,
       contratoAssinado: input.contratoAssinado,
+      tcdAssinado: input.tcdAssinado,
       situacao: input.situacao,
       observacoes: input.observacoes,
     };
@@ -173,6 +176,7 @@ export const matriculasService = {
       ...(input.numeroMatricula !== undefined ? { numeroMatricula: input.numeroMatricula } : {}),
       ...(input.dataMatricula !== undefined ? { dataMatricula: input.dataMatricula } : {}),
       ...(input.contratoAssinado !== undefined ? { contratoAssinado: input.contratoAssinado } : {}),
+      ...(input.tcdAssinado !== undefined ? { tcdAssinado: input.tcdAssinado } : {}),
       ...(input.situacao !== undefined ? { situacao: input.situacao } : {}),
       ...(input.observacoes !== undefined ? { observacoes: input.observacoes } : {}),
     };

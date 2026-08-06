@@ -23,6 +23,10 @@ export interface ErroItemRelatorio {
 export interface ItemRelatorio extends MatriculaElegivel {
   documentoGerado?: boolean;
   caminhoDocumento?: string | null;
+  /** Presente só quando o relatório separou os documentos por tipo (Ambos +
+   * separarDocumentosPorTipo) — indica a qual subconjunto de parcelas este
+   * item/documento se refere. */
+  tipoTituloDocumento?: "MENSALIDADE" | "RENEGOCIACAO";
 }
 
 export interface RelatorioInadimplencia {
@@ -32,6 +36,7 @@ export interface RelatorioInadimplencia {
   diasAtraso?: number | null;
   incluirParcelasVencidasRecentes?: boolean;
   tipoTituloProtesto?: TipoTituloProtesto;
+  separarDocumentosPorTipo?: boolean;
   valorMinimo?: number | null;
   cursoId?: string | null;
   curso?: { id: string; nome: string } | null;
@@ -64,6 +69,7 @@ export interface FiltrosRelatorio {
   cursoId?: string;
   situacaoCobrancaId?: string;
   tagId?: string;
+  tcdAssinado?: boolean;
   ignorarSituacoesTratadas?: boolean;
   /** Por padrão, só entra no protesto a parcela vencida há mais de
    * `diasAtraso` dias; quando true, inclui também a parcela só "vencida" da
@@ -73,4 +79,8 @@ export interface FiltrosRelatorio {
    * mensalidade, só com renegociação, ou ambas (padrão). Sem valor, usa
    * Configuracao.tipoTituloProtestoDefault. */
   tipoTituloProtesto?: TipoTituloProtesto;
+  /** Só tem efeito quando tipoTituloProtesto = "AMBOS" (pedido do usuário):
+   * gera um documento separado para mensalidade e outro para renegociação
+   * em vez de um único documento combinado. */
+  separarDocumentosPorTipo?: boolean;
 }

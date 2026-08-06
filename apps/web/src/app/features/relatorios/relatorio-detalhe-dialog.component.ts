@@ -36,6 +36,10 @@ export interface RelatorioDetalheDialogData {
             <th mat-header-cell *matHeaderCellDef>Total devedor</th>
             <td mat-cell *matCellDef="let i">{{ i.valorTotal | currency: "BRL" }}</td>
           </ng-container>
+          <ng-container matColumnDef="tipo">
+            <th mat-header-cell *matHeaderCellDef>Tipo</th>
+            <td mat-cell *matCellDef="let i">{{ rotuloTipo(i.tipoTituloDocumento) }}</td>
+          </ng-container>
           <ng-container matColumnDef="documento">
             <th mat-header-cell *matHeaderCellDef>Documento</th>
             <td mat-cell *matCellDef="let i">
@@ -76,12 +80,18 @@ export class RelatorioDetalheDialogComponent {
   private readonly service = inject(RelatoriosService);
   readonly data = inject<RelatorioDetalheDialogData>(MAT_DIALOG_DATA);
 
-  colunas = ["alunoNome", "cursoNome", "valorTotal", "documento"];
+  colunas = ["alunoNome", "cursoNome", "valorTotal", "tipo", "documento"];
   itens: ItemRelatorio[] = this.data.relatorio.itens ?? [];
+
+  rotuloTipo(tipo?: "MENSALIDADE" | "RENEGOCIACAO"): string {
+    if (tipo === "MENSALIDADE") return "Mensalidade";
+    if (tipo === "RENEGOCIACAO") return "Renegociação";
+    return "—";
+  }
 
   baixar(item: ItemRelatorio, formato: "docx" | "pdf"): void {
     this.service
-      .baixarDocumento(this.data.relatorio.id, item.matriculaId, formato)
+      .baixarDocumento(this.data.relatorio.id, item.matriculaId, formato, item.tipoTituloDocumento)
       .subscribe((resp) => {
         const nome = extrairNomeArquivo(
           resp.headers.get("content-disposition"),

@@ -1,8 +1,9 @@
 import { Component, inject, OnInit } from "@angular/core";
 import { ActivatedRoute, Router, RouterLink } from "@angular/router";
-import { FormBuilder, ReactiveFormsModule, Validators } from "@angular/forms";
+import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
+import { MatChipsModule } from "@angular/material/chips";
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatInputModule } from "@angular/material/input";
 import { MatAutocompleteModule } from "@angular/material/autocomplete";
@@ -14,9 +15,11 @@ import { debounceTime, switchMap } from "rxjs";
 import { MatriculasService } from "../../core/services/matriculas.service";
 import { AlunosService } from "../../core/services/alunos.service";
 import { CursosService } from "../../core/services/cursos.service";
+import { CobrancaService } from "../../core/services/cobranca.service";
 import { MatriculaPayload } from "../../core/models/matricula.model";
 import { Aluno } from "../../core/models/aluno.model";
 import { Curso } from "../../core/models/curso.model";
+import { SituacaoCobranca, Tag } from "../../core/models/cobranca.model";
 import { formatarCpf } from "../../shared/utils/cpf.util";
 
 const SITUACOES = ["ATIVA", "TRANCADA", "CANCELADA", "CONCLUIDA"];
@@ -32,6 +35,7 @@ const SITUACOES = ["ATIVA", "TRANCADA", "CANCELADA", "CONCLUIDA"];
     MatFormFieldModule,
     MatInputModule,
     MatAutocompleteModule,
+    MatChipsModule,
     MatSelectModule,
     MatSlideToggleModule,
     MatProgressBarModule,
@@ -110,12 +114,62 @@ const SITUACOES = ["ATIVA", "TRANCADA", "CANCELADA", "CONCLUIDA"];
         <div class="flex items-center">
           <mat-slide-toggle formControlName="contratoAssinado">Contrato assinado</mat-slide-toggle>
         </div>
+
+        <div class="flex items-center">
+          <mat-slide-toggle formControlName="tcdAssinado">TCD assinado</mat-slide-toggle>
+        </div>
       </div>
 
       <mat-form-field appearance="outline" class="w-full">
         <mat-label>Observações</mat-label>
         <textarea matInput formControlName="observacoes" rows="3"></textarea>
       </mat-form-field>
+
+      @if (editando) {
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4 mt-2">
+          <div>
+            <p class="text-xs font-medium text-gray-600 mb-2">Situação de cobrança</p>
+            <mat-form-field appearance="outline" class="w-full">
+              <mat-select
+                [formControl]="situacaoCobrancaControl"
+                (selectionChange)="mudarSituacaoCobranca($event.value)"
+              >
+                @for (situacao of situacoesCobranca; track situacao.id) {
+                  <mat-option [value]="situacao.id">{{ situacao.nome }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+          </div>
+
+          <div>
+            <p class="text-xs font-medium text-gray-600 mb-2">Tags (para busca posterior)</p>
+            <div class="flex gap-2 flex-wrap items-center">
+              <mat-chip-set>
+                @for (tag of tagsAtuais; track tag.id) {
+                  <mat-chip [removable]="true" (removed)="removerTag(tag)">
+                    {{ tag.nome }}
+                    <mat-icon matChipRemove aria-label="Remover tag">cancel</mat-icon>
+                  </mat-chip>
+                }
+              </mat-chip-set>
+              <mat-form-field appearance="outline" class="!w-48 !text-xs" subscriptSizing="dynamic">
+                <input
+                  matInput
+                  [formControl]="novaTagControl"
+                  [matAutocomplete]="autoTag"
+                  placeholder="Digite e Enter"
+                  (keydown.enter)="$event.preventDefault(); confirmarNovaTag()"
+                />
+                <mat-autocomplete #autoTag="matAutocomplete" (optionSelected)="confirmarNovaTag()">
+                  @for (tag of tagsFiltradas(); track tag.id) {
+                    <mat-option [value]="tag.nome">{{ tag.nome }}</mat-option>
+                  }
+                </mat-autocomplete>
+              </mat-form-field>
+            </div>
+          </div>
+        </div>
+      }
 
       <div class="flex justify-end gap-2 mt-2">
         <a mat-button routerLink="/matriculas">Cancelar</a>
@@ -131,6 +185,7 @@ export class MatriculaFormComponent implements OnInit {
   private readonly service = inject(MatriculasService);
   private readonly alunosService = inject(AlunosService);
   private readonly cursosService = inject(CursosService);
+  private readonly cobrancaService = inject(CobrancaService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly snackBar = inject(MatSnackBar);
@@ -146,6 +201,12 @@ export class MatriculaFormComponent implements OnInit {
   alunos: Aluno[] = [];
   cursos: Curso[] = [];
 
+  situacoesCobranca: SituacaoCobranca[] = [];
+  todasTags: Tag[] = [];
+  tagsAtuais: Tag[] = [];
+  readonly situacaoCobrancaControl = new FormControl<string | undefined>(undefined);
+  readonly novaTagControl = new FormControl("", { nonNullable: true });
+
   readonly form = this.fb.group({
     aluno: this.fb.control<Aluno | string | null>(null, [Validators.required, objetoValidator]),
     curso: this.fb.control<Curso | string | null>(null, [Validators.required, objetoValidator]),
@@ -153,6 +214,7 @@ export class MatriculaFormComponent implements OnInit {
     dataMatricula: [""],
     situacao: ["ATIVA"],
     contratoAssinado: [false],
+    tcdAssinado: [false],
     observacoes: [""],
   });
 
@@ -199,13 +261,84 @@ export class MatriculaFormComponent implements OnInit {
             dataMatricula: m.dataMatricula ? m.dataMatricula.substring(0, 10) : "",
             situacao: m.situacao,
             contratoAssinado: m.contratoAssinado,
+            tcdAssinado: m.tcdAssinado,
             observacoes: m.observacoes ?? "",
           });
           this.carregando = false;
         },
         error: () => (this.carregando = false),
       });
+
+      this.cobrancaService.listarSituacoes(true).subscribe((res) => (this.situacoesCobranca = res));
+      this.cobrancaService.listarTags().subscribe((res) => (this.todasTags = res));
+      this.carregarFichaCobranca();
     }
+  }
+
+  private carregarFichaCobranca(): void {
+    if (!this.id) return;
+    this.cobrancaService.obterFicha(this.id).subscribe((ficha) => {
+      this.situacaoCobrancaControl.setValue(ficha.matricula.situacaoCobrancaId ?? undefined, {
+        emitEvent: false,
+      });
+      this.tagsAtuais = ficha.tags;
+    });
+  }
+
+  mudarSituacaoCobranca(situacaoCobrancaId: string): void {
+    if (!this.id) return;
+    this.cobrancaService.mudarSituacao(this.id, situacaoCobrancaId).subscribe();
+  }
+
+  tagsFiltradas(): Tag[] {
+    const idsAtuais = new Set(this.tagsAtuais.map((t) => t.id));
+    const termo = this.novaTagControl.value.trim().toLowerCase();
+    return this.todasTags.filter(
+      (t) => !idsAtuais.has(t.id) && (!termo || t.nome.toLowerCase().includes(termo)),
+    );
+  }
+
+  /** Adiciona a TAG digitada — reaproveita se já existir (por nome, sem
+   * diferenciar caixa) ou cria uma nova antes de associar (pedido do
+   * usuário: TAG de texto livre, para busca posterior). */
+  confirmarNovaTag(): void {
+    if (!this.id) return;
+    const nome = this.novaTagControl.value.trim();
+    if (!nome) return;
+    this.novaTagControl.setValue("");
+
+    const existente = this.todasTags.find((t) => t.nome.toLowerCase() === nome.toLowerCase());
+    if (existente) {
+      this.adicionarTag(existente.id);
+      return;
+    }
+
+    this.cobrancaService.criarTag(nome).subscribe({
+      next: (tag) => {
+        this.todasTags = [...this.todasTags, tag];
+        this.adicionarTag(tag.id);
+      },
+      error: () => {
+        this.cobrancaService.listarTags().subscribe((tags) => {
+          this.todasTags = tags;
+          const achada = tags.find((t) => t.nome.toLowerCase() === nome.toLowerCase());
+          if (achada) this.adicionarTag(achada.id);
+          else this.snackBar.open("Não foi possível adicionar a TAG", "Fechar", { duration: 3000 });
+        });
+      },
+    });
+  }
+
+  private adicionarTag(tagId: string): void {
+    if (!this.id) return;
+    this.cobrancaService.adicionarTag(this.id, tagId).subscribe(() => this.carregarFichaCobranca());
+  }
+
+  removerTag(tag: Tag): void {
+    if (!this.id) return;
+    this.cobrancaService
+      .removerTag(this.id, tag.id)
+      .subscribe(() => this.carregarFichaCobranca());
   }
 
   exibirAluno(aluno: Aluno | string | null): string {
@@ -233,6 +366,7 @@ export class MatriculaFormComponent implements OnInit {
       dataMatricula: bruto.dataMatricula || undefined,
       situacao: bruto.situacao || undefined,
       contratoAssinado: bruto.contratoAssinado ?? false,
+      tcdAssinado: bruto.tcdAssinado ?? false,
       observacoes: bruto.observacoes || undefined,
     };
 

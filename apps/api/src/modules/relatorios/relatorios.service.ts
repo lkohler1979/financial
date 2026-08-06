@@ -19,8 +19,10 @@ interface FiltrosResolvidos {
   cursoId?: string;
   situacaoCobrancaId?: string;
   tagId?: string;
+  tcdAssinado?: boolean;
   ignorarSituacoesTratadas: boolean;
   tipoTituloProtesto: TipoTituloProtesto;
+  separarDocumentosPorTipo: boolean;
   financeiro: ConfiguracaoFinanceira;
 }
 
@@ -35,8 +37,10 @@ async function resolverFiltros(filtros: FiltrosElegibilidadeInput): Promise<Filt
     cursoId: filtros.cursoId,
     situacaoCobrancaId: filtros.situacaoCobrancaId,
     tagId: filtros.tagId,
+    tcdAssinado: filtros.tcdAssinado,
     ignorarSituacoesTratadas: filtros.ignorarSituacoesTratadas,
     tipoTituloProtesto: filtros.tipoTituloProtesto ?? configuracao.tipoTituloProtestoDefault,
+    separarDocumentosPorTipo: filtros.separarDocumentosPorTipo,
     financeiro: {
       multaPercentual: Number(configuracao.multaPercentual),
       jurosDiarioPercentual: Number(configuracao.jurosDiarioPercentual),
@@ -70,6 +74,7 @@ export const relatoriosService = {
       {
         situacaoCobrancaId: filtros.situacaoCobrancaId,
         tagId: filtros.tagId,
+        tcdAssinado: filtros.tcdAssinado,
         ignorarSituacoesTratadas: filtros.ignorarSituacoesTratadas,
       },
       filtros.diasAtraso,
@@ -86,6 +91,7 @@ export const relatoriosService = {
       {
         situacaoCobrancaId: filtros.situacaoCobrancaId,
         tagId: filtros.tagId,
+        tcdAssinado: filtros.tcdAssinado,
         ignorarSituacoesTratadas: filtros.ignorarSituacoesTratadas,
       },
       filtros.diasAtraso,
@@ -103,6 +109,7 @@ export const relatoriosService = {
       diasAtraso: filtros.diasAtraso || null,
       incluirParcelasVencidasRecentes: input.incluirParcelasVencidasRecentes,
       tipoTituloProtesto: filtros.tipoTituloProtesto,
+      separarDocumentosPorTipo: filtros.separarDocumentosPorTipo,
       valorMinimo: filtros.valorMinimo,
       ...(filtros.cursoId ? { curso: { connect: { id: filtros.cursoId } } } : {}),
       totalElegiveis: elegiveis.length,

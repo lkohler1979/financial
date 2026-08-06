@@ -55,6 +55,7 @@ export interface ListarRelatoriosParams {
 export interface FiltrosCobrancaElegibilidade {
   situacaoCobrancaId?: string;
   tagId?: string;
+  tcdAssinado?: boolean;
   /** true (padrão): exclui matrículas cuja situação atual tem participaNovosRelatorios=false (PRD seção 23.6). */
   ignorarSituacoesTratadas: boolean;
 }
@@ -84,6 +85,9 @@ export const relatoriosRepository = {
           ? { situacaoCobrancaId: filtrosCobranca.situacaoCobrancaId }
           : {}),
         ...(filtrosCobranca.tagId ? { tags: { some: { tagId: filtrosCobranca.tagId } } } : {}),
+        ...(filtrosCobranca.tcdAssinado !== undefined
+          ? { tcdAssinado: filtrosCobranca.tcdAssinado }
+          : {}),
         ...(filtrosCobranca.ignorarSituacoesTratadas
           ? {
               OR: [

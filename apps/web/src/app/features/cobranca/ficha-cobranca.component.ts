@@ -5,6 +5,8 @@ import { FormControl, ReactiveFormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
 import { MatChipsModule } from "@angular/material/chips";
+import { MatCheckboxModule } from "@angular/material/checkbox";
+import { MatAutocompleteModule } from "@angular/material/autocomplete";
 import { MatSelectModule } from "@angular/material/select";
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatInputModule } from "@angular/material/input";
@@ -35,6 +37,8 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
     MatButtonModule,
     MatIconModule,
     MatChipsModule,
+    MatCheckboxModule,
+    MatAutocompleteModule,
     MatSelectModule,
     MatFormFieldModule,
     MatInputModule,
@@ -71,6 +75,11 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
               <mat-option value="RENEGOCIACAO">Somente Renegociação</mat-option>
             </mat-select>
           </mat-form-field>
+          @if (tipoTituloProtestoControl.value === "AMBOS") {
+            <mat-checkbox [formControl]="separarDocumentosPorTipoControl" class="!text-xs">
+              Separar em 2 documentos
+            </mat-checkbox>
+          }
           <button mat-stroked-button [disabled]="gerando" (click)="gerarDocumento()">
             <mat-icon>description</mat-icon> Gerar documento
           </button>
@@ -114,12 +123,19 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
                 </mat-chip>
               }
             </mat-chip-set>
-            <mat-form-field appearance="outline" class="!w-40 !text-xs" subscriptSizing="dynamic">
-              <mat-select placeholder="+ Adicionar" (selectionChange)="adicionarTag($event.value)">
-                @for (tag of tagsDisponiveis(); track tag.id) {
-                  <mat-option [value]="tag.id">{{ tag.nome }}</mat-option>
+            <mat-form-field appearance="outline" class="!w-48 !text-xs" subscriptSizing="dynamic">
+              <input
+                matInput
+                [formControl]="novaTagControl"
+                [matAutocomplete]="autoTag"
+                placeholder="Digite e Enter"
+                (keydown.enter)="$event.preventDefault(); confirmarNovaTag()"
+              />
+              <mat-autocomplete #autoTag="matAutocomplete" (optionSelected)="confirmarNovaTag()">
+                @for (tag of tagsFiltradas(); track tag.id) {
+                  <mat-option [value]="tag.nome">{{ tag.nome }}</mat-option>
                 }
-              </mat-select>
+              </mat-autocomplete>
             </mat-form-field>
           </div>
         </div>
@@ -267,9 +283,11 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
 
   readonly situacaoControl = new FormControl<string | undefined>(undefined);
   readonly novaObservacao = new FormControl("", { nonNullable: true });
+  readonly novaTagControl = new FormControl("", { nonNullable: true });
   readonly tipoTituloProtestoControl = new FormControl<TipoTituloProtesto>("AMBOS", {
     nonNullable: true,
   });
+  readonly separarDocumentosPorTipoControl = new FormControl(false, { nonNullable: true });
 
   ngOnInit(): void {
     this.matriculaId = this.route.snapshot.paramMap.get("matriculaId") ?? "";
@@ -311,9 +329,44 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
     this.location.back();
   }
 
-  tagsDisponiveis(): Tag[] {
+  tagsFiltradas(): Tag[] {
     const idsAtuais = new Set((this.ficha?.tags ?? []).map((t) => t.id));
-    return this.todasTags.filter((t) => !idsAtuais.has(t.id));
+    const termo = this.novaTagControl.value.trim().toLowerCase();
+    return this.todasTags.filter(
+      (t) => !idsAtuais.has(t.id) && (!termo || t.nome.toLowerCase().includes(termo)),
+    );
+  }
+
+  /** Adiciona a TAG digitada — reaproveita se já existir (por nome, sem
+   * diferenciar caixa) ou cria uma nova antes de associar (pedido do
+   * usuário: TAG de texto livre, para busca posterior). */
+  confirmarNovaTag(): void {
+    const nome = this.novaTagControl.value.trim();
+    if (!nome) return;
+    this.novaTagControl.setValue("");
+
+    const existente = this.todasTags.find((t) => t.nome.toLowerCase() === nome.toLowerCase());
+    if (existente) {
+      this.adicionarTag(existente.id);
+      return;
+    }
+
+    this.service.criarTag(nome).subscribe({
+      next: (tag) => {
+        this.todasTags = [...this.todasTags, tag];
+        this.adicionarTag(tag.id);
+      },
+      error: () => {
+        // Provável corrida: outra criação com o mesmo nome já passou antes —
+        // recarrega o catálogo e tenta achar de novo antes de desistir.
+        this.service.listarTags().subscribe((tags) => {
+          this.todasTags = tags;
+          const achada = tags.find((t) => t.nome.toLowerCase() === nome.toLowerCase());
+          if (achada) this.adicionarTag(achada.id);
+          else this.snackBar.open("Não foi possível adicionar a TAG", "Fechar", { duration: 3000 });
+        });
+      },
+    });
   }
 
   /**
@@ -462,7 +515,13 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
   gerarDocumento(): void {
     this.gerando = true;
     this.relatoriosService
-      .gerar({ tipoTituloProtesto: this.tipoTituloProtestoControl.value }, [this.matriculaId])
+      .gerar(
+        {
+          tipoTituloProtesto: this.tipoTituloProtestoControl.value,
+          separarDocumentosPorTipo: this.separarDocumentosPorTipoControl.value,
+        },
+        [this.matriculaId],
+      )
       .subscribe({
       next: ({ id: relatorioId, jobId, totalElegiveis }) => {
         if (totalElegiveis === 0) {

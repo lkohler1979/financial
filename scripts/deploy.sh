@@ -11,6 +11,12 @@
 
 set -euo pipefail
 
+# Evita o prompt interativo "Would you like to share pseudonymous usage
+# data..." do Angular CLI na primeira vez que `ng build` roda no ambiente -
+# sem TTY (como aqui, dentro de um script), esse prompt pode travar o
+# deploy indefinidamente em vez de simplesmente pular a pergunta.
+export NG_CLI_ANALYTICS=false
+
 ROOT_DIR="/opt/financial"
 API_DIR="$ROOT_DIR/apps/api"
 WEB_DIR="$ROOT_DIR/apps/web"

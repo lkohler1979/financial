@@ -11,6 +11,7 @@ export interface ListarMatriculasParams {
   dataMatriculaFim?: Date;
   situacaoCobrancaId?: string;
   tagId?: string;
+  contratoAssinado?: boolean;
   tcdAssinado?: boolean;
   skip: number;
   take: number;
@@ -58,6 +59,7 @@ export const matriculasRepository = {
     dataMatriculaFim,
     situacaoCobrancaId,
     tagId,
+    contratoAssinado,
     tcdAssinado,
     skip,
     take,
@@ -78,6 +80,7 @@ export const matriculasRepository = {
         : {}),
       ...(situacaoCobrancaId ? { situacaoCobrancaId } : {}),
       ...(tagId ? { tags: { some: { tagId } } } : {}),
+      ...(contratoAssinado !== undefined ? { contratoAssinado } : {}),
       ...(tcdAssinado !== undefined ? { tcdAssinado } : {}),
     };
 

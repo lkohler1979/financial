@@ -90,6 +90,7 @@ export const matriculasService = {
       dataMatriculaFim,
       situacaoCobrancaId,
       tagId,
+      contratoAssinado,
       tcdAssinado,
     } = params;
     const { data, total } = await matriculasRepository.list({
@@ -102,6 +103,7 @@ export const matriculasService = {
       dataMatriculaFim,
       situacaoCobrancaId,
       tagId,
+      contratoAssinado,
       tcdAssinado,
       skip: (page - 1) * pageSize,
       take: pageSize,

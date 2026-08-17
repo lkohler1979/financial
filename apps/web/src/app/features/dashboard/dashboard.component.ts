@@ -195,6 +195,41 @@ import { DashboardCobranca, DashboardGeral } from "../../core/models/dashboard.m
               </div>
             </div>
 
+            <section class="bg-white rounded-lg border p-4 mb-5">
+              <p class="text-sm font-medium text-gray-700 mb-4">
+                Valor em aberto por contrato assinado
+              </p>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div class="rounded-lg border p-3">
+                  <p class="text-xs text-gray-500 mb-1">Com contrato assinado</p>
+                  <p class="text-xl font-medium m-0">
+                    {{ c.porContrato.comContrato.valor | currency: "BRL" }}
+                  </p>
+                  <p class="text-xs text-gray-500 m-0">
+                    {{ c.porContrato.comContrato.matriculas }} matrículas
+                  </p>
+                </div>
+                <div class="rounded-lg border p-3">
+                  <p class="text-xs text-gray-500 mb-1">Sem contrato assinado</p>
+                  <p class="text-xl font-medium m-0">
+                    {{ c.porContrato.semContrato.valor | currency: "BRL" }}
+                  </p>
+                  <p class="text-xs text-gray-500 m-0">
+                    {{ c.porContrato.semContrato.matriculas }} matrículas
+                  </p>
+                </div>
+                <div class="rounded-lg border p-3 bg-gray-50">
+                  <p class="text-xs text-gray-500 mb-1">Resumo (com + sem)</p>
+                  <p class="text-xl font-medium m-0">
+                    {{ c.porContrato.resumo.valor | currency: "BRL" }}
+                  </p>
+                  <p class="text-xs text-gray-500 m-0">
+                    {{ c.porContrato.resumo.matriculas }} matrículas
+                  </p>
+                </div>
+              </div>
+            </section>
+
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5">
               <section class="bg-white rounded-lg border p-4">
                 <p class="text-sm font-medium text-gray-700 mb-4">Quantidade por situação</p>

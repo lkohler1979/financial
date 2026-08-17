@@ -35,6 +35,7 @@ async function buscarParcelasVencidas() {
         select: {
           id: true,
           alunoId: true,
+          contratoAssinado: true,
           curso: { select: { id: true, nome: true } },
           situacaoCobranca: { select: { id: true, nome: true, cor: true } },
           tags: { select: { tag: { select: { id: true, nome: true } } } },
@@ -193,6 +194,8 @@ export const dashboardRepository = {
       arredondar(numero(statusMap.get(status)?._sum[campo]));
 
     const matriculasInadimplentes = new Set<string>();
+    const comContrato = { matriculaIds: new Set<string>(), valor: 0 };
+    const semContrato = { matriculaIds: new Set<string>(), valor: 0 };
     const situacaoMap = new Map<
       string,
       { id: string | null; nome: string; cor: string; matriculaIds: Set<string>; valor: number }
@@ -210,6 +213,10 @@ export const dashboardRepository = {
       const valor = numero(parcela.valor);
       const { matricula } = parcela;
       matriculasInadimplentes.add(matricula.id);
+
+      const grupoContrato = matricula.contratoAssinado ? comContrato : semContrato;
+      grupoContrato.matriculaIds.add(matricula.id);
+      grupoContrato.valor += valor;
 
       const situacao = matricula.situacaoCobranca;
       const situacaoId = situacao?.id ?? "sem-situacao";
@@ -256,6 +263,24 @@ export const dashboardRepository = {
         valorRenegociado: valorStatus("RENEGOCIADO"),
         valorQuitado: valorStatus("PAGO", "valorPago") || valorStatus("PAGO"),
         relatoriosPeriodo: relatoriosPeriodo.length,
+      },
+      // Pedido do usuário: valor em aberto (vencido) separado por matrícula
+      // ter ou não o contrato assinado, + o resumo somando os dois (igual ao
+      // indicadores.valorEmAberto/inadimplentes acima, aqui lado a lado pra
+      // comparação direta na mesma tela).
+      porContrato: {
+        comContrato: {
+          matriculas: comContrato.matriculaIds.size,
+          valor: arredondar(comContrato.valor),
+        },
+        semContrato: {
+          matriculas: semContrato.matriculaIds.size,
+          valor: arredondar(semContrato.valor),
+        },
+        resumo: {
+          matriculas: comContrato.matriculaIds.size + semContrato.matriculaIds.size,
+          valor: arredondar(comContrato.valor + semContrato.valor),
+        },
       },
       porSituacao: Array.from(situacaoMap.values())
         .map((item) => ({

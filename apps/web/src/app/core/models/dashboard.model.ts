@@ -30,6 +30,11 @@ export interface DashboardGeral {
   evolucaoHistorica: SerieRelatoriosMes[];
 }
 
+export interface ResumoPorContrato {
+  matriculas: number;
+  valor: number;
+}
+
 export interface DashboardCobranca {
   indicadores: {
     inadimplentes: number;
@@ -39,6 +44,13 @@ export interface DashboardCobranca {
     valorRenegociado: number;
     valorQuitado: number;
     relatoriosPeriodo: number;
+  };
+  /** Valor em aberto (vencido) separado por matrícula ter ou não o contrato
+   * assinado, + o resumo somando os dois. */
+  porContrato: {
+    comContrato: ResumoPorContrato;
+    semContrato: ResumoPorContrato;
+    resumo: ResumoPorContrato;
   };
   porSituacao: Array<{
     id: string | null;

@@ -25,6 +25,13 @@ export const atualizarConfiguracaoSchema = z
     jurosDiarioPercentual: z.coerce.number().min(0).max(100).optional(),
     jurosContarDiaGeracao: z.boolean().optional(),
     tipoTituloProtestoDefault: z.enum(["MENSALIDADE", "RENEGOCIACAO", "AMBOS"]).optional(),
+    legadoSincronizacaoAtiva: z.boolean().optional(),
+    legadoUrl: z.string().trim().url().max(300).optional(),
+    legadoUsuario: z.string().trim().min(1).max(200).optional(),
+    // Senha em texto puro, só nesta entrada — o service criptografa antes de
+    // persistir e nunca a devolve (nem criptografada) nas respostas.
+    legadoSenha: z.string().min(1).max(200).optional(),
+    legadoIntervaloHoras: z.coerce.number().int().min(1).max(720).optional(),
   })
   .refine((obj) => Object.keys(obj).length > 0, "Informe ao menos um campo para atualizar");
 

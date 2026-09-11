@@ -2,6 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { Prisma } from "@prisma/client";
 import { registrarAuditoria } from "../auditoria/auditoria.service";
+import { criptografar } from "../../shared/utils/criptografia";
+import { reprogramarSincronizacaoAgendada } from "../../jobs/queues/sincronizacao-legado.queue";
 import { configuracoesRepository } from "./configuracoes.repository";
 import type { AtualizarConfiguracaoInput } from "./configuracoes.schema";
 
@@ -18,11 +20,19 @@ function serializarConfiguracao(configuracao: {
   jurosDiarioPercentual: Prisma.Decimal | number;
   jurosContarDiaGeracao: boolean;
   tipoTituloProtestoDefault: "MENSALIDADE" | "RENEGOCIACAO" | "AMBOS";
+  legadoSincronizacaoAtiva: boolean;
+  legadoUrl: string | null;
+  legadoUsuario: string | null;
+  legadoSenhaCriptografada: string | null;
+  legadoIntervaloHoras: number;
 }) {
+  // A senha criptografada nunca sai da API — só um indicador se já foi definida.
+  const { legadoSenhaCriptografada, ...resto } = configuracao;
   return {
-    ...configuracao,
+    ...resto,
     multaPercentual: Number(configuracao.multaPercentual),
     jurosDiarioPercentual: Number(configuracao.jurosDiarioPercentual),
+    legadoSenhaConfigurada: Boolean(legadoSenhaCriptografada),
   };
 }
 
@@ -56,17 +66,36 @@ export const configuracoesService = {
       ...(input.tipoTituloProtestoDefault !== undefined
         ? { tipoTituloProtestoDefault: input.tipoTituloProtestoDefault }
         : {}),
+      ...(input.legadoSincronizacaoAtiva !== undefined
+        ? { legadoSincronizacaoAtiva: input.legadoSincronizacaoAtiva }
+        : {}),
+      ...(input.legadoUrl !== undefined ? { legadoUrl: input.legadoUrl } : {}),
+      ...(input.legadoUsuario !== undefined ? { legadoUsuario: input.legadoUsuario } : {}),
+      ...(input.legadoSenha !== undefined
+        ? { legadoSenhaCriptografada: criptografar(input.legadoSenha) }
+        : {}),
+      ...(input.legadoIntervaloHoras !== undefined
+        ? { legadoIntervaloHoras: input.legadoIntervaloHoras }
+        : {}),
     };
 
     const configuracao = await configuracoesRepository.atualizar(dados);
 
+    // Nunca loga a senha em texto puro na Auditoria, só quais campos mudaram.
     await registrarAuditoria({
       usuarioId,
       entidade: ENTIDADE,
       entidadeId: atual.id,
       acao: "ATUALIZACAO",
-      detalhes: { camposAlterados: Object.keys(input) },
+      detalhes: { camposAlterados: Object.keys(input).filter((campo) => campo !== "legadoSenha") },
     });
+
+    if (input.legadoSincronizacaoAtiva !== undefined || input.legadoIntervaloHoras !== undefined) {
+      await reprogramarSincronizacaoAgendada(
+        configuracao.legadoSincronizacaoAtiva,
+        configuracao.legadoIntervaloHoras,
+      );
+    }
 
     return serializarConfiguracao(configuracao);
   },

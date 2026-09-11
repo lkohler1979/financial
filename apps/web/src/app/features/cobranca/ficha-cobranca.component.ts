@@ -18,6 +18,7 @@ import { CobrancaService } from "../../core/services/cobranca.service";
 import { ConfiguracoesService } from "../../core/services/configuracoes.service";
 import { FinanceiroService } from "../../core/services/financeiro.service";
 import { RelatoriosService } from "../../core/services/relatorios.service";
+import { SincronizacaoLegadoService } from "../../core/services/sincronizacao-legado.service";
 import { FichaCobranca, SituacaoCobranca, Tag } from "../../core/models/cobranca.model";
 import { Parcela } from "../../core/models/parcela.model";
 import { TipoTituloProtesto } from "../../core/models/relatorio.model";
@@ -80,6 +81,14 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
               Separar em 2 documentos
             </mat-checkbox>
           }
+          <button
+            mat-stroked-button
+            [disabled]="sincronizandoLegado"
+            (click)="sincronizarComSistemaLegado()"
+            title="Consulta o sistema legado (Universa) por CPF e atualiza status/valor pago/data de pagamento das parcelas desta matrícula"
+          >
+            <mat-icon>sync</mat-icon> Sincronizar com sistema legado
+          </button>
           <button mat-stroked-button [disabled]="gerando" (click)="gerarDocumento()">
             <mat-icon>description</mat-icon> Gerar documento
           </button>
@@ -257,6 +266,7 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
   private readonly configuracoesService = inject(ConfiguracoesService);
   private readonly financeiroService = inject(FinanceiroService);
   private readonly relatoriosService = inject(RelatoriosService);
+  private readonly sincronizacaoLegadoService = inject(SincronizacaoLegadoService);
   private readonly snackBar = inject(MatSnackBar);
   protected readonly formatarCpf = formatarCpf;
 
@@ -267,6 +277,7 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
   parcelas: Parcela[] = [];
   carregando = false;
   gerando = false;
+  sincronizandoLegado = false;
   /** Configuracao.diasAtraso — limiar para "vencida" vs. "vencida há mais de N dias". */
   diasAtrasoMinimo = 0;
   /** Multa/juros (Configuracao) — mesma fórmula do relatório de inadimplência
@@ -501,6 +512,45 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
     this.service.adicionarObservacao(this.matriculaId, texto).subscribe(() => {
       this.novaObservacao.setValue("");
       this.carregar();
+    });
+  }
+
+  /**
+   * Consulta o sistema legado (Universa) pelo CPF do aluno e atualiza as
+   * Parcelas desta matrícula (status/valor pago/data de pagamento) — nunca
+   * mexe em situação de cobrança/TAG/observações, que continuam sob controle
+   * do Ethos. Requer credenciais configuradas em Configurações.
+   */
+  sincronizarComSistemaLegado(): void {
+    this.sincronizandoLegado = true;
+    this.sincronizacaoLegadoService.sincronizarMatricula(this.matriculaId).subscribe({
+      next: (resultado) => {
+        this.sincronizandoLegado = false;
+        if (resultado.tituloConsultados === 0) {
+          this.snackBar.open("Esta matrícula não tem parcelas para sincronizar", "Fechar", {
+            duration: 5000,
+          });
+          return;
+        }
+        const naoEncontrados =
+          resultado.naoEncontradosNoLegado > 0
+            ? ` (${resultado.naoEncontradosNoLegado} não encontrada(s) no legado)`
+            : "";
+        this.snackBar.open(
+          `Sincronização concluída: ${resultado.parcelasAtualizadas} de ${resultado.tituloConsultados} parcela(s) atualizada(s)${naoEncontrados}`,
+          "Fechar",
+          { duration: 6000 },
+        );
+        if (resultado.parcelasAtualizadas > 0) this.carregar();
+      },
+      error: (err) => {
+        this.sincronizandoLegado = false;
+        this.snackBar.open(
+          err?.error?.mensagem ?? "Falha ao sincronizar com o sistema legado",
+          "Fechar",
+          { duration: 6000 },
+        );
+      },
     });
   }
 

@@ -14,6 +14,7 @@ import { importacaoRouter } from "./modules/importacao/importacao.routes";
 import { mapeamentoImportacaoRouter } from "./modules/mapeamento-importacao/mapeamento-importacao.routes";
 import { relatoriosRouter } from "./modules/relatorios/relatorios.routes";
 import { cobrancaRouter } from "./modules/cobranca/cobranca.routes";
+import { sincronizacaoLegadoRouter } from "./modules/sincronizacao-legado/sincronizacao-legado.routes";
 import { configuracoesRouter } from "./modules/configuracoes/configuracoes.routes";
 import { auditoriaRouter } from "./modules/auditoria/auditoria.routes";
 import { dashboardRouter } from "./modules/dashboard/dashboard.routes";
@@ -64,6 +65,8 @@ app.use(
 );
 app.use("/api/relatorios", requireRole("ADMINISTRADOR", "FINANCEIRO", "USUARIO"), relatoriosRouter);
 app.use("/api/cobranca", cobrancaRouter);
+// RBAC fino por rota dentro do próprio módulo (ver sincronizacao-legado.routes.ts).
+app.use("/api/sincronizacao-legado", sincronizacaoLegadoRouter);
 app.use("/api/configuracoes", requireRole("ADMINISTRADOR"), configuracoesRouter);
 app.use("/api/auditoria", requireRole("ADMINISTRADOR"), auditoriaRouter);
 

@@ -13,9 +13,18 @@ export interface Configuracao {
   jurosDiarioPercentual: number;
   jurosContarDiaGeracao: boolean;
   tipoTituloProtestoDefault: TipoTituloProtesto;
+  legadoSincronizacaoAtiva: boolean;
+  legadoUrl: string | null;
+  legadoUsuario: string | null;
+  /** Nunca vem a senha em si — só se já foi configurada (a API nunca a retorna). */
+  legadoSenhaConfigurada: boolean;
+  legadoIntervaloHoras: number;
 }
 
-export type AtualizarConfiguracaoPayload = Omit<Configuracao, "id">;
+export type AtualizarConfiguracaoPayload = Omit<Configuracao, "id" | "legadoSenhaConfigurada"> & {
+  /** Só enviado quando o admin digita uma nova senha — deixe undefined para manter a atual. */
+  legadoSenha?: string;
+};
 
 /** Frase que precisa ser digitada exatamente para confirmar a limpeza da base (backend valida). */
 export const FRASE_CONFIRMACAO_LIMPAR_BASE = "LIMPAR DADOS";

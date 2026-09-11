@@ -133,6 +133,45 @@ import {
         </div>
       </section>
 
+      <section class="bg-white rounded-lg border p-5">
+        <p class="text-sm font-medium text-gray-700 mb-1">Integração com sistema legado (Universa)</p>
+        <p class="text-xs text-gray-500 mb-4">
+          Credenciais usadas pelo botão "Sincronizar com sistema legado" (Ficha de Cobrança) e pela
+          sincronização automática em lote. Deixe a senha em branco para manter a atual.
+        </p>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <mat-form-field appearance="outline">
+            <mat-label>URL do sistema legado</mat-label>
+            <input matInput formControlName="legadoUrl" placeholder="https://ethoson.universaeducacional.com.br" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Usuário</mat-label>
+            <input matInput formControlName="legadoUsuario" autocomplete="off" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>{{ legadoSenhaConfigurada ? "Nova senha (opcional)" : "Senha" }}</mat-label>
+            <input matInput type="password" [formControl]="legadoSenhaControl" autocomplete="new-password" />
+            @if (legadoSenhaConfigurada) {
+              <mat-hint>Senha já configurada — preencha só para trocar.</mat-hint>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Intervalo da sincronização automática (horas)</mat-label>
+            <input matInput type="number" min="1" formControlName="legadoIntervaloHoras" />
+            <mat-hint>Ex.: 24 = uma vez ao dia, 1 = de hora em hora.</mat-hint>
+          </mat-form-field>
+
+          <div class="pt-3">
+            <mat-checkbox formControlName="legadoSincronizacaoAtiva">
+              Sincronização automática ativa
+            </mat-checkbox>
+          </div>
+        </div>
+      </section>
+
       <div class="flex justify-end">
         <button
           mat-raised-button
@@ -343,7 +382,16 @@ export class ConfiguracoesComponent implements OnInit {
     jurosDiarioPercentual: this.fb.nonNullable.control(0.033, [Validators.min(0)]),
     jurosContarDiaGeracao: this.fb.nonNullable.control(true),
     tipoTituloProtestoDefault: this.fb.nonNullable.control<TipoTituloProtesto>("AMBOS"),
+    legadoSincronizacaoAtiva: this.fb.nonNullable.control(false),
+    legadoUrl: this.fb.nonNullable.control(""),
+    legadoUsuario: this.fb.nonNullable.control(""),
+    legadoIntervaloHoras: this.fb.nonNullable.control(24, [Validators.min(1)]),
   });
+
+  /** Senha do sistema legado: nunca vem do backend — campo separado, só
+   * enviado quando o admin digita algo (deixar em branco mantém a atual). */
+  readonly legadoSenhaControl = this.fb.nonNullable.control("");
+  legadoSenhaConfigurada = false;
 
   carregando = false;
   salvando = false;
@@ -373,7 +421,8 @@ export class ConfiguracoesComponent implements OnInit {
     this.carregando = true;
     this.service.obter().subscribe({
       next: (configuracao) => {
-        this.form.patchValue(configuracao);
+        this.form.patchValue({ ...configuracao, legadoUrl: configuracao.legadoUrl ?? "", legadoUsuario: configuracao.legadoUsuario ?? "" });
+        this.legadoSenhaConfigurada = configuracao.legadoSenhaConfigurada;
         this.carregando = false;
       },
       error: () => (this.carregando = false),
@@ -383,11 +432,20 @@ export class ConfiguracoesComponent implements OnInit {
   salvar(): void {
     if (this.form.invalid) return;
     this.salvando = true;
-    const payload: AtualizarConfiguracaoPayload = this.form.getRawValue();
+    const valor = this.form.getRawValue();
+    const novaSenha = this.legadoSenhaControl.value.trim();
+    const payload: AtualizarConfiguracaoPayload = {
+      ...valor,
+      legadoUrl: valor.legadoUrl.trim() || null,
+      legadoUsuario: valor.legadoUsuario.trim() || null,
+      ...(novaSenha ? { legadoSenha: novaSenha } : {}),
+    };
 
     this.service.atualizar(payload).subscribe({
       next: (configuracao) => {
-        this.form.patchValue(configuracao);
+        this.form.patchValue({ ...configuracao, legadoUrl: configuracao.legadoUrl ?? "", legadoUsuario: configuracao.legadoUsuario ?? "" });
+        this.legadoSenhaConfigurada = configuracao.legadoSenhaConfigurada;
+        this.legadoSenhaControl.setValue("");
         this.salvando = false;
         this.snackBar.open("Configurações salvas", "Fechar", { duration: 3000 });
       },

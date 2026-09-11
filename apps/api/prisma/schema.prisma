@@ -61,6 +61,11 @@ enum AcaoColunaAusente {
   NAO_IMPORTAR
 }
 
+enum TipoExecucaoSincronizacaoLegado {
+  MANUAL
+  AGENDADA
+}
+
 model Usuario {
   id        String        @id @default(uuid())
   nome      String
@@ -74,6 +79,7 @@ model Usuario {
   auditorias              Auditoria[]
   historicosCobranca      HistoricoCobranca[]
   relatoriosInadimplencia RelatorioInadimplencia[]
+  sincronizacoesLegado    SincronizacaoLegado[]
 
   @@map("usuarios")
 }
@@ -217,7 +223,42 @@ model Configuracao {
   /// ser sobrescrito por filtro explícito em cada geração.
   tipoTituloProtestoDefault TipoTituloProtesto @default(AMBOS) @map("tipo_titulo_protesto_default")
 
+  // --- Integração com o sistema legado (Universa Educacional) ---
+  // Credenciais/URL e intervalo do job automático são administráveis por aqui
+  // (tela de Configurações), nunca hardcoded — decisão do usuário: trocar
+  // usuário/senha/intervalo não pode depender de deploy.
+  /// Liga/desliga a execução automática (agendada) da sincronização. O botão
+  /// manual na ficha de cobrança/matrícula funciona independente deste flag.
+  legadoSincronizacaoAtiva Boolean @default(false) @map("legado_sincronizacao_ativa")
+  legadoUrl                String? @map("legado_url")
+  legadoUsuario            String? @map("legado_usuario")
+  /// Senha do sistema legado, sempre criptografada (AES-256-GCM, ver
+  /// shared/utils/criptografia.ts) — nunca gravada nem retornada em texto puro.
+  legadoSenhaCriptografada String? @map("legado_senha_criptografada")
+  /// Intervalo, em horas, entre execuções automáticas (ex.: 24 = uma vez ao
+  /// dia, 1 = de hora em hora). Reprogramado no BullMQ a cada alteração.
+  legadoIntervaloHoras     Int     @default(24) @map("legado_intervalo_horas")
+
   @@map("configuracoes")
+}
+
+// Histórico de execuções da sincronização com o sistema legado (botão manual
+// por matrícula ou job agendado em lote) — mesmo padrão de log já usado em
+// Importacao/RelatorioInadimplencia.
+model SincronizacaoLegado {
+  id                  String                           @id @default(uuid())
+  // Nulo quando a execução foi disparada pelo agendador (sem usuário associado).
+  usuarioId           String?                          @map("usuario_id")
+  tipo                TipoExecucaoSincronizacaoLegado
+  data                DateTime                         @default(now())
+  totalConsultados     Int                              @default(0) @map("total_consultados")
+  parcelasAtualizadas Int                              @default(0) @map("parcelas_atualizadas")
+  naoEncontrados      Int                              @default(0) @map("nao_encontrados")
+  erros               Json?
+
+  usuario Usuario? @relation(fields: [usuarioId], references: [id])
+
+  @@map("sincronizacoes_legado")
 }
 
 // Mapeamento configurável coluna da planilha → tabela/campo de destino

@@ -56,6 +56,12 @@ export const financeiroRepository = {
     return prisma.parcela.count({ where: { matriculaId, status: "EM_ABERTO" } });
   },
 
+  /** Todas as Parcelas de uma matrícula, sem paginação — usado pela
+   * sincronização com o sistema legado, que consulta 1 título por vez. */
+  listarTodasPorMatricula(matriculaId: string) {
+    return prisma.parcela.findMany({ where: { matriculaId } });
+  },
+
   create(data: Prisma.ParcelaCreateInput) {
     return prisma.parcela.create({ data, include: incluiMatricula });
   },

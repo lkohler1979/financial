@@ -6,6 +6,8 @@ export type StatusParcela =
   | "PROTESTADO"
   | "RENEGOCIADO";
 
+export type StatusSincronizacaoLegado = "PENDENTE" | "SINCRONIZADO";
+
 export interface Parcela {
   id: string;
   matriculaId: string;
@@ -18,6 +20,9 @@ export interface Parcela {
   dataPagamento?: string | null;
   valorPago?: number | null;
   observacoes?: string | null;
+  /** Ver StatusSincronizacaoLegado — marcado SINCRONIZADO quando esta
+   * Parcela já foi conferida com sucesso contra o sistema legado. */
+  statusSincronizacaoLegado?: StatusSincronizacaoLegado;
   /** Valor com juros/multa já calculado pelo sistema de origem da planilha
    * (coluna TITULO_VALOR_JUROS_E_MULTA) — só para referência/conferência,
    * não é usado no cálculo do sistema (Configuracao.multaPercentual/

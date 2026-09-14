@@ -40,6 +40,9 @@ export interface Matricula {
   curso?: MatriculaResumoCurso;
   situacaoCobranca?: MatriculaResumoSituacaoCobranca | null;
   resumoParcelas?: MatriculaResumoParcelas;
+  /** Ver StatusSincronizacaoLegado (parcela.model.ts) — marcado SINCRONIZADO
+   * quando esta Matrícula já foi conferida com sucesso contra o legado. */
+  statusSincronizacaoLegado?: "PENDENTE" | "SINCRONIZADO";
 }
 
 export interface MatriculaPayload {

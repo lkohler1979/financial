@@ -89,6 +89,19 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
           >
             <mat-icon>sync</mat-icon> Sincronizar com sistema legado
           </button>
+          @if (ficha.matricula.statusSincronizacaoLegado === "SINCRONIZADO") {
+            <span
+              class="px-2 py-0.5 rounded text-xs bg-green-100 text-green-700"
+              title="Já foi conferida ao menos uma vez contra o sistema legado"
+              >Sincronizado</span
+            >
+          } @else {
+            <span
+              class="px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-500"
+              title="Ainda não foi conferida contra o sistema legado"
+              >Pendente de sincronização</span
+            >
+          }
           <button mat-stroked-button [disabled]="gerando" (click)="gerarDocumento()">
             <mat-icon>description</mat-icon> Gerar documento
           </button>
@@ -159,6 +172,9 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
                 <th class="py-1 font-medium">Vencimento</th>
                 <th class="py-1 font-medium">Tipo de título</th>
                 <th class="py-1 font-medium">Situação</th>
+                <th class="py-1 font-medium" title="Já foi conferida contra o sistema legado?">
+                  Legado
+                </th>
                 <th class="py-1 font-medium text-right">Valor</th>
                 <th class="py-1 font-medium text-right">Multa</th>
                 <th class="py-1 font-medium text-right">Juros</th>
@@ -189,6 +205,13 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
                     >{{ situacaoParcela(parcela).rotulo }}</span
                   >
                 </td>
+                <td class="py-1">
+                  @if (parcela.statusSincronizacaoLegado === "SINCRONIZADO") {
+                    <mat-icon class="!text-base !w-4 !h-4 text-green-600" title="Sincronizado">check_circle</mat-icon>
+                  } @else {
+                    <mat-icon class="!text-base !w-4 !h-4 text-gray-400" title="Pendente de sincronização">radio_button_unchecked</mat-icon>
+                  }
+                </td>
                 <td class="py-1 text-right">{{ parcela.valor | currency: "BRL" }}</td>
                 <td class="py-1 text-right">{{ calculoParcela(parcela).multa | currency: "BRL" }}</td>
                 <td class="py-1 text-right">{{ calculoParcela(parcela).juros | currency: "BRL" }}</td>
@@ -210,7 +233,7 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
             }
             @if (parcelas.length > 0) {
               <tr class="border-t font-medium">
-                <td class="py-1" colspan="5">Total devedor</td>
+                <td class="py-1" colspan="6">Total devedor</td>
                 <td class="py-1 text-right">{{ totalDevedor() | currency: "BRL" }}</td>
                 <td class="py-1 text-right">{{ totalMultaDevedor() | currency: "BRL" }}</td>
                 <td class="py-1 text-right">{{ totalJurosDevedor() | currency: "BRL" }}</td>

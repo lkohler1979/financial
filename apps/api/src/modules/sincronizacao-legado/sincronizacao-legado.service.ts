@@ -1,3 +1,4 @@
+import { StatusSincronizacaoLegado } from "@prisma/client";
 import { NotFoundError, ValidationError } from "../../shared/errors/app-error";
 import { decifrar } from "../../shared/utils/criptografia";
 import { registrarAuditoria } from "../auditoria/auditoria.service";
@@ -32,6 +33,13 @@ export const sincronizacaoLegadoService = {
     const resultado = await reconciliarMatricula(matriculaId, (tituloId) =>
       client.buscarInformacoesTitulo(tituloId),
     );
+
+    // Marca a Matrícula como conferida contra o legado — reflete que a
+    // checagem rodou com sucesso, não que havia divergência (decisão do
+    // usuário, 2026-09-14, ver PENDENCIAS.md).
+    await matriculasRepository.update(matriculaId, {
+      statusSincronizacaoLegado: StatusSincronizacaoLegado.SINCRONIZADO,
+    });
 
     await sincronizacaoLegadoRepository.registrarExecucao({
       usuarioId,
@@ -75,6 +83,9 @@ export const sincronizacaoLegadoService = {
         tituloConsultados += resultado.tituloConsultados;
         parcelasAtualizadas += resultado.parcelasAtualizadas;
         naoEncontrados += resultado.naoEncontradosNoLegado;
+        await matriculasRepository.update(matriculaId, {
+          statusSincronizacaoLegado: StatusSincronizacaoLegado.SINCRONIZADO,
+        });
       } catch (err) {
         erros.push({
           matriculaId,

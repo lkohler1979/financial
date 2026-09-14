@@ -20,6 +20,8 @@ export interface CursoDTO {
   situacao: boolean;
 }
 
+export type StatusSincronizacaoLegado = "PENDENTE" | "SINCRONIZADO";
+
 export interface MatriculaDTO {
   id: string;
   alunoId: string;
@@ -29,6 +31,7 @@ export interface MatriculaDTO {
   contratoAssinado: boolean;
   situacaoCobrancaId?: string;
   tags: string[];
+  statusSincronizacaoLegado?: StatusSincronizacaoLegado;
 }
 
 export type StatusParcela =
@@ -48,6 +51,7 @@ export interface ParcelaDTO {
   valor: number;
   tipoTitulo?: string;
   status: StatusParcela;
+  statusSincronizacaoLegado?: StatusSincronizacaoLegado;
 }
 
 export interface RelatorioInadimplenciaFiltroDTO {

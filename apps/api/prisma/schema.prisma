@@ -35,6 +35,15 @@ enum StatusParcela {
   RENEGOCIADO
 }
 
+/// Indica se a Matrícula/Parcela já foi conferida contra o sistema legado ao
+/// menos uma vez (decisão do usuário, 2026-09-14) — não indica se havia
+/// divergência, só se a checagem já rodou. Volta para PENDENTE nunca
+/// acontece automaticamente; só reflete a última tentativa bem-sucedida.
+enum StatusSincronizacaoLegado {
+  PENDENTE
+  SINCRONIZADO
+}
+
 enum FrequenciaImportacao {
   MANUAL
   SEMANAL
@@ -130,6 +139,10 @@ model Matricula {
   tcdAssinado      Boolean   @default(false) @map("tcd_assinado")
   situacao         String    @default("ATIVA")
   observacoes      String?
+  /// Ver StatusSincronizacaoLegado — marcado SINCRONIZADO quando a
+  /// sincronização com o sistema legado roda com sucesso para esta matrícula
+  /// (independente de ter encontrado alguma divergência para aplicar).
+  statusSincronizacaoLegado StatusSincronizacaoLegado @default(PENDENTE) @map("status_sincronizacao_legado")
 
   aluno Aluno @relation(fields: [alunoId], references: [id])
   curso Curso @relation(fields: [cursoId], references: [id])
@@ -173,6 +186,10 @@ model Parcela {
   multaProtesto Decimal? @db.Decimal(12, 2) @map("multa_protesto")
   jurosProtesto Decimal? @db.Decimal(12, 2) @map("juros_protesto")
   totalProtesto Decimal? @db.Decimal(12, 2) @map("total_protesto")
+  /// Ver StatusSincronizacaoLegado — marcado SINCRONIZADO quando esta
+  /// Parcela é consultada com sucesso contra o sistema legado (mesmo que o
+  /// legado não tenha trazido nenhuma mudança a aplicar).
+  statusSincronizacaoLegado StatusSincronizacaoLegado @default(PENDENTE) @map("status_sincronizacao_legado")
 
   matricula Matricula @relation(fields: [matriculaId], references: [id])
 

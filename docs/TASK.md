@@ -118,6 +118,9 @@ Ao concluir uma tarefa, marque o checkbox e, se relevante, adicione uma linha cu
 - [x] **`POST /financeiro/financeiro-titulo/search` eliminado do design em 2026-09-11** — o usuário capturou `GET /financeiro/financeiro-titulo/titulo-informacoes/{tituloId}` (detalhe de 1 título, sem ambiguidade de payload) e todo o fluxo foi redesenhado para usá-lo, consultando 1 título por Parcela em vez de buscar em lote por CPF/curso. Ver `PENDENCIAS.md`.
 - [~] **Valores possíveis de `titulo_estado`, parcialmente confirmados em 2026-09-11** — além de `"Aberto"`, achamos também `"Alteracao"` (título de origem de uma renegociação). Pago/cancelado ainda não confirmados (ver `PENDENCIAS.md`).
 - [x] **`"Alteracao"` → `RENEGOCIADO` e sincronização de `Parcela.tipoTitulo`, decididos e implementados em 2026-09-11 (pedido do usuário):** `statusLegadoParaEthos` mapeia `"Alteracao"` para `RENEGOCIADO` (estado terminal, sempre se aplica); `tipoTituloDaDescricao` extrai "Mensalidade"/"Renegociação" de `tituloDescricao` e mantém `Parcela.tipoTitulo` sincronizado. 2 novos testes em `sincronizacao-legado.reconciliador.test.ts` (8 no total).
+- [x] **Sincronização sempre atualiza valor pago/data de pagamento (mesmo voltando a zero/null), decidido e implementado em 2026-09-14 (pedido do usuário):** `aplicarDetalheNaParcela` deixou de ignorar `tituloValorPago === 0` — agora `valorPago`/`dataPagamento` são sempre gravados a partir do legado quando qualquer campo monitorado muda. A trava de nunca rebaixar um status avançado (`PROTESTADO`, etc.) continua valendo — só os campos financeiros passaram a sincronizar com mais rigor (`PENDENCIAS.md`).
+- [x] **Campo `statusSincronizacaoLegado` (Matrícula e Parcela), decidido e implementado em 2026-09-14 (pedido do usuário):** novo enum `StatusSincronizacaoLegado` (`PENDENTE`/`SINCRONIZADO`) — migration `20260914140000_status_sincronizacao_legado`. Marca `SINCRONIZADO` quando a entidade já foi conferida com sucesso contra o legado (não indica se havia divergência, só que a checagem rodou) — nunca volta para `PENDENTE` automaticamente. `reconciliarMatricula` agora grava a Parcela mesmo sem nenhuma outra alteração, só para marcar o status; `sincronizacaoLegadoService` marca a Matrícula ao final de `sincronizarMatricula`/`executarLote` (por matrícula, dentro do try). Exibido na Ficha de Cobrança (chip ao lado do botão de sincronizar + coluna "Legado" na grade de parcelas).
+- [!] **Criar Parcela ausente a partir do legado — bloqueado, ver `PENDENCIAS.md`:** o usuário pediu que uma Parcela que existe no legado mas não no Ethos seja criada automaticamente, buscando por CPF/curso. Isso exige reativar uma busca em lote no legado (`POST /financeiro/financeiro-titulo/search` ou equivalente) cujo payload **nunca foi confirmado contra o sistema real** — foi removido do design em 2026-09-11 exatamente por essa ambiguidade (ver linha acima). Não implementado ainda: precisa de uma captura de rede nova (mesmo processo já usado para login/`titulo-informacoes`) antes de codificar, para não arriscar casar dados errados numa integração financeira.
 
 ### Sprint 9.1 — Sincronização em lote agendada (backlog explícito do pedido, depende da 9 acima)
 
@@ -131,6 +134,10 @@ Ao concluir uma tarefa, marque o checkbox e, se relevante, adicione uma linha cu
 - [ ] Agendamento automático por pasta monitorada (watch folder)
 - [ ] Versionamento de importações com comparação de diferenças
 - [ ] Painel de inconsistências (CPFs inválidos, cursos não mapeados, títulos duplicados)
+- [ ] Notificações automáticas por e-mail
+- [ ] Exportação em lote (ZIP) dos documentos gerados
+- [ ] API de integração com ERPs
+- [ ] Campanhas de Cobrança (substituindo o conceito de "relatório")
 - [ ] Notificações automáticas por e-mail
 - [ ] Exportação em lote (ZIP) dos documentos gerados
 - [ ] API de integração com ERPs

@@ -1,4 +1,4 @@
-import { StatusParcela } from "@prisma/client";
+import { StatusParcela, StatusSincronizacaoLegado } from "@prisma/client";
 import { financeiroRepository } from "../financeiro/financeiro.repository";
 import { parseDataLegado, type LegadoTituloDetalhe } from "./legado-client";
 
@@ -50,25 +50,34 @@ function tipoTituloDaDescricao(descricao: string): string | undefined {
  * porque o legado ainda mostra "Aberto".
  */
 function aplicarDetalheNaParcela(
-  parcela: { status: StatusParcela; valorPago: unknown; tipoTitulo: string | null },
+  parcela: {
+    status: StatusParcela;
+    valorPago: unknown;
+    dataPagamento: Date | null;
+    tipoTitulo: string | null;
+  },
   detalhe: LegadoTituloDetalhe,
-): { status?: StatusParcela; valorPago?: number; dataPagamento?: Date; tipoTitulo?: string } | null {
+): { status?: StatusParcela; valorPago: number; dataPagamento: Date | null; tipoTitulo?: string } | null {
   const novoStatus = statusLegadoParaEthos(detalhe);
-  const valorPagoLegado = detalhe.tituloValorPago > 0 ? detalhe.tituloValorPago : undefined;
+  const valorPagoLegado = detalhe.tituloValorPago;
   const dataPagamentoLegado = parseDataLegado(detalhe.tituloDataPagamento ?? detalhe.tituloDataBaixa);
   const tipoTituloLegado = tipoTituloDaDescricao(detalhe.tituloDescricao);
 
   const mudouStatus = novoStatus !== null && novoStatus !== parcela.status;
-  const mudouValor =
-    valorPagoLegado !== undefined && Number(parcela.valorPago ?? 0) !== valorPagoLegado;
+  const mudouValor = Number(parcela.valorPago ?? 0) !== valorPagoLegado;
+  const mudouData =
+    (dataPagamentoLegado?.getTime() ?? null) !== (parcela.dataPagamento?.getTime() ?? null);
   const mudouTipo = tipoTituloLegado !== undefined && parcela.tipoTitulo !== tipoTituloLegado;
 
-  if (!mudouStatus && !mudouValor && !mudouTipo) return null;
+  if (!mudouStatus && !mudouValor && !mudouData && !mudouTipo) return null;
 
   return {
     ...(novoStatus ? { status: novoStatus } : {}),
-    ...(valorPagoLegado !== undefined ? { valorPago: valorPagoLegado } : {}),
-    ...(dataPagamentoLegado ? { dataPagamento: dataPagamentoLegado } : {}),
+    // O legado é sempre a fonte de verdade para valor pago/data de pagamento
+    // (decisão do usuário, 2026-09-14) — inclusive voltando a 0/null se o
+    // legado deixar de mostrar o pagamento que antes mostrava.
+    valorPago: valorPagoLegado,
+    dataPagamento: dataPagamentoLegado,
     ...(mudouTipo ? { tipoTitulo: tipoTituloLegado } : {}),
   };
 }
@@ -101,10 +110,13 @@ export async function reconciliarMatricula(
     }
 
     const alteracoes = aplicarDetalheNaParcela(parcela, detalhe);
-    if (!alteracoes) continue;
-
-    await financeiroRepository.update(parcela.id, alteracoes);
-    parcelasAtualizadas++;
+    // Sempre grava, mesmo sem alteração de valor/status — é o que marca a
+    // Parcela como conferida contra o legado (statusSincronizacaoLegado).
+    await financeiroRepository.update(parcela.id, {
+      ...(alteracoes ?? {}),
+      statusSincronizacaoLegado: StatusSincronizacaoLegado.SINCRONIZADO,
+    });
+    if (alteracoes) parcelasAtualizadas++;
   }
 
   return { tituloConsultados, parcelasAtualizadas, naoEncontradosNoLegado };

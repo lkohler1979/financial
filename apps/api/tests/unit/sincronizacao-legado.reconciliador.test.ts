@@ -31,6 +31,7 @@ function parcela(
     codTitulo: string;
     status: string;
     valorPago: unknown;
+    dataPagamento: Date | null;
     tipoTitulo: string | null;
   }> = {},
 ) {
@@ -39,6 +40,7 @@ function parcela(
     codTitulo: "TIT-1",
     status: "EM_ABERTO",
     valorPago: null,
+    dataPagamento: null,
     tipoTitulo: "Mensalidade",
     ...dados,
   };
@@ -62,17 +64,20 @@ describe("reconciliarMatricula", () => {
       status: "PAGO",
       valorPago: 150,
       dataPagamento: new Date(2026, 5, 5),
+      statusSincronizacaoLegado: "SINCRONIZADO",
     });
   });
 
-  it("não altera nada quando o legado ainda mostra 'Aberto' e a parcela já está EM_ABERTO", async () => {
+  it("marca statusSincronizacaoLegado sem alterar valor/status quando o legado ainda mostra 'Aberto' e já bate com o Ethos", async () => {
     financeiro.listarTodasPorMatricula.mockResolvedValue([parcela()] as never);
     const buscarInformacoesTitulo = vi.fn().mockResolvedValue(detalhe());
 
     const resultado = await reconciliarMatricula("matricula-1", buscarInformacoesTitulo);
 
     expect(resultado.parcelasAtualizadas).toBe(0);
-    expect(financeiro.update).not.toHaveBeenCalled();
+    expect(financeiro.update).toHaveBeenCalledWith("parcela-1", {
+      statusSincronizacaoLegado: "SINCRONIZADO",
+    });
   });
 
   it("nunca rebaixa uma parcela já PROTESTADO de volta para EM_ABERTO só porque o legado mostra 'Aberto'", async () => {
@@ -82,7 +87,9 @@ describe("reconciliarMatricula", () => {
     const resultado = await reconciliarMatricula("matricula-1", buscarInformacoesTitulo);
 
     expect(resultado.parcelasAtualizadas).toBe(0);
-    expect(financeiro.update).not.toHaveBeenCalled();
+    expect(financeiro.update).toHaveBeenCalledWith("parcela-1", {
+      statusSincronizacaoLegado: "SINCRONIZADO",
+    });
   });
 
   it("marca como RENEGOCIADO quando o legado mostra 'Alteracao' (título substituído por renegociação)", async () => {
@@ -92,7 +99,12 @@ describe("reconciliarMatricula", () => {
     const resultado = await reconciliarMatricula("matricula-1", buscarInformacoesTitulo);
 
     expect(resultado.parcelasAtualizadas).toBe(1);
-    expect(financeiro.update).toHaveBeenCalledWith("parcela-1", { status: "RENEGOCIADO" });
+    expect(financeiro.update).toHaveBeenCalledWith("parcela-1", {
+      status: "RENEGOCIADO",
+      valorPago: 0,
+      dataPagamento: null,
+      statusSincronizacaoLegado: "SINCRONIZADO",
+    });
   });
 
   it("sincroniza tipoTitulo a partir da descrição do legado (Mensalidade/Renegociação)", async () => {
@@ -106,7 +118,29 @@ describe("reconciliarMatricula", () => {
     const resultado = await reconciliarMatricula("matricula-1", buscarInformacoesTitulo);
 
     expect(resultado.parcelasAtualizadas).toBe(1);
-    expect(financeiro.update).toHaveBeenCalledWith("parcela-1", { tipoTitulo: "Renegociação" });
+    expect(financeiro.update).toHaveBeenCalledWith("parcela-1", {
+      valorPago: 0,
+      dataPagamento: null,
+      tipoTitulo: "Renegociação",
+      statusSincronizacaoLegado: "SINCRONIZADO",
+    });
+  });
+
+  it("sempre sincroniza valorPago/dataPagamento com o legado, mesmo voltando a zero/null", async () => {
+    financeiro.listarTodasPorMatricula.mockResolvedValue([
+      parcela({ valorPago: 150, dataPagamento: new Date(2026, 5, 5) }),
+    ] as never);
+    // Legado deixou de mostrar o pagamento que antes mostrava.
+    const buscarInformacoesTitulo = vi.fn().mockResolvedValue(detalhe({ tituloValorPago: 0 }));
+
+    const resultado = await reconciliarMatricula("matricula-1", buscarInformacoesTitulo);
+
+    expect(resultado.parcelasAtualizadas).toBe(1);
+    expect(financeiro.update).toHaveBeenCalledWith("parcela-1", {
+      valorPago: 0,
+      dataPagamento: null,
+      statusSincronizacaoLegado: "SINCRONIZADO",
+    });
   });
 
   it("conta como não encontrado no legado quando buscarInformacoesTitulo devolve null", async () => {

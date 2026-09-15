@@ -16,7 +16,7 @@ export interface ResultadoReconciliacaoMatricula {
  * título específico não é mais cobrável), então sempre se aplica, como
  * PAGO/CANCELADO. PENDÊNCIA: valores exatos de `tituloEstado` para
  * pago/cancelado ainda não confirmados (ver PENDENCIAS.md). */
-function statusLegadoParaEthos(detalhe: LegadoTituloDetalhe): StatusParcela | null {
+export function statusLegadoParaEthos(detalhe: LegadoTituloDetalhe): StatusParcela | null {
   if (detalhe.tituloDataPagamento || detalhe.tituloDataBaixa) return "PAGO";
   if (detalhe.tituloEstado.toLowerCase().includes("cancel")) return "CANCELADO";
   if (detalhe.tituloEstado.toLowerCase().includes("alteracao")) return "RENEGOCIADO";
@@ -32,7 +32,7 @@ function statusLegadoParaEthos(detalhe: LegadoTituloDetalhe): StatusParcela | nu
  * não gestão interna de cobrança — mesmo espírito da seção "O que
  * sincronizar" registrada em PENDENCIAS.md).
  */
-function tipoTituloDaDescricao(descricao: string): string | undefined {
+export function tipoTituloDaDescricao(descricao: string): string | undefined {
   const texto = descricao.toLowerCase();
   if (texto.includes("renegocia")) return "Renegociação";
   if (texto.includes("mensalidade")) return "Mensalidade";

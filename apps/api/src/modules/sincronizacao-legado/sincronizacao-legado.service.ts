@@ -8,7 +8,9 @@ import { LegadoClient } from "./legado-client";
 import { reconciliarMatricula } from "./sincronizacao-legado.reconciliador";
 import { sincronizacaoLegadoRepository } from "./sincronizacao-legado.repository";
 
-async function montarClient(): Promise<LegadoClient> {
+/** Reutilizado por `importacao-legado` (busca por CPF na tela de Aluno) —
+ * mesma configuração/credenciais de `Configuracao`. */
+export async function montarClient(): Promise<LegadoClient> {
   const config = await configuracoesRepository.obterOuCriar();
   if (!config.legadoUrl || !config.legadoUsuario || !config.legadoSenhaCriptografada) {
     throw new ValidationError(

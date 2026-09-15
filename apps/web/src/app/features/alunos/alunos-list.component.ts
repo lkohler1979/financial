@@ -18,6 +18,7 @@ import {
   ConfirmDialogData,
 } from "../../shared/components/confirm-dialog.component";
 import { formatarCpf } from "../../shared/utils/cpf.util";
+import { ImportarLegadoDialogComponent } from "./importar-legado-dialog.component";
 
 @Component({
   selector: "app-alunos-list",
@@ -37,9 +38,14 @@ import { formatarCpf } from "../../shared/utils/cpf.util";
   template: `
     <div class="flex items-center justify-between mb-4">
       <h1 class="text-2xl font-medium m-0">Alunos</h1>
-      <a mat-raised-button color="primary" routerLink="/alunos/novo">
-        <mat-icon>add</mat-icon> Novo aluno
-      </a>
+      <div class="flex gap-2">
+        <button mat-stroked-button (click)="consultarLegado()">
+          <mat-icon>travel_explore</mat-icon> Consultar CPF no legado
+        </button>
+        <a mat-raised-button color="primary" routerLink="/alunos/novo">
+          <mat-icon>add</mat-icon> Novo aluno
+        </a>
+      </div>
     </div>
 
     <mat-form-field appearance="outline" class="w-full max-w-md">
@@ -142,6 +148,15 @@ export class AlunosListComponent implements OnInit {
     this.page = evento.pageIndex + 1;
     this.pageSize = evento.pageSize;
     this.carregar();
+  }
+
+  consultarLegado(): void {
+    this.dialog
+      .open(ImportarLegadoDialogComponent, { width: "700px", maxHeight: "90vh" })
+      .afterClosed()
+      .subscribe((importou) => {
+        if (importou) this.carregar();
+      });
   }
 
   remover(aluno: Aluno): void {

@@ -13,6 +13,8 @@ export interface PreviaParcelaLegado {
   estado: string;
   diasAtraso: number;
   jaExisteNoEthos: boolean;
+  statusEthos: string | null;
+  pagoNoLegado: boolean;
 }
 
 export interface PreviaCursoLegado {
@@ -33,14 +35,20 @@ export interface PreviaImportacaoLegado {
 
 export interface ConfirmarImportacaoLegadoPayload {
   cpf: string;
-  selecoes: Array<{ alunocursoId: string; cursoEthosId: string }>;
+  selecoes: Array<{
+    alunocursoId: string;
+    cursoEthosId: string;
+    importarMatricula: boolean;
+    titulosSelecionados: string[];
+  }>;
 }
 
 export interface ResultadoImportacaoLegado {
   alunoCriado: boolean;
-  alunoId: string;
+  alunoId: string | null;
   matriculasNovas: number;
   parcelasNovas: number;
+  parcelasAtualizadas: number;
   avisos: string[];
 }
 

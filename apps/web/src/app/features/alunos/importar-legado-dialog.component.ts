@@ -14,14 +14,27 @@ import {
   ImportacaoLegadoService,
   PreviaCursoLegado,
   PreviaImportacaoLegado,
+  PreviaParcelaLegado,
 } from "../../core/services/importacao-legado.service";
 import { CursosService } from "../../core/services/cursos.service";
 import { Curso } from "../../core/models/curso.model";
 import { formatarCpf, normalizarCpf } from "../../shared/utils/cpf.util";
 
-interface CursoSelecao extends PreviaCursoLegado {
-  importar: boolean;
+interface ParcelaSelecao extends PreviaParcelaLegado {
+  selecionada: boolean;
+}
+
+interface CursoSelecao extends Omit<PreviaCursoLegado, "parcelas"> {
+  importarMatricula: boolean;
   cursoEthosId: string | null;
+  editandoAssociacao: boolean;
+  parcelas: ParcelaSelecao[];
+}
+
+/** Curso habilitado a importar parcelas: matrícula já existe, ou o usuário
+ * marcou para importar aluno/matrícula junto (pedido do usuário, 2026-09-15). */
+function cursoHabilitado(curso: CursoSelecao): boolean {
+  return curso.matriculaJaExiste || curso.importarMatricula;
 }
 
 @Component({
@@ -75,7 +88,7 @@ interface CursoSelecao extends PreviaCursoLegado {
           </p>
           @if (previa.alunoJaExiste) {
             <p class="text-sm text-amber-700 m-0">
-              Este aluno já existe no Ethos — só o que faltar será importado.
+              Este aluno já existe no Ethos — só o que faltar será importado/atualizado.
             </p>
           } @else {
             <p class="text-sm text-gray-500 m-0">Aluno ainda não cadastrado no Ethos.</p>
@@ -84,34 +97,52 @@ interface CursoSelecao extends PreviaCursoLegado {
 
         @for (curso of cursosSelecao; track curso.alunocursoId) {
           <div class="border rounded p-3 mb-3">
-            <div class="flex items-center gap-2 mb-2">
-              <mat-checkbox [(ngModel)]="curso.importar" [ngModelOptions]="{ standalone: true }">
-                Importar
-              </mat-checkbox>
+            <div class="flex items-center gap-2 mb-2 flex-wrap">
+              @if (!curso.matriculaJaExiste) {
+                <mat-checkbox
+                  [(ngModel)]="curso.importarMatricula"
+                  [ngModelOptions]="{ standalone: true }"
+                >
+                  Importar aluno/matrícula
+                </mat-checkbox>
+              } @else {
+                <mat-icon class="text-green-700" inline>check_circle</mat-icon>
+              }
               <span class="font-medium">{{ curso.cursoLegadoNome }}</span>
               @if (curso.matriculaJaExiste) {
-                <span class="text-xs text-amber-700">(matrícula já existe no Ethos)</span>
+                <span class="text-xs text-gray-500">(matrícula já existe no Ethos)</span>
               }
             </div>
 
-            <mat-form-field appearance="outline" class="w-full max-w-md mb-2">
-              <mat-label>Curso correspondente no Ethos</mat-label>
-              <mat-select [(ngModel)]="curso.cursoEthosId" [ngModelOptions]="{ standalone: true }">
-                @for (c of cursosEthos; track c.id) {
-                  <mat-option [value]="c.id">{{ c.codigo }} — {{ c.nome }}</mat-option>
-                }
-              </mat-select>
-              @if (!curso.cursoEthosSugerido) {
-                <mat-hint class="text-amber-700">
-                  Nenhum curso do Ethos bate com o nome do legado — selecione manualmente.
-                </mat-hint>
+            <div class="mb-2">
+              @if (curso.cursoEthosSugerido && !curso.editandoAssociacao) {
+                <div class="flex items-center gap-2 text-sm">
+                  <mat-icon class="text-green-700" inline>link</mat-icon>
+                  <span>
+                    Associado a <strong>{{ curso.cursoEthosSugerido.codigo }} — {{ curso.cursoEthosSugerido.nome }}</strong>
+                  </span>
+                  <button mat-button (click)="curso.editandoAssociacao = true">Trocar</button>
+                </div>
+              } @else {
+                <mat-form-field appearance="outline" class="w-full max-w-md">
+                  <mat-label>Curso correspondente no Ethos</mat-label>
+                  <mat-select [(ngModel)]="curso.cursoEthosId" [ngModelOptions]="{ standalone: true }">
+                    @for (c of cursosEthos; track c.id) {
+                      <mat-option [value]="c.id">{{ c.codigo }} — {{ c.nome }}</mat-option>
+                    }
+                  </mat-select>
+                  <mat-hint class="text-amber-700">
+                    Nenhum curso do Ethos bate com o nome do legado — selecione manualmente.
+                  </mat-hint>
+                </mat-form-field>
               }
-            </mat-form-field>
+            </div>
 
             @if (curso.parcelas.length > 0) {
               <table class="w-full text-sm">
                 <thead>
                   <tr class="text-left text-gray-500">
+                    <th></th>
                     <th class="pr-2">Parcela</th>
                     <th class="pr-2">Vencimento</th>
                     <th class="pr-2">Valor</th>
@@ -121,20 +152,34 @@ interface CursoSelecao extends PreviaCursoLegado {
                 </thead>
                 <tbody>
                   @for (p of curso.parcelas; track p.tituloId) {
-                    <tr [class.text-gray-400]="p.jaExisteNoEthos">
+                    <tr>
+                      <td>
+                        <mat-checkbox
+                          [(ngModel)]="p.selecionada"
+                          [ngModelOptions]="{ standalone: true }"
+                          [disabled]="!cursoHabilitado(curso)"
+                        ></mat-checkbox>
+                      </td>
                       <td class="pr-2">{{ p.parcela }}</td>
                       <td class="pr-2">{{ p.vencimento | date: "dd/MM/yyyy" }}</td>
                       <td class="pr-2">{{ p.valor | currency: "BRL" }}</td>
                       <td class="pr-2">{{ p.estado }}</td>
-                      <td>
+                      <td class="text-xs text-gray-500">
                         @if (p.jaExisteNoEthos) {
-                          <span class="text-xs">já existe no Ethos</span>
+                          <span>atualizar{{ p.pagoNoLegado ? " (paga)" : "" }}</span>
+                        } @else {
+                          <span>{{ p.pagoNoLegado ? "criar (paga)" : "criar" }}</span>
                         }
                       </td>
                     </tr>
                   }
                 </tbody>
               </table>
+              @if (!cursoHabilitado(curso)) {
+                <p class="text-xs text-amber-700 mt-1">
+                  Marque "Importar aluno/matrícula" para poder importar as parcelas deste curso.
+                </p>
+              }
             } @else {
               <p class="text-sm text-gray-500 m-0">Nenhuma parcela encontrada no legado para este curso.</p>
             }
@@ -152,7 +197,7 @@ interface CursoSelecao extends PreviaCursoLegado {
           [disabled]="!podeConfirmar() || importando"
           (click)="confirmar()"
         >
-          Importar selecionados
+          Importar/atualizar selecionados
         </button>
       }
     </mat-dialog-actions>
@@ -164,6 +209,7 @@ export class ImportarLegadoDialogComponent {
   private readonly snackBar = inject(MatSnackBar);
   private readonly ref = inject(MatDialogRef<ImportarLegadoDialogComponent>);
   protected readonly formatarCpf = formatarCpf;
+  protected readonly cursoHabilitado = cursoHabilitado;
 
   readonly cpf = new FormControl("", { nonNullable: true, validators: [Validators.required] });
 
@@ -196,8 +242,12 @@ export class ImportarLegadoDialogComponent {
         this.naoEncontrado = !res.encontrado;
         this.cursosSelecao = res.cursos.map((c) => ({
           ...c,
-          importar: !c.matriculaJaExiste,
+          importarMatricula: !c.matriculaJaExiste,
           cursoEthosId: c.cursoEthosSugerido?.id ?? null,
+          editandoAssociacao: !c.cursoEthosSugerido,
+          // Decisão do usuário, 2026-09-15: parcelas sempre vêm marcadas
+          // para importar/atualizar por padrão.
+          parcelas: c.parcelas.map((p) => ({ ...p, selecionada: true })),
         }));
       },
       error: () => (this.buscando = false),
@@ -205,8 +255,12 @@ export class ImportarLegadoDialogComponent {
   }
 
   podeConfirmar(): boolean {
-    const selecionados = this.cursosSelecao.filter((c) => c.importar);
-    return selecionados.length > 0 && selecionados.every((c) => !!c.cursoEthosId);
+    const cursosComAcao = this.cursosSelecao.filter(
+      (c) => (c.matriculaJaExiste || c.importarMatricula) && (c.importarMatricula || c.parcelas.some((p) => p.selecionada)),
+    );
+    if (cursosComAcao.length === 0) return false;
+    // Todo curso com alguma ação precisa de um curso do Ethos escolhido.
+    return cursosComAcao.every((c) => !!c.cursoEthosId);
   }
 
   confirmar(): void {
@@ -214,16 +268,23 @@ export class ImportarLegadoDialogComponent {
     this.importando = true;
 
     const selecoes = this.cursosSelecao
-      .filter((c) => c.importar)
-      .map((c) => ({ alunocursoId: c.alunocursoId, cursoEthosId: c.cursoEthosId as string }));
+      .filter((c) => c.matriculaJaExiste || c.importarMatricula)
+      .map((c) => ({
+        alunocursoId: c.alunocursoId,
+        cursoEthosId: c.cursoEthosId as string,
+        importarMatricula: c.importarMatricula,
+        titulosSelecionados: cursoHabilitado(c)
+          ? c.parcelas.filter((p) => p.selecionada).map((p) => p.tituloId)
+          : [],
+      }));
 
     this.service.confirmar({ cpf: this.previa.cpf, selecoes }).subscribe({
       next: (res) => {
         this.importando = false;
         this.snackBar.open(
-          `Importado: ${res.matriculasNovas} matrícula(s), ${res.parcelasNovas} parcela(s) nova(s).`,
+          `${res.matriculasNovas} matrícula(s) nova(s), ${res.parcelasNovas} parcela(s) nova(s), ${res.parcelasAtualizadas} atualizada(s).`,
           "Fechar",
-          { duration: 5000 },
+          { duration: 6000 },
         );
         this.ref.close(true);
       },

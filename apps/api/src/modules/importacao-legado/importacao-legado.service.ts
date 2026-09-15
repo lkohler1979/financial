@@ -10,7 +10,11 @@ import { historicoRepository } from "../cobranca/historico.repository";
 import { situacoesRepository } from "../cobranca/situacoes.repository";
 import { montarClient } from "../sincronizacao-legado/sincronizacao-legado.service";
 import { parseDataLegadoIso, type LegadoTituloResumo } from "../sincronizacao-legado/legado-client";
-import { statusLegadoParaEthos, tipoTituloDaDescricao } from "../sincronizacao-legado/sincronizacao-legado.reconciliador";
+import {
+  aplicarDetalheNaParcela,
+  statusLegadoParaEthos,
+  tipoTituloDaDescricao,
+} from "../sincronizacao-legado/sincronizacao-legado.reconciliador";
 import type { ConfirmarImportacaoInput } from "./importacao-legado.schema";
 
 // Mesmo nome/cor/ordem já usados em importacao.processor.ts e
@@ -28,7 +32,14 @@ export interface PreviaParcelaLegado {
   valorPago: number;
   estado: string;
   diasAtraso: number;
+  /** Já existe uma Parcela no Ethos para este `codTitulo` — nesse caso a
+   * confirmação atualiza a situação de pagamento em vez de criar de novo. */
   jaExisteNoEthos: boolean;
+  /** Estado atual da Parcela no Ethos (só quando `jaExisteNoEthos`). */
+  statusEthos: StatusParcela | null;
+  /** O legado já mostra este título como pago/baixado — decide o valor
+   * padrão do checkbox "atualizar situação de pago" na pré-visualização. */
+  pagoNoLegado: boolean;
 }
 
 export interface PreviaCursoLegado {
@@ -81,9 +92,14 @@ export const importacaoLegadoService = {
         alunoExistente && cursoEthos
           ? await matriculasRepository.findByAlunoECurso(alunoExistente.id, cursoEthos.id)
           : null;
-      const codTitulosExistentes = matriculaExistente
-        ? new Set((await financeiroRepository.listarTodasPorMatricula(matriculaExistente.id)).map((p) => p.codTitulo))
-        : new Set<string>();
+      const parcelasExistentesPorCodTitulo = matriculaExistente
+        ? new Map(
+            (await financeiroRepository.listarTodasPorMatricula(matriculaExistente.id)).map((p) => [
+              p.codTitulo,
+              p,
+            ]),
+          )
+        : new Map<string, { status: StatusParcela }>();
 
       const titulos = titulosPorAlunocurso.get(pessoaCurso.alunocursoId) ?? [];
       cursos.push({
@@ -93,17 +109,22 @@ export const importacaoLegadoService = {
           ? { id: cursoEthos.id, codigo: cursoEthos.codigo, nome: cursoEthos.nome }
           : null,
         matriculaJaExiste: !!matriculaExistente,
-        parcelas: titulos.map((t) => ({
-          tituloId: t.tituloId,
-          descricao: t.tituloDescricao,
-          parcela: t.tituloParcela,
-          vencimento: t.tituloDataVencimento,
-          valor: t.tituloValor,
-          valorPago: t.tituloValorPago,
-          estado: t.tituloEstado,
-          diasAtraso: t.diasAtraso,
-          jaExisteNoEthos: codTitulosExistentes.has(t.tituloId),
-        })),
+        parcelas: titulos.map((t) => {
+          const existente = parcelasExistentesPorCodTitulo.get(t.tituloId);
+          return {
+            tituloId: t.tituloId,
+            descricao: t.tituloDescricao,
+            parcela: t.tituloParcela,
+            vencimento: t.tituloDataVencimento,
+            valor: t.tituloValor,
+            valorPago: t.tituloValorPago,
+            estado: t.tituloEstado,
+            diasAtraso: t.diasAtraso,
+            jaExisteNoEthos: !!existente,
+            statusEthos: existente?.status ?? null,
+            pagoNoLegado: statusLegadoParaEthos(t) === StatusParcela.PAGO,
+          };
+        }),
       });
     }
 
@@ -111,13 +132,19 @@ export const importacaoLegadoService = {
   },
 
   /**
-   * Confirma a importação: cria o Aluno se ainda não existir, e para cada
-   * curso selecionado cria a Matrícula (se ainda não existir) e as Parcelas
-   * que ainda não existem no Ethos — nunca sobrescreve o que já existe
-   * (decisão do usuário, 2026-09-15: "importar o que falta", mesmo espírito
-   * append-first do CLAUDE.md seção 5). Reconsulta o legado ao vivo (não
-   * confia em valores vindos do cliente) para garantir dados financeiros
-   * atuais no momento da gravação.
+   * Confirma a importação seguindo exatamente o que o usuário marcou na
+   * pré-visualização (decisões do usuário, 2026-09-15):
+   * - Curso cuja Matrícula ainda não existe no Ethos: só cria Aluno/Matrícula
+   *   se `importarMatricula` vier marcado; caso contrário o curso inteiro é
+   *   pulado (parcelas dele não são tocadas, mesmo que tenham sido
+   *   selecionadas por engano no cliente — revalidado aqui, não só confiado
+   *   no frontend).
+   * - Títulos em `titulosSelecionados`: os que ainda não existem no Ethos
+   *   são criados; os que já existem têm a situação de pagamento atualizada
+   *   a partir do legado (mesma regra de `aplicarDetalheNaParcela` já usada
+   *   na reconciliação — nunca rebaixa um status avançado como PROTESTADO).
+   * Reconsulta o legado ao vivo (não confia em valores vindos do cliente)
+   * para garantir dados financeiros atuais no momento da gravação.
    */
   async confirmarImportacao(input: ConfirmarImportacaoInput, usuarioId: string) {
     const cpf = normalizarCpf(input.cpf);
@@ -132,7 +159,8 @@ export const importacaoLegadoService = {
     const nome = pessoaCursos[0].nome;
     let aluno = await alunosRepository.findByCpf(cpf);
     let alunoCriado = false;
-    if (!aluno) {
+    const garantirAluno = async () => {
+      if (aluno) return aluno;
       aluno = await alunosRepository.create({ cpf, nome });
       alunoCriado = true;
       await registrarAuditoria({
@@ -142,7 +170,8 @@ export const importacaoLegadoService = {
         acao: "CRIACAO",
         detalhes: { origem: "importacao-legado", cpf },
       });
-    }
+      return aluno;
+    };
 
     const situacaoPendente = await situacoesRepository.obterOuCriarPorNome(SITUACAO_PENDENTE, {
       cor: "#FAEEDA",
@@ -157,6 +186,7 @@ export const importacaoLegadoService = {
 
     let matriculasNovas = 0;
     let parcelasNovas = 0;
+    let parcelasAtualizadas = 0;
     const avisos: string[] = [];
 
     for (const selecao of input.selecoes) {
@@ -172,10 +202,24 @@ export const importacaoLegadoService = {
         throw new ValidationError(`Curso selecionado (${selecao.cursoEthosId}) não existe no Ethos`);
       }
 
-      let matricula = await matriculasRepository.findByAlunoECurso(aluno.id, cursoEthos.id);
+      let matricula = aluno ? await matriculasRepository.findByAlunoECurso(aluno.id, cursoEthos.id) : null;
+
       if (!matricula) {
+        // Decisão do usuário, 2026-09-15: se aluno/matrícula ainda não
+        // existem, só cria quando explicitamente marcado — e nesse caso as
+        // parcelas do curso não são tocadas (mesmo se vieram selecionadas).
+        if (!selecao.importarMatricula) {
+          if (selecao.titulosSelecionados.length > 0) {
+            avisos.push(
+              `Curso "${pessoaCurso.cursoNome}": parcelas ignoradas porque a matrícula não foi marcada para importar`,
+            );
+          }
+          continue;
+        }
+
+        const alunoAtual = await garantirAluno();
         matricula = await matriculasRepository.create({
-          aluno: { connect: { id: aluno.id } },
+          aluno: { connect: { id: alunoAtual.id } },
           curso: { connect: { id: cursoEthos.id } },
         });
         matriculasNovas++;
@@ -202,10 +246,33 @@ export const importacaoLegadoService = {
         );
       }
 
-      const titulos = titulosPorAlunocurso.get(selecao.alunocursoId) ?? [];
+      if (selecao.titulosSelecionados.length === 0) continue;
+      const titulosSelecionadosSet = new Set(selecao.titulosSelecionados);
+      const titulos = (titulosPorAlunocurso.get(selecao.alunocursoId) ?? []).filter((t) =>
+        titulosSelecionadosSet.has(t.tituloId),
+      );
+
       for (const titulo of titulos) {
         const existente = await financeiroRepository.findByChaveNatural(matricula.id, titulo.tituloId);
-        if (existente) continue; // já existe — importação nunca sobrescreve (CLAUDE.md seção 5)
+
+        if (existente) {
+          // Já existe — atualiza a situação de pagamento a partir do legado
+          // (pedido do usuário, 2026-09-15), mesma regra da reconciliação:
+          // nunca rebaixa um status avançado (ex.: PROTESTADO).
+          const alteracoes = aplicarDetalheNaParcela(existente, titulo);
+          if (alteracoes) {
+            await financeiroRepository.update(existente.id, alteracoes);
+            parcelasAtualizadas++;
+            await registrarAuditoria({
+              usuarioId,
+              entidade: "Parcela",
+              entidadeId: existente.id,
+              acao: "ATUALIZACAO",
+              detalhes: { origem: "importacao-legado", codTitulo: titulo.tituloId },
+            });
+          }
+          continue;
+        }
 
         const vencimento = parseDataLegadoIso(titulo.tituloDataVencimento);
         if (!vencimento) {
@@ -238,6 +305,6 @@ export const importacaoLegadoService = {
       }
     }
 
-    return { alunoCriado, alunoId: aluno.id, matriculasNovas, parcelasNovas, avisos };
+    return { alunoCriado, alunoId: aluno?.id ?? null, matriculasNovas, parcelasNovas, parcelasAtualizadas, avisos };
   },
 };

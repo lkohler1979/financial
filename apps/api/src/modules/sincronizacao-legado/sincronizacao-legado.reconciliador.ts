@@ -49,7 +49,7 @@ export function tipoTituloDaDescricao(descricao: string): string | undefined {
  * avançado no fluxo de cobrança (ex.: PROTESTADO) de volta para EM_ABERTO só
  * porque o legado ainda mostra "Aberto".
  */
-function aplicarDetalheNaParcela(
+export function aplicarDetalheNaParcela(
   parcela: {
     status: StatusParcela;
     valorPago: unknown;

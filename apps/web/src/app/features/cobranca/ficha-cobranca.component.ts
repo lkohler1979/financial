@@ -57,10 +57,10 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
         <mat-icon>arrow_back</mat-icon> Voltar
       </button>
 
-      <div class="flex items-start justify-between mb-5">
+      <div class="flex items-start justify-between mb-3">
         <div>
           <h1 class="text-2xl font-medium m-0">{{ ficha.matricula.aluno?.nome }}</h1>
-          <p class="text-sm text-gray-500 mt-1">
+          <p class="text-sm text-gray-500 mt-0.5">
             CPF {{ formatarCpf(ficha.matricula.aluno?.cpf || "") }} ·
             {{ ficha.matricula.curso?.nome }}
             @if (ficha.matricula.numeroMatricula) {
@@ -125,11 +125,11 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
         <mat-progress-bar mode="indeterminate" class="mb-4"></mat-progress-bar>
       }
 
-      <div class="bg-white rounded-xl border p-5 mb-3">
-        <div class="flex flex-wrap gap-6 items-start">
-          <div class="w-full sm:w-56 flex-shrink-0">
-            <p class="text-xs font-medium text-gray-600 mb-2">Situação da cobrança</p>
-            <mat-form-field appearance="outline" class="w-full" subscriptSizing="dynamic">
+      <div class="bg-white rounded-xl border p-3 mb-2">
+        <div class="flex flex-wrap gap-4 items-center">
+          <div class="w-full sm:w-52 flex-shrink-0 flex items-center gap-2">
+            <p class="text-xs font-medium text-gray-600 mb-0 whitespace-nowrap">Situação</p>
+            <mat-form-field appearance="outline" class="w-full !text-sm" subscriptSizing="dynamic">
               <mat-select [formControl]="situacaoControl" (selectionChange)="mudarSituacao($event.value)">
                 @for (situacao of situacoes; track situacao.id) {
                   <mat-option [value]="situacao.id">{{ situacao.nome }}</mat-option>
@@ -138,8 +138,8 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
             </mat-form-field>
           </div>
 
-          <div class="flex-1 min-w-[260px]">
-            <p class="text-xs font-medium text-gray-600 mb-2">Tags</p>
+          <div class="flex-1 min-w-[260px] flex items-center gap-2">
+            <p class="text-xs font-medium text-gray-600 mb-0 whitespace-nowrap">Tags</p>
             <div class="flex gap-2 flex-wrap items-center">
               <mat-chip-set>
                 @for (tag of ficha.tags; track tag.id) {
@@ -168,8 +168,8 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
         </div>
       </div>
 
-      <div class="bg-white rounded-xl border p-5 mb-5">
-        <p class="text-xs font-medium text-gray-600 mb-3">Parcelas</p>
+      <div class="bg-white rounded-xl border p-3 mb-3">
+        <p class="text-xs font-medium text-gray-600 mb-2">Parcelas</p>
         <div class="overflow-x-auto">
           <table class="w-full text-sm">
             <thead>

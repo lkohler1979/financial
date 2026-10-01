@@ -8,3 +8,4 @@ matriculasRouter.get("/:id", matriculasController.buscarPorId);
 matriculasRouter.post("/", matriculasController.criar);
 matriculasRouter.put("/:id", matriculasController.atualizar);
 matriculasRouter.delete("/:id", matriculasController.remover);
+matriculasRouter.post("/:id/gerar-parcelas", matriculasController.gerarParcelas);

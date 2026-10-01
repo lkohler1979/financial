@@ -48,6 +48,9 @@ export interface Matricula {
   valorCurso?: number | null;
   numeroParcelas?: number | null;
   diaVencimento?: number | null;
+  /** Quantas Parcela já existem para esta matrícula — usado pra decidir se
+   * mostra o botão "Gerar parcelas" (só faz sentido quando ainda é 0). */
+  quantidadeParcelas?: number;
 }
 
 export interface MatriculaPayload {

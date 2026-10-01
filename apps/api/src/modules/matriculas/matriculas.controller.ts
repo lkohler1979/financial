@@ -40,4 +40,12 @@ export const matriculasController = {
     await matriculasService.remover(paramString(req, "id"), usuarioAtual(req));
     res.status(204).send();
   }),
+
+  gerarParcelas: asyncHandler(async (req: Request, res: Response) => {
+    const resultado = await matriculasService.gerarParcelas(
+      paramString(req, "id"),
+      usuarioAtual(req),
+    );
+    res.json(resultado);
+  }),
 };

@@ -65,4 +65,11 @@ export class MatriculasService {
   remover(id: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
   }
+
+  /** Gera as parcelas mensais a partir de valorCurso/numeroParcelas/
+   * diaVencimento já salvos na matrícula — só funciona uma vez (matrícula
+   * que já tem parcela nenhuma recusa, 409). */
+  gerarParcelas(id: string): Observable<{ parcelasGeradas: number }> {
+    return this.http.post<{ parcelasGeradas: number }>(`${this.baseUrl}/${id}/gerar-parcelas`, {});
+  }
 }

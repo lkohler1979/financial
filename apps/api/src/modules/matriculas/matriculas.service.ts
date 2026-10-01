@@ -13,6 +13,14 @@ import type {
 
 const ENTIDADE = "Matricula";
 
+/** Troca o `_count.parcelas` (forma crua do Prisma) pelo campo
+ * `quantidadeParcelas`, usado pelo frontend para decidir se mostra o botão
+ * "Gerar parcelas" (só faz sentido quando a matrícula ainda não tem nenhuma). */
+function serializarMatricula<T extends { _count: { parcelas: number } }>(matricula: T) {
+  const { _count, ...resto } = matricula;
+  return { ...resto, quantidadeParcelas: _count.parcelas };
+}
+
 /**
  * Calcula o mês/ano da primeira parcela: o mês de `dataBase` (dataMatricula,
  * ou hoje se omitida) no `diaVencimento` escolhido — ou o mês seguinte, se
@@ -167,9 +175,10 @@ export const matriculasService = {
       skip: (page - 1) * pageSize,
       take: pageSize,
     });
-    const dataComResumo = data.map(({ parcelas, ...matricula }) => ({
+    const dataComResumo = data.map(({ parcelas, _count, ...matricula }) => ({
       ...matricula,
       resumoParcelas: resumoParcelas(parcelas),
+      quantidadeParcelas: _count.parcelas,
     }));
     return { data: dataComResumo, total, page, pageSize };
   },
@@ -177,7 +186,7 @@ export const matriculasService = {
   async buscarPorId(id: string) {
     const matricula = await matriculasRepository.findById(id);
     if (!matricula) throw new NotFoundError("Matrícula não encontrada");
-    return matricula;
+    return serializarMatricula(matricula);
   },
 
   async criar(input: CriarMatriculaInput, usuarioId: string) {
@@ -236,7 +245,57 @@ export const matriculasService = {
       detalhes: { alunoId: input.alunoId, cursoId: input.cursoId },
     });
 
-    return matricula;
+    return serializarMatricula(matricula);
+  },
+
+  /**
+   * Gera as parcelas de uma matrícula já existente, a partir dos valores já
+   * salvos (valorCurso/numeroParcelas/diaVencimento) — botão "Gerar
+   * parcelas" na tela de edição (pedido do usuário, 2026-10-01), para o caso
+   * de uma matrícula ter sido criada sem esses campos e só depois ganhar a
+   * cobrança configurada, ou qualquer correção antes da primeira geração.
+   * Só roda uma vez: uma matrícula que já tem parcela nenhuma gera de novo
+   * (evita duplicar cobrança).
+   */
+  async gerarParcelas(id: string, usuarioId: string) {
+    const matricula = await this.buscarPorId(id);
+
+    if (
+      matricula.valorCurso == null ||
+      matricula.numeroParcelas == null ||
+      matricula.diaVencimento == null
+    ) {
+      throw new ValidationError(
+        "Preencha valor do curso, número de parcelas e dia de vencimento antes de gerar as parcelas",
+      );
+    }
+
+    if (matricula.quantidadeParcelas > 0) {
+      throw new ConflictError("Esta matrícula já possui parcelas geradas", {
+        quantidadeParcelas: matricula.quantidadeParcelas,
+      });
+    }
+
+    await gerarParcelasAutomaticas(
+      id,
+      {
+        valorCurso: Number(matricula.valorCurso),
+        numeroParcelas: matricula.numeroParcelas,
+        diaVencimento: matricula.diaVencimento,
+        dataMatricula: matricula.dataMatricula ?? undefined,
+      },
+      usuarioId,
+    );
+
+    await registrarAuditoria({
+      usuarioId,
+      entidade: ENTIDADE,
+      entidadeId: id,
+      acao: "ATUALIZACAO",
+      detalhes: { acao: "parcelas_geradas", numeroParcelas: matricula.numeroParcelas },
+    });
+
+    return { parcelasGeradas: matricula.numeroParcelas };
   },
 
   async atualizar(id: string, input: AtualizarMatriculaInput, usuarioId: string) {
@@ -284,7 +343,7 @@ export const matriculasService = {
       detalhes: { camposAlterados: Object.keys(input) },
     });
 
-    return matricula;
+    return serializarMatricula(matricula);
   },
 
   async remover(id: string, usuarioId: string) {

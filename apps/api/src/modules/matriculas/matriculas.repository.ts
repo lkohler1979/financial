@@ -21,6 +21,9 @@ const incluiAlunoCurso = {
   aluno: { select: { id: true, cpf: true, nome: true } },
   curso: { select: { id: true, codigo: true, nome: true } },
   situacaoCobranca: { select: { id: true, nome: true, cor: true } },
+  // Usado por matriculasService.gerarParcelas para saber se a matrícula já
+  // tem parcelas (geração automática é só pra matrícula ainda sem nenhuma).
+  _count: { select: { parcelas: true } },
 } satisfies Prisma.MatriculaInclude;
 
 const incluiListaMatriculas = {

@@ -45,6 +45,7 @@ const matriculaFake = {
   alunoId: ALUNO,
   cursoId: CURSO,
   numeroMatricula: "2026-1",
+  _count: { parcelas: 0 },
 };
 
 beforeEach(() => vi.clearAllMocks());
@@ -187,5 +188,53 @@ describe("matriculasService.remover", () => {
     await matriculasService.remover("matricula-1", USUARIO);
     expect(repo.delete).toHaveBeenCalledWith("matricula-1");
     expect(auditoria).toHaveBeenCalledWith(expect.objectContaining({ acao: "EXCLUSAO" }));
+  });
+});
+
+describe("matriculasService.gerarParcelas", () => {
+  it("rejeita quando faltam valorCurso/numeroParcelas/diaVencimento", async () => {
+    repo.findById.mockResolvedValue({ ...matriculaFake, valorCurso: null } as never);
+
+    await expect(matriculasService.gerarParcelas("matricula-1", USUARIO)).rejects.toBeInstanceOf(
+      ValidationError,
+    );
+    expect(financeiro.criar).not.toHaveBeenCalled();
+  });
+
+  it("rejeita quando a matrícula já tem parcelas geradas", async () => {
+    repo.findById.mockResolvedValue({
+      ...matriculaFake,
+      valorCurso: 1200,
+      numeroParcelas: 12,
+      diaVencimento: 10,
+      _count: { parcelas: 5 },
+    } as never);
+
+    await expect(matriculasService.gerarParcelas("matricula-1", USUARIO)).rejects.toBeInstanceOf(
+      ConflictError,
+    );
+    expect(financeiro.criar).not.toHaveBeenCalled();
+  });
+
+  it("gera as parcelas a partir dos valores já salvos e audita", async () => {
+    repo.findById.mockResolvedValue({
+      ...matriculaFake,
+      valorCurso: 1200,
+      numeroParcelas: 12,
+      diaVencimento: 10,
+      dataMatricula: new Date(2020, 0, 5),
+    } as never);
+
+    const resultado = await matriculasService.gerarParcelas("matricula-1", USUARIO);
+
+    expect(financeiro.criar).toHaveBeenCalledTimes(12);
+    expect(resultado).toEqual({ parcelasGeradas: 12 });
+    expect(auditoria).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entidade: "Matricula",
+        acao: "ATUALIZACAO",
+        detalhes: expect.objectContaining({ acao: "parcelas_geradas" }),
+      }),
+    );
   });
 });

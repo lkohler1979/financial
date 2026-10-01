@@ -120,26 +120,49 @@ const SITUACOES = ["ATIVA", "TRANCADA", "CANCELADA", "CONCLUIDA"];
         </div>
       </div>
 
-      @if (!editando) {
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-x-4 border-t pt-4 mt-2">
-          <p class="text-xs font-medium text-gray-600 col-span-1 md:col-span-3 mb-0">
-            Cobrança (opcional) — preenchendo valor e nº de parcelas, as parcelas mensais são
-            geradas automaticamente
-          </p>
-          <mat-form-field appearance="outline">
-            <mat-label>Valor do curso</mat-label>
-            <input matInput type="number" min="0" step="0.01" formControlName="valorCurso" />
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Número de parcelas</mat-label>
-            <input matInput type="number" min="1" max="360" formControlName="numeroParcelas" />
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Dia de vencimento</mat-label>
-            <input matInput type="number" min="1" max="28" formControlName="diaVencimento" />
-          </mat-form-field>
-        </div>
-      }
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-x-4 border-t pt-4 mt-2">
+        <p class="text-xs font-medium text-gray-600 col-span-1 md:col-span-3 mb-0">
+          Cobrança (opcional) — preenchendo valor e nº de parcelas
+          {{ editando ? "" : ", as parcelas mensais são geradas automaticamente ao salvar" }}
+        </p>
+        <mat-form-field appearance="outline">
+          <mat-label>Valor do curso</mat-label>
+          <input matInput type="number" min="0" step="0.01" formControlName="valorCurso" />
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Número de parcelas</mat-label>
+          <input matInput type="number" min="1" max="360" formControlName="numeroParcelas" />
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Dia de vencimento</mat-label>
+          <input matInput type="number" min="1" max="28" formControlName="diaVencimento" />
+        </mat-form-field>
+
+        @if (editando) {
+          <div class="col-span-1 md:col-span-3 -mt-2 mb-2">
+            @if (quantidadeParcelas > 0) {
+              <p class="text-xs text-gray-500">
+                {{ quantidadeParcelas }} parcela(s) já gerada(s) para esta matrícula — veja na
+                Ficha de Cobrança.
+              </p>
+            } @else {
+              <button
+                mat-stroked-button
+                type="button"
+                [disabled]="gerandoParcelas"
+                (click)="gerarParcelas()"
+              >
+                <mat-icon>receipt_long</mat-icon>
+                {{ gerandoParcelas ? "Gerando..." : "Gerar parcelas" }}
+              </button>
+              <p class="text-xs text-gray-500 mt-1">
+                Salve a matrícula com valor, número de parcelas e dia de vencimento preenchidos
+                antes de gerar.
+              </p>
+            }
+          </div>
+        }
+      </div>
 
       <mat-form-field appearance="outline" class="w-full">
         <mat-label>Observações</mat-label>
@@ -217,6 +240,8 @@ export class MatriculaFormComponent implements OnInit {
   editando = false;
   carregando = false;
   salvando = false;
+  gerandoParcelas = false;
+  quantidadeParcelas = 0;
   private id: string | null = null;
 
   alunos: Aluno[] = [];
@@ -302,6 +327,7 @@ export class MatriculaFormComponent implements OnInit {
             numeroParcelas: m.numeroParcelas ?? undefined,
             diaVencimento: m.diaVencimento ?? undefined,
           });
+          this.quantidadeParcelas = m.quantidadeParcelas ?? 0;
           this.carregando = false;
         },
         error: () => (this.carregando = false),
@@ -406,15 +432,12 @@ export class MatriculaFormComponent implements OnInit {
       contratoAssinado: bruto.contratoAssinado ?? false,
       tcdAssinado: bruto.tcdAssinado ?? false,
       observacoes: bruto.observacoes || undefined,
-      // Campos de geração automática de parcelas só fazem sentido na criação
-      // (ver matriculas.service.ts — editar nunca regenera/apaga parcelas).
-      ...(this.editando
-        ? {}
-        : {
-            valorCurso: bruto.valorCurso ?? undefined,
-            numeroParcelas: bruto.numeroParcelas ?? undefined,
-            diaVencimento: bruto.diaVencimento ?? undefined,
-          }),
+      // Salvo em criação e edição — mas só dispara geração automática na
+      // criação (ver matriculas.service.ts). Na edição, fica guardado para
+      // o botão "Gerar parcelas" usar depois.
+      valorCurso: bruto.valorCurso ?? undefined,
+      numeroParcelas: bruto.numeroParcelas ?? undefined,
+      diaVencimento: bruto.diaVencimento ?? undefined,
     };
 
     this.salvando = true;
@@ -429,6 +452,25 @@ export class MatriculaFormComponent implements OnInit {
         this.router.navigate(["/matriculas"]);
       },
       error: () => (this.salvando = false),
+    });
+  }
+
+  gerarParcelas(): void {
+    if (!this.id) return;
+    this.gerandoParcelas = true;
+    this.service.gerarParcelas(this.id).subscribe({
+      next: ({ parcelasGeradas }) => {
+        this.gerandoParcelas = false;
+        this.quantidadeParcelas = parcelasGeradas;
+        this.snackBar.open(`${parcelasGeradas} parcela(s) gerada(s)`, "Fechar", {
+          duration: 3000,
+        });
+      },
+      error: (erro) => {
+        this.gerandoParcelas = false;
+        const mensagem = erro?.error?.mensagem ?? "Não foi possível gerar as parcelas";
+        this.snackBar.open(mensagem, "Fechar", { duration: 5000 });
+      },
     });
   }
 }

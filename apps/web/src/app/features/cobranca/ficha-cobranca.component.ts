@@ -419,7 +419,15 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
       this.tipoTituloProtestoControl.setValue(res.tipoTituloProtestoDefault);
       this.jurosDiarioPercentual = res.jurosDiarioPercentual;
       this.jurosContarDiaGeracao = res.jurosContarDiaGeracao;
-      this.metodosAceitos = res.asaasMetodosAceitos;
+      this.metodosAceitos = (
+        [
+          ["BOLETO", res.provedorBoleto],
+          ["PIX", res.provedorPix],
+          ["CREDIT_CARD", res.provedorCartao],
+        ] as const
+      )
+        .filter(([, provedor]) => provedor != null)
+        .map(([tipo]) => tipo);
     });
     this.carregar();
   }

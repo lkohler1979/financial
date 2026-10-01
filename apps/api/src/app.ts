@@ -17,6 +17,7 @@ import { cobrancaRouter } from "./modules/cobranca/cobranca.routes";
 import { sincronizacaoLegadoRouter } from "./modules/sincronizacao-legado/sincronizacao-legado.routes";
 import { importacaoLegadoRouter } from "./modules/importacao-legado/importacao-legado.routes";
 import { asaasRouter, asaasWebhookRouter } from "./modules/asaas/asaas.routes";
+import { redeWebhookRouter } from "./modules/rede/rede.routes";
 import { configuracoesRouter } from "./modules/configuracoes/configuracoes.routes";
 import { auditoriaRouter } from "./modules/auditoria/auditoria.routes";
 import { dashboardRouter } from "./modules/dashboard/dashboard.routes";
@@ -48,6 +49,9 @@ app.use("/api/auth", authRouter);
 // Configurações (header `asaas-access-token`), não por JWT (quem chama é o
 // Asaas, não um usuário logado).
 app.use("/api/asaas/webhook", asaasWebhookRouter);
+// Webhook da Rede (Pix) — mesma lógica, público, autenticado pelo token
+// configurado em Configurações (header `authorization`).
+app.use("/api/rede/webhook", redeWebhookRouter);
 
 app.use("/api", requireAuth);
 app.use("/api", auditoriaRequestContext);

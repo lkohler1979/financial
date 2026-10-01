@@ -57,6 +57,8 @@ export interface Parcela {
    * leitura/exibição. */
   asaasPaymentId?: string | null;
   asaasBillingType?: "BOLETO" | "PIX" | "CREDIT_CARD" | null;
+  /** Qual provedor processou esta cobrança — Asaas ou Rede (Pix). */
+  provedorPagamento?: "ASAAS" | "REDE" | null;
   asaasBoletoUrl?: string | null;
   asaasLinhaDigitavel?: string | null;
   /** Fatura hospedada pelo Asaas — usada principalmente pra cartão (o

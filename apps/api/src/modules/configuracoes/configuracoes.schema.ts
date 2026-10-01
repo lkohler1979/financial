@@ -37,8 +37,21 @@ export const atualizarConfiguracaoSchema = z
     // antes de persistir e nunca os devolve (mesmo padrão de legadoSenha).
     asaasApiKey: z.string().min(1).max(300).optional(),
     asaasWebhookToken: z.string().min(1).max(300).optional(),
-    // Formas de cobrança liberadas no menu "Gerar cobrança" — pelo menos uma.
-    asaasMetodosAceitos: z.array(z.enum(["BOLETO", "PIX", "CREDIT_CARD"])).min(1).optional(),
+    // Qual provedor atende cada tipo de cobrança no menu "Gerar cobrança" —
+    // null desabilita o tipo. Nunca os dois provedores no mesmo tipo (por
+    // isso é um valor único, não uma lista). Boleto e Cartão só aceitam
+    // ASAAS (Rede não tem Boleto, e Cartão via Rede exigiria coletar dado de
+    // cartão — não implementado, decisão do usuário 2026-10-01).
+    provedorBoleto: z.enum(["ASAAS"]).nullable().optional(),
+    provedorPix: z.enum(["ASAAS", "REDE"]).nullable().optional(),
+    provedorCartao: z.enum(["ASAAS"]).nullable().optional(),
+    redeAmbiente: z.enum(["SANDBOX", "PRODUCAO"]).optional(),
+    // PV/chave de integração/token em texto puro, só nesta entrada — o
+    // service criptografa antes de persistir e nunca os devolve (mesmo
+    // padrão de legadoSenha/asaasApiKey).
+    redePv: z.string().trim().min(1).max(100).optional(),
+    redeChaveIntegracao: z.string().min(1).max(300).optional(),
+    redeWebhookToken: z.string().min(1).max(300).optional(),
     // Multa/juros/desconto enviados em toda cobrança gerada no Asaas — null
     // limpa (deixa de enviar o campo), undefined mantém o que já tem salvo.
     asaasMultaPercentual: z.coerce.number().min(0).max(100).nullable().optional(),

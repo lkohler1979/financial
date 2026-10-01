@@ -16,6 +16,8 @@ import {
   AtualizarConfiguracaoPayload,
   FRASE_CONFIRMACAO_LIMPAR_BASE,
   FrequenciaImportacao,
+  PagamentoProvedor,
+  RedeAmbiente,
   TipoTituloProtesto,
 } from "../../core/models/configuracao.model";
 import {
@@ -205,18 +207,42 @@ import {
           </mat-form-field>
         </div>
 
-        <div class="mt-4 pt-4 border-t" [formGroup]="asaasMetodosForm">
-          <p class="text-sm text-gray-700 mb-2">
-            Formas de pagamento aceitas (menu "Gerar cobrança" na Ficha de Cobrança)
+        <div class="mt-4 pt-4 border-t">
+          <p class="text-sm text-gray-700 mb-1">Provedor por forma de pagamento</p>
+          <p class="text-xs text-gray-500 mb-2">
+            Qual integração processa cada forma de cobrança no menu "Gerar cobrança" da Ficha de
+            Cobrança. "Desabilitado" remove a opção do menu. Cada forma só pode ter um provedor
+            por vez.
           </p>
-          <div class="flex flex-wrap gap-4">
-            <mat-checkbox formControlName="BOLETO">Boleto</mat-checkbox>
-            <mat-checkbox formControlName="PIX">Pix</mat-checkbox>
-            <mat-checkbox formControlName="CREDIT_CARD">Cartão de crédito</mat-checkbox>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Boleto</mat-label>
+              <mat-select formControlName="provedorBoleto">
+                <mat-option [value]="null">Desabilitado</mat-option>
+                <mat-option value="ASAAS">Asaas</mat-option>
+              </mat-select>
+              <mat-hint>A Rede não oferece boleto.</mat-hint>
+            </mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Pix</mat-label>
+              <mat-select formControlName="provedorPix">
+                <mat-option [value]="null">Desabilitado</mat-option>
+                <mat-option value="ASAAS">Asaas</mat-option>
+                <mat-option value="REDE">Rede</mat-option>
+              </mat-select>
+              @if (form.controls.provedorPix.value === "REDE") {
+                <mat-hint>Pix pela Rede só funciona se o pagador tiver conta no Itaú.</mat-hint>
+              }
+            </mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Cartão de crédito</mat-label>
+              <mat-select formControlName="provedorCartao">
+                <mat-option [value]="null">Desabilitado</mat-option>
+                <mat-option value="ASAAS">Asaas</mat-option>
+              </mat-select>
+              <mat-hint>Cartão pela Rede ainda não foi implementado.</mat-hint>
+            </mat-form-field>
           </div>
-          @if (nenhumMetodoSelecionado()) {
-            <p class="text-xs text-red-600 mt-1">Selecione ao menos uma forma de pagamento.</p>
-          }
         </div>
 
         <div class="mt-4 pt-4 border-t">
@@ -272,12 +298,73 @@ import {
         </p>
       </section>
 
+      <section class="bg-white rounded-lg border p-5">
+        <p class="text-sm font-medium text-gray-700 mb-1">Integração Rede (e.Rede/Itaú)</p>
+        <p class="text-xs text-gray-500 mb-4">
+          Credenciais da Rede — só Pix é suportado nesta integração. Deixe a chave/token em
+          branco para manter os atuais.
+        </p>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <mat-form-field appearance="outline">
+            <mat-label>Ambiente</mat-label>
+            <mat-select formControlName="redeAmbiente">
+              <mat-option value="SANDBOX">Sandbox</mat-option>
+              <mat-option value="PRODUCAO">Produção</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>{{ redePvConfigurado ? "Novo PV (opcional)" : "PV (número de filiação)" }}</mat-label>
+            <input matInput type="password" [formControl]="redePvControl" autocomplete="new-password" />
+            @if (redePvConfigurado) {
+              <mat-hint>PV já configurado — preencha só para trocar.</mat-hint>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>{{
+              redeChaveIntegracaoConfigurada ? "Nova chave (opcional)" : "Chave de integração"
+            }}</mat-label>
+            <input
+              matInput
+              type="password"
+              [formControl]="redeChaveIntegracaoControl"
+              autocomplete="new-password"
+            />
+            @if (redeChaveIntegracaoConfigurada) {
+              <mat-hint>Chave já configurada — preencha só para trocar.</mat-hint>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>{{
+              redeWebhookTokenConfigurado ? "Novo token (opcional)" : "Token do webhook"
+            }}</mat-label>
+            <input
+              matInput
+              type="password"
+              [formControl]="redeWebhookTokenControl"
+              autocomplete="new-password"
+            />
+            @if (redeWebhookTokenConfigurado) {
+              <mat-hint>Token já configurado — preencha só para trocar.</mat-hint>
+            }
+          </mat-form-field>
+        </div>
+
+        <p class="text-xs text-gray-500 mt-2">
+          URL para cadastrar no painel da Rede: <code class="bg-gray-100 px-1 rounded">{{ redeWebhookUrl }}</code>
+          — em sandbox o cadastro é automático; em produção, repasse essa URL e o token acima
+          pro suporte da Rede (eles cadastram manualmente, por CNPJ).
+        </p>
+      </section>
+
       <div class="flex justify-end">
         <button
           mat-raised-button
           color="primary"
           type="submit"
-          [disabled]="form.invalid || salvando || nenhumMetodoSelecionado()"
+          [disabled]="form.invalid || salvando"
         >
           <mat-icon>save</mat-icon> Salvar configurações
         </button>
@@ -491,6 +578,10 @@ export class ConfiguracoesComponent implements OnInit {
     asaasJurosMensalPercentual: this.fb.control<number | null>(null),
     asaasDescontoPercentual: this.fb.control<number | null>(null),
     asaasDescontoDiasAntesVencimento: this.fb.control<number | null>(null),
+    provedorBoleto: this.fb.control<PagamentoProvedor | null>("ASAAS"),
+    provedorPix: this.fb.control<PagamentoProvedor | null>("ASAAS"),
+    provedorCartao: this.fb.control<PagamentoProvedor | null>("ASAAS"),
+    redeAmbiente: this.fb.nonNullable.control<RedeAmbiente>("SANDBOX"),
   });
 
   /** Senha do sistema legado: nunca vem do backend — campo separado, só
@@ -507,19 +598,15 @@ export class ConfiguracoesComponent implements OnInit {
   asaasWebhookTokenConfigurado = false;
   readonly asaasWebhookUrl = `${window.location.origin}/api/asaas/webhook`;
 
-  /** Grupo separado (fora do `form` principal) só pra os 3 checkboxes de
-   * forma de pagamento — mais simples que modelar como FormArray pra só 3
-   * opções fixas. Convertido pra array no salvar()/carregar(). */
-  readonly asaasMetodosForm = this.fb.nonNullable.group({
-    BOLETO: this.fb.nonNullable.control(true),
-    PIX: this.fb.nonNullable.control(true),
-    CREDIT_CARD: this.fb.nonNullable.control(true),
-  });
-
-  nenhumMetodoSelecionado(): boolean {
-    const valor = this.asaasMetodosForm.getRawValue();
-    return !valor.BOLETO && !valor.PIX && !valor.CREDIT_CARD;
-  }
+  /** Chave/PV e token do webhook da Rede: nunca vêm do backend — campos
+   * separados, só enviados quando o admin digita algo (mesmo padrão do Asaas). */
+  readonly redePvControl = this.fb.nonNullable.control("");
+  readonly redeChaveIntegracaoControl = this.fb.nonNullable.control("");
+  readonly redeWebhookTokenControl = this.fb.nonNullable.control("");
+  redePvConfigurado = false;
+  redeChaveIntegracaoConfigurada = false;
+  redeWebhookTokenConfigurado = false;
+  readonly redeWebhookUrl = `${window.location.origin}/api/rede/webhook`;
 
   carregando = false;
   salvando = false;
@@ -553,11 +640,9 @@ export class ConfiguracoesComponent implements OnInit {
         this.legadoSenhaConfigurada = configuracao.legadoSenhaConfigurada;
         this.asaasApiKeyConfigurada = configuracao.asaasApiKeyConfigurada;
         this.asaasWebhookTokenConfigurado = configuracao.asaasWebhookTokenConfigurado;
-        this.asaasMetodosForm.setValue({
-          BOLETO: configuracao.asaasMetodosAceitos.includes("BOLETO"),
-          PIX: configuracao.asaasMetodosAceitos.includes("PIX"),
-          CREDIT_CARD: configuracao.asaasMetodosAceitos.includes("CREDIT_CARD"),
-        });
+        this.redePvConfigurado = configuracao.redePvConfigurado;
+        this.redeChaveIntegracaoConfigurada = configuracao.redeChaveIntegracaoConfigurada;
+        this.redeWebhookTokenConfigurado = configuracao.redeWebhookTokenConfigurado;
         this.carregando = false;
       },
       error: () => (this.carregando = false),
@@ -565,13 +650,15 @@ export class ConfiguracoesComponent implements OnInit {
   }
 
   salvar(): void {
-    if (this.form.invalid || this.nenhumMetodoSelecionado()) return;
+    if (this.form.invalid) return;
     this.salvando = true;
     const valor = this.form.getRawValue();
     const novaSenha = this.legadoSenhaControl.value.trim();
     const novaChaveAsaas = this.asaasApiKeyControl.value.trim();
     const novoTokenAsaas = this.asaasWebhookTokenControl.value.trim();
-    const metodos = this.asaasMetodosForm.getRawValue();
+    const novoPvRede = this.redePvControl.value.trim();
+    const novaChaveRede = this.redeChaveIntegracaoControl.value.trim();
+    const novoTokenRede = this.redeWebhookTokenControl.value.trim();
     const payload: AtualizarConfiguracaoPayload = {
       ...valor,
       legadoUrl: valor.legadoUrl.trim() || null,
@@ -579,9 +666,9 @@ export class ConfiguracoesComponent implements OnInit {
       ...(novaSenha ? { legadoSenha: novaSenha } : {}),
       ...(novaChaveAsaas ? { asaasApiKey: novaChaveAsaas } : {}),
       ...(novoTokenAsaas ? { asaasWebhookToken: novoTokenAsaas } : {}),
-      asaasMetodosAceitos: (["BOLETO", "PIX", "CREDIT_CARD"] as const).filter(
-        (metodo) => metodos[metodo],
-      ),
+      ...(novoPvRede ? { redePv: novoPvRede } : {}),
+      ...(novaChaveRede ? { redeChaveIntegracao: novaChaveRede } : {}),
+      ...(novoTokenRede ? { redeWebhookToken: novoTokenRede } : {}),
     };
 
     this.service.atualizar(payload).subscribe({
@@ -593,11 +680,12 @@ export class ConfiguracoesComponent implements OnInit {
         this.asaasWebhookTokenConfigurado = configuracao.asaasWebhookTokenConfigurado;
         this.asaasApiKeyControl.setValue("");
         this.asaasWebhookTokenControl.setValue("");
-        this.asaasMetodosForm.setValue({
-          BOLETO: configuracao.asaasMetodosAceitos.includes("BOLETO"),
-          PIX: configuracao.asaasMetodosAceitos.includes("PIX"),
-          CREDIT_CARD: configuracao.asaasMetodosAceitos.includes("CREDIT_CARD"),
-        });
+        this.redePvConfigurado = configuracao.redePvConfigurado;
+        this.redeChaveIntegracaoConfigurada = configuracao.redeChaveIntegracaoConfigurada;
+        this.redeWebhookTokenConfigurado = configuracao.redeWebhookTokenConfigurado;
+        this.redePvControl.setValue("");
+        this.redeChaveIntegracaoControl.setValue("");
+        this.redeWebhookTokenControl.setValue("");
         this.salvando = false;
         this.snackBar.open("Configurações salvas", "Fechar", { duration: 3000 });
       },

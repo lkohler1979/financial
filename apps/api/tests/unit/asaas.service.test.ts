@@ -18,12 +18,22 @@ const { criarClienteMock, criarCobrancaMock, obterLinhaDigitavelMock, obterQrCod
   }),
 );
 
+const { criarCobrancaPixRedeMock } = vi.hoisted(() => ({
+  criarCobrancaPixRedeMock: vi.fn(),
+}));
+
 vi.mock("../../src/modules/asaas/asaas-client", () => ({
   AsaasClient: vi.fn().mockImplementation(() => ({
     criarCliente: criarClienteMock,
     criarCobranca: criarCobrancaMock,
     obterLinhaDigitavel: obterLinhaDigitavelMock,
     obterQrCodePix: obterQrCodePixMock,
+  })),
+}));
+
+vi.mock("../../src/modules/rede/rede-client", () => ({
+  RedeClient: vi.fn().mockImplementation(() => ({
+    criarCobrancaPix: criarCobrancaPixRedeMock,
   })),
 }));
 
@@ -62,7 +72,9 @@ const CONFIG_COM_ASAAS = {
   asaasAmbiente: "SANDBOX" as const,
   asaasApiKeyCriptografada: "cripto(chave-sandbox)",
   asaasWebhookTokenCriptografado: "cripto(token-webhook)",
-  asaasMetodosAceitos: ["BOLETO", "PIX", "CREDIT_CARD"] as const,
+  provedorBoleto: "ASAAS" as const,
+  provedorPix: "ASAAS" as const,
+  provedorCartao: "ASAAS" as const,
 };
 
 const alunoFake = {
@@ -146,17 +158,71 @@ describe("asaasService.gerarCobrancaParcela", () => {
     expect(criarCobrancaMock).not.toHaveBeenCalled();
   });
 
-  it("recusa gerar cobrança de um método não habilitado em Configurações", async () => {
+  it("recusa gerar cobrança de um tipo desabilitado em Configurações", async () => {
     financeiro.findById.mockResolvedValue(parcelaFake as never);
     configRepo.obterOuCriar.mockResolvedValue({
       ...CONFIG_COM_ASAAS,
-      asaasMetodosAceitos: ["BOLETO"],
+      provedorPix: null,
     } as never);
 
     await expect(asaasService.gerarCobrancaParcela("parcela-1", "PIX", USUARIO)).rejects.toThrow(
       "Esta forma de pagamento não está habilitada",
     );
     expect(criarCobrancaMock).not.toHaveBeenCalled();
+  });
+
+  it("gera um Pix via Rede quando provedorPix = REDE (não chama o Asaas)", async () => {
+    financeiro.findById.mockResolvedValue(parcelaFake as never);
+    configRepo.obterOuCriar.mockResolvedValue({
+      ...CONFIG_COM_ASAAS,
+      provedorPix: "REDE",
+      redePvCriptografado: "cripto(pv-teste)",
+      redeChaveIntegracaoCriptografada: "cripto(chave-rede-teste)",
+      redeAmbiente: "SANDBOX",
+    } as never);
+    criarCobrancaPixRedeMock.mockResolvedValue({
+      tid: "tid_rede_123",
+      qrCodeImagem: "base64...",
+      qrCodeCopiaECola: "00020101...",
+      dataExpiracao: "2026-10-20T10:00:00",
+    });
+    financeiro.update.mockResolvedValue({
+      ...parcelaFake,
+      asaasPaymentId: "tid_rede_123",
+      asaasBillingType: "PIX",
+      provedorPagamento: "REDE",
+      asaasPixQrCodeImagem: "base64...",
+      asaasPixCopiaECola: "00020101...",
+    } as never);
+
+    const resultado = await asaasService.gerarCobrancaParcela("parcela-1", "PIX", USUARIO);
+
+    expect(criarCobrancaMock).not.toHaveBeenCalled();
+    expect(criarClienteMock).not.toHaveBeenCalled();
+    expect(criarCobrancaPixRedeMock).toHaveBeenCalledWith(
+      expect.objectContaining({ reference: "parcela-1", amount: 10000 }),
+    );
+    expect(financeiro.update).toHaveBeenCalledWith(
+      "parcela-1",
+      expect.objectContaining({
+        asaasPaymentId: "tid_rede_123",
+        asaasBillingType: "PIX",
+        provedorPagamento: "REDE",
+      }),
+    );
+    expect(resultado.provedorPagamento).toBe("REDE");
+  });
+
+  it("recusa Cartão/Boleto via Rede (só Pix é suportado)", async () => {
+    financeiro.findById.mockResolvedValue(parcelaFake as never);
+    configRepo.obterOuCriar.mockResolvedValue({
+      ...CONFIG_COM_ASAAS,
+      provedorBoleto: "REDE",
+    } as never);
+
+    await expect(asaasService.gerarCobrancaParcela("parcela-1", "BOLETO", USUARIO)).rejects.toThrow(
+      "A Rede só suporta Pix",
+    );
   });
 
   it("envia fine/interest/discount quando configurados em Configurações", async () => {

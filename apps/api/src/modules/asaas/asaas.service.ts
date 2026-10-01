@@ -1,3 +1,4 @@
+import type { PagamentoProvedor } from "@prisma/client";
 import { AppError, NotFoundError, ValidationError } from "../../shared/errors/app-error";
 import { decifrar } from "../../shared/utils/criptografia";
 import { registrarAuditoria } from "../auditoria/auditoria.service";
@@ -8,6 +9,7 @@ import { financeiroService } from "../financeiro/financeiro.service";
 import { sincronizacaoLegadoRepository } from "../sincronizacao-legado/sincronizacao-legado.repository";
 import { AsaasBillingType, AsaasClient } from "./asaas-client";
 import type { AsaasWebhookPayload } from "./asaas.schema";
+import { RedeClient } from "../rede/rede-client";
 
 const ENTIDADE_PARCELA = "Parcela";
 
@@ -23,6 +25,7 @@ const EVENTOS_PAGAMENTO_CONFIRMADO = new Set(["PAYMENT_CONFIRMED", "PAYMENT_RECE
 function selecionarCamposCobranca(parcela: {
   asaasPaymentId: string | null;
   asaasBillingType: string | null;
+  provedorPagamento: PagamentoProvedor | null;
   asaasBoletoUrl: string | null;
   asaasLinhaDigitavel: string | null;
   asaasInvoiceUrl: string | null;
@@ -33,6 +36,7 @@ function selecionarCamposCobranca(parcela: {
   return {
     asaasPaymentId: parcela.asaasPaymentId,
     asaasBillingType: parcela.asaasBillingType,
+    provedorPagamento: parcela.provedorPagamento,
     asaasBoletoUrl: parcela.asaasBoletoUrl,
     asaasLinhaDigitavel: parcela.asaasLinhaDigitavel,
     asaasInvoiceUrl: parcela.asaasInvoiceUrl,
@@ -40,6 +44,27 @@ function selecionarCamposCobranca(parcela: {
     asaasPixCopiaECola: parcela.asaasPixCopiaECola,
     asaasPixQrCodeExpiracao: parcela.asaasPixQrCodeExpiracao,
   };
+}
+
+/** Qual provedor atende este tipo de cobrança, segundo a Configuração — null
+ * quando o tipo está desabilitado. */
+function obterProvedorParaTipo(
+  configuracao: {
+    provedorBoleto: PagamentoProvedor | null;
+    provedorPix: PagamentoProvedor | null;
+    provedorCartao: PagamentoProvedor | null;
+  },
+  billingType: AsaasBillingType,
+): PagamentoProvedor | null {
+  if (billingType === "BOLETO") return configuracao.provedorBoleto;
+  if (billingType === "PIX") return configuracao.provedorPix;
+  return configuracao.provedorCartao;
+}
+
+/** Formata uma data no formato exigido pela Rede: YYYY-MM-DDThh:mm:ss (sem
+ * milissegundos nem timezone). */
+function formatarDataHoraRede(data: Date): string {
+  return data.toISOString().slice(0, 19);
 }
 
 /** Monta `fine`/`interest`/`discount` a partir da Configuração — cada um só
@@ -85,6 +110,18 @@ async function obterClienteAsaas(): Promise<AsaasClient> {
   });
 }
 
+async function obterClienteRede(): Promise<RedeClient> {
+  const configuracao = await configuracoesRepository.obterOuCriar();
+  if (!configuracao.redePvCriptografado || !configuracao.redeChaveIntegracaoCriptografada) {
+    throw new ValidationError("Integração com a Rede não está configurada (tela de Configurações)");
+  }
+  return new RedeClient({
+    pv: decifrar(configuracao.redePvCriptografado),
+    chaveIntegracao: decifrar(configuracao.redeChaveIntegracaoCriptografada),
+    ambiente: configuracao.redeAmbiente,
+  });
+}
+
 export const asaasService = {
   /** Cliente Asaas do aluno — reaproveita o `asaasCustomerId` já cacheado, ou
    * cria um novo (POST /customers) na primeira cobrança. */
@@ -125,10 +162,21 @@ export const asaasService = {
     }
 
     const configuracao = await configuracoesRepository.obterOuCriar();
-    if (!configuracao.asaasMetodosAceitos.includes(billingType)) {
+    const provedor = obterProvedorParaTipo(configuracao, billingType);
+    if (!provedor) {
       throw new ValidationError(
         "Esta forma de pagamento não está habilitada (tela de Configurações)",
       );
+    }
+
+    if (provedor === "REDE") {
+      // Só Pix é suportado pela Rede nesta primeira versão — garantido pelo
+      // Zod em configuracoes.schema.ts (provedorBoleto/provedorCartao só
+      // aceitam ASAAS), mas confere de novo aqui por segurança.
+      if (billingType !== "PIX") {
+        throw new ValidationError("A Rede só suporta Pix nesta integração");
+      }
+      return this.gerarCobrancaPixRede(parcela, usuarioId);
     }
 
     const customerId = await this.obterOuCriarClienteAluno(parcela.matricula.aluno.id);
@@ -170,6 +218,7 @@ export const asaasService = {
     const atualizada = await financeiroRepository.update(parcelaId, {
       asaasPaymentId: cobranca.id,
       asaasBillingType: billingType,
+      provedorPagamento: "ASAAS",
       asaasBoletoUrl: cobranca.bankSlipUrl,
       asaasLinhaDigitavel: linhaDigitavel,
       asaasInvoiceUrl: cobranca.invoiceUrl,
@@ -186,6 +235,53 @@ export const asaasService = {
       entidadeId: parcelaId,
       acao: "ATUALIZACAO",
       detalhes: { acao: "cobranca_gerada", billingType, asaasPaymentId: cobranca.id },
+    });
+
+    return selecionarCamposCobranca(atualizada);
+  },
+
+  /**
+   * Gera um QR Code Pix via Rede (e.Rede) — não usa `customer`/tokenização
+   * de cliente (a Rede não exige cadastro prévio pra gerar um Pix avulso).
+   * A expiração do QR Code é o vencimento da parcela, limitada ao máximo de
+   * 15 dias permitido pela Rede (e nunca no passado, mesmo que a parcela já
+   * tenha vencido).
+   */
+  async gerarCobrancaPixRede(
+    parcela: NonNullable<Awaited<ReturnType<typeof financeiroRepository.findById>>>,
+    usuarioId: string,
+  ) {
+    const client = await obterClienteRede();
+
+    const agora = new Date();
+    const umDiaAFrente = new Date(agora.getTime() + 24 * 60 * 60 * 1000);
+    const maximoFuturo = new Date(agora.getTime() + 15 * 24 * 60 * 60 * 1000);
+    const alvo = parcela.vencimento > agora ? parcela.vencimento : umDiaAFrente;
+    const expiracao = alvo > maximoFuturo ? maximoFuturo : alvo;
+
+    const cobranca = await client.criarCobrancaPix({
+      reference: parcela.id,
+      amount: Math.round(Number(parcela.valor) * 100),
+      dateTimeExpiration: formatarDataHoraRede(expiracao),
+    });
+
+    const atualizada = await financeiroRepository.update(parcela.id, {
+      asaasPaymentId: cobranca.tid,
+      asaasBillingType: "PIX",
+      provedorPagamento: "REDE",
+      asaasPixQrCodeImagem: cobranca.qrCodeImagem,
+      asaasPixCopiaECola: cobranca.qrCodeCopiaECola,
+      asaasPixQrCodeExpiracao: cobranca.dataExpiracao ? new Date(cobranca.dataExpiracao) : expiracao,
+      asaasStatus: "PENDING",
+      asaasDataGeracao: new Date(),
+    });
+
+    await registrarAuditoria({
+      usuarioId,
+      entidade: ENTIDADE_PARCELA,
+      entidadeId: parcela.id,
+      acao: "ATUALIZACAO",
+      detalhes: { acao: "cobranca_gerada", billingType: "PIX", provedor: "REDE", tid: cobranca.tid },
     });
 
     return selecionarCamposCobranca(atualizada);

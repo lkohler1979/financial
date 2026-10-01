@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { Prisma } from "@prisma/client";
+import { PagamentoProvedor, Prisma } from "@prisma/client";
 import { registrarAuditoria } from "../auditoria/auditoria.service";
 import { criptografar } from "../../shared/utils/criptografia";
 import { reprogramarSincronizacaoAgendada } from "../../jobs/queues/sincronizacao-legado.queue";
@@ -28,16 +28,29 @@ function serializarConfiguracao(configuracao: {
   asaasAmbiente: "SANDBOX" | "PRODUCAO";
   asaasApiKeyCriptografada: string | null;
   asaasWebhookTokenCriptografado: string | null;
-  asaasMetodosAceitos: ("BOLETO" | "PIX" | "CREDIT_CARD")[];
   asaasMultaPercentual: Prisma.Decimal | number | null;
   asaasJurosMensalPercentual: Prisma.Decimal | number | null;
   asaasDescontoPercentual: Prisma.Decimal | number | null;
   asaasDescontoDiasAntesVencimento: number | null;
+  provedorBoleto: PagamentoProvedor | null;
+  provedorPix: PagamentoProvedor | null;
+  provedorCartao: PagamentoProvedor | null;
+  redeAmbiente: "SANDBOX" | "PRODUCAO";
+  redePvCriptografado: string | null;
+  redeChaveIntegracaoCriptografada: string | null;
+  redeWebhookTokenCriptografado: string | null;
 }) {
-  // A senha/API key/token criptografados nunca saem da API — só um
+  // A senha/API key/token/chave criptografados nunca saem da API — só um
   // indicador se já foram definidos.
-  const { legadoSenhaCriptografada, asaasApiKeyCriptografada, asaasWebhookTokenCriptografado, ...resto } =
-    configuracao;
+  const {
+    legadoSenhaCriptografada,
+    asaasApiKeyCriptografada,
+    asaasWebhookTokenCriptografado,
+    redePvCriptografado,
+    redeChaveIntegracaoCriptografada,
+    redeWebhookTokenCriptografado,
+    ...resto
+  } = configuracao;
   return {
     ...resto,
     multaPercentual: Number(configuracao.multaPercentual),
@@ -55,6 +68,9 @@ function serializarConfiguracao(configuracao: {
     legadoSenhaConfigurada: Boolean(legadoSenhaCriptografada),
     asaasApiKeyConfigurada: Boolean(asaasApiKeyCriptografada),
     asaasWebhookTokenConfigurado: Boolean(asaasWebhookTokenCriptografado),
+    redePvConfigurado: Boolean(redePvCriptografado),
+    redeChaveIntegracaoConfigurada: Boolean(redeChaveIntegracaoCriptografada),
+    redeWebhookTokenConfigurado: Boolean(redeWebhookTokenCriptografado),
   };
 }
 
@@ -106,8 +122,16 @@ export const configuracoesService = {
       ...(input.asaasWebhookToken !== undefined
         ? { asaasWebhookTokenCriptografado: criptografar(input.asaasWebhookToken) }
         : {}),
-      ...(input.asaasMetodosAceitos !== undefined
-        ? { asaasMetodosAceitos: input.asaasMetodosAceitos }
+      ...(input.provedorBoleto !== undefined ? { provedorBoleto: input.provedorBoleto } : {}),
+      ...(input.provedorPix !== undefined ? { provedorPix: input.provedorPix } : {}),
+      ...(input.provedorCartao !== undefined ? { provedorCartao: input.provedorCartao } : {}),
+      ...(input.redeAmbiente !== undefined ? { redeAmbiente: input.redeAmbiente } : {}),
+      ...(input.redePv !== undefined ? { redePvCriptografado: criptografar(input.redePv) } : {}),
+      ...(input.redeChaveIntegracao !== undefined
+        ? { redeChaveIntegracaoCriptografada: criptografar(input.redeChaveIntegracao) }
+        : {}),
+      ...(input.redeWebhookToken !== undefined
+        ? { redeWebhookTokenCriptografado: criptografar(input.redeWebhookToken) }
         : {}),
       ...(input.asaasMultaPercentual !== undefined
         ? { asaasMultaPercentual: input.asaasMultaPercentual }
@@ -126,7 +150,14 @@ export const configuracoesService = {
     const configuracao = await configuracoesRepository.atualizar(dados);
 
     // Nunca loga segredos em texto puro na Auditoria, só quais campos mudaram.
-    const CAMPOS_SENSIVEIS = ["legadoSenha", "asaasApiKey", "asaasWebhookToken"];
+    const CAMPOS_SENSIVEIS = [
+      "legadoSenha",
+      "asaasApiKey",
+      "asaasWebhookToken",
+      "redePv",
+      "redeChaveIntegracao",
+      "redeWebhookToken",
+    ];
     await registrarAuditoria({
       usuarioId,
       entidade: ENTIDADE,

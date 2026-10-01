@@ -88,6 +88,22 @@ enum AsaasBillingType {
   CREDIT_CARD
 }
 
+// Qual provedor de pagamento processa cada tipo de cobrança — Boleto, Pix e
+// Cartão podem ser atendidos por provedores diferentes, mas cada tipo só por
+// UM provedor por vez (nunca os dois ao mesmo tempo para o mesmo tipo).
+// Rede (e.Rede/Itaú) não tem Boleto — só Pix (e cartão, não implementado
+// ainda: exigiria coletar dado de cartão, diferente do Asaas que usa página
+// hospedada; decisão do usuário, 2026-10-01: não implementar por enquanto).
+enum PagamentoProvedor {
+  ASAAS
+  REDE
+}
+
+enum RedeAmbiente {
+  SANDBOX
+  PRODUCAO
+}
+
 model Usuario {
   id        String        @id @default(uuid())
   nome      String
@@ -247,10 +263,17 @@ model Parcela {
   /// outro).
   tituloObservacoesLegado String? @map("titulo_observacoes_legado")
 
-  /// Campos da integração com o Asaas (boleto/Pix/cartão) — todos nulos até
-  /// alguém clicar em "Gerar cobrança" pra esta parcela. `asaasPaymentId` é a
-  /// chave usada tanto pra idempotência (não gerar 2 cobranças pra mesma
-  /// parcela) quanto pra casar o webhook de confirmação com a Parcela.
+  /// Qual provedor processou a cobrança desta parcela (Asaas ou Rede) — null
+  /// até "Gerar cobrança" ser clicado. Os campos `asaas*` abaixo guardam o
+  /// resultado independente do provedor (nome mantido por já estar em uso
+  /// desde antes de existir mais de um provedor — ver asaas.service.ts).
+  provedorPagamento PagamentoProvedor? @map("provedor_pagamento")
+  /// Campos da integração com gateway de pagamento (boleto/Pix/cartão) —
+  /// todos nulos até alguém clicar em "Gerar cobrança" pra esta parcela.
+  /// `asaasPaymentId` é a chave usada tanto pra idempotência (não gerar 2
+  /// cobranças pra mesma parcela) quanto pra casar o webhook de confirmação
+  /// com a Parcela — guarda o "tid" quando o provedor é a Rede, não só
+  /// quando é o Asaas (nome mantido por legado).
   asaasPaymentId      String?   @unique @map("asaas_payment_id")
   /// Forma de cobrança usada nesta cobrança específica — BOLETO, PIX ou
   /// CREDIT_CARD (cartão só cria a cobrança; o cliente insere os dados na
@@ -347,10 +370,6 @@ model Configuracao {
   /// (enviado de volta no header `asaas-access-token` a cada chamada) — usado
   /// pra validar que o POST em /api/asaas/webhook realmente veio do Asaas.
   asaasWebhookTokenCriptografado String?       @map("asaas_webhook_token_criptografado")
-  /// Formas de cobrança liberadas no menu "Gerar cobrança" da Ficha de
-  /// Cobrança — admin pode habilitar uma ou mais (ex.: só Boleto+Pix, sem
-  /// cartão). Lista nunca vazia (validado no Zod, não no banco).
-  asaasMetodosAceitos            AsaasBillingType[] @default([BOLETO, PIX, CREDIT_CARD]) @map("asaas_metodos_aceitos")
   /// Multa (%) cobrada pelo Asaas quando o cliente paga depois do vencimento
   /// — enviada no campo `fine` da cobrança. Null = não envia `fine` (deixa a
   /// configuração padrão da conta Asaas valer, se houver).
@@ -366,6 +385,28 @@ model Configuracao {
   /// `discount.dueDateLimitDays` do Asaas. Só tem efeito se o percentual
   /// acima também estiver preenchido.
   asaasDescontoDiasAntesVencimento Int?              @map("asaas_desconto_dias_antes_vencimento")
+
+  // --- Qual provedor atende cada tipo de cobrança ---
+  // Null = tipo desabilitado (não aparece no menu "Gerar cobrança"). Nunca os
+  // dois provedores no mesmo tipo — é por isso que é um valor único, não uma
+  // lista. Boleto só aceita ASAAS (Rede não tem) e Cartão também só ASAAS por
+  // enquanto (Rede exigiria coletar dado de cartão — fora de escopo).
+  provedorBoleto PagamentoProvedor? @default(ASAAS) @map("provedor_boleto")
+  provedorPix    PagamentoProvedor? @default(ASAAS) @map("provedor_pix")
+  provedorCartao PagamentoProvedor? @default(ASAAS) @map("provedor_cartao")
+
+  // --- Integração com a Rede (e.Rede/Itaú) — só Pix, por enquanto ---
+  redeAmbiente                   RedeAmbiente @default(SANDBOX) @map("rede_ambiente")
+  /// PV (número de filiação) = clientId do OAuth2 — criptografado como as
+  /// demais credenciais, embora não seja tão sensível quanto a chave abaixo.
+  redePvCriptografado            String?      @map("rede_pv_criptografado")
+  /// Chave de integração = clientSecret do OAuth2 — nunca gravada nem
+  /// devolvida em texto puro.
+  redeChaveIntegracaoCriptografada String?    @map("rede_chave_integracao_criptografada")
+  /// Token enviado como header `authorization` na notificação de webhook da
+  /// Rede — cadastrado junto com a URL (sandbox: self-service; produção:
+  /// precisa repassar pro suporte da Rede, ver tela de Configurações).
+  redeWebhookTokenCriptografado  String?      @map("rede_webhook_token_criptografado")
 
   @@map("configuracoes")
 }

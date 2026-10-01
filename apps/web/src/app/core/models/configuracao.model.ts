@@ -6,6 +6,12 @@ export type AsaasAmbiente = "SANDBOX" | "PRODUCAO";
 
 export type AsaasBillingType = "BOLETO" | "PIX" | "CREDIT_CARD";
 
+/** Quem processa a cobrança — cada tipo (Boleto/Pix/Cartão) só pode ter UM
+ * provedor por vez (nunca os dois ao mesmo tempo para o mesmo tipo). */
+export type PagamentoProvedor = "ASAAS" | "REDE";
+
+export type RedeAmbiente = "SANDBOX" | "PRODUCAO";
+
 export interface Configuracao {
   id: string;
   frequenciaImportacao: FrequenciaImportacao;
@@ -28,9 +34,19 @@ export interface Configuracao {
   asaasApiKeyConfigurada: boolean;
   /** Nunca vem o token em si — só se já foi configurado (a API nunca o retorna). */
   asaasWebhookTokenConfigurado: boolean;
-  /** Formas de cobrança liberadas no menu "Gerar cobrança" da Ficha de
-   * Cobrança — sempre ao menos uma. */
-  asaasMetodosAceitos: AsaasBillingType[];
+  /** Qual provedor atende cada tipo no menu "Gerar cobrança" — null
+   * desabilita o tipo. Boleto e Cartão só aceitam ASAAS (Rede não tem
+   * Boleto, e Cartão via Rede não está implementado). */
+  provedorBoleto: PagamentoProvedor | null;
+  provedorPix: PagamentoProvedor | null;
+  provedorCartao: PagamentoProvedor | null;
+  redeAmbiente: RedeAmbiente;
+  /** Nunca vem o PV em si — só se já foi configurado. */
+  redePvConfigurado: boolean;
+  /** Nunca vem a chave em si — só se já foi configurada. */
+  redeChaveIntegracaoConfigurada: boolean;
+  /** Nunca vem o token em si — só se já foi configurado. */
+  redeWebhookTokenConfigurado: boolean;
   /** Multa/juros/desconto enviados em toda cobrança gerada no Asaas — null
    * quando não configurado (o Asaas não recebe o campo nesse caso). */
   asaasMultaPercentual: number | null;
@@ -44,7 +60,13 @@ export interface Configuracao {
 
 export type AtualizarConfiguracaoPayload = Omit<
   Configuracao,
-  "id" | "legadoSenhaConfigurada" | "asaasApiKeyConfigurada" | "asaasWebhookTokenConfigurado"
+  | "id"
+  | "legadoSenhaConfigurada"
+  | "asaasApiKeyConfigurada"
+  | "asaasWebhookTokenConfigurado"
+  | "redePvConfigurado"
+  | "redeChaveIntegracaoConfigurada"
+  | "redeWebhookTokenConfigurado"
 > & {
   /** Só enviado quando o admin digita uma nova senha — deixe undefined para manter a atual. */
   legadoSenha?: string;
@@ -52,6 +74,12 @@ export type AtualizarConfiguracaoPayload = Omit<
   asaasApiKey?: string;
   /** Só enviado quando o admin digita um novo token — deixe undefined para manter o atual. */
   asaasWebhookToken?: string;
+  /** Só enviado quando o admin digita um novo PV — deixe undefined para manter o atual. */
+  redePv?: string;
+  /** Só enviado quando o admin digita uma nova chave — deixe undefined para manter a atual. */
+  redeChaveIntegracao?: string;
+  /** Só enviado quando o admin digita um novo token — deixe undefined para manter o atual. */
+  redeWebhookToken?: string;
 };
 
 /** Frase que precisa ser digitada exatamente para confirmar a limpeza da base (backend valida). */

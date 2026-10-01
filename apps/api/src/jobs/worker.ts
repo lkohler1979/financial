@@ -1,3 +1,7 @@
+// Ver server.ts — mesmo motivo: sistema é só para o Brasil, e o processo
+// precisa gerar/interpretar vencimentos no fuso America/Sao_Paulo, não UTC.
+process.env.TZ ||= "America/Sao_Paulo";
+
 import "dotenv/config";
 import "./workers/importacao.worker";
 import "./workers/geracao-word.worker";

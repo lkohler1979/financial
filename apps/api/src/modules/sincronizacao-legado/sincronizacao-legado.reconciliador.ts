@@ -49,27 +49,71 @@ export function tipoTituloDaDescricao(descricao: string): string | undefined {
  * avançado no fluxo de cobrança (ex.: PROTESTADO) de volta para EM_ABERTO só
  * porque o legado ainda mostra "Aberto".
  */
+/**
+ * Deriva o tipo de título normalizado ("Mensalidade"/"Renegociação") a
+ * partir do detalhe do legado. Decisão do usuário, 2026-09-17: `tipotituloId`/
+ * `tipotituloNome` (campo estruturado, confirmado ao vivo contra
+ * `titulo-informacoes/{id}`) é a fonte preferida — só cai para a heurística
+ * sobre `tituloDescricao` quando o legado não traz `tipotituloNome`.
+ */
+export function tipoTituloDoDetalhe(detalhe: LegadoTituloDetalhe): string | undefined {
+  return detalhe.tipoTituloNome ?? tipoTituloDaDescricao(detalhe.tituloDescricao);
+}
+
 export function aplicarDetalheNaParcela(
   parcela: {
     status: StatusParcela;
     valorPago: unknown;
     dataPagamento: Date | null;
     tipoTitulo: string | null;
+    tipoTituloIdLegado: unknown;
+    tituloObservacoesLegado: string | null;
+    multaLegado: unknown;
+    jurosLegado: unknown;
+    totalLegado: unknown;
   },
   detalhe: LegadoTituloDetalhe,
-): { status?: StatusParcela; valorPago: number; dataPagamento: Date | null; tipoTitulo?: string } | null {
+): {
+  status?: StatusParcela;
+  valorPago: number;
+  dataPagamento: Date | null;
+  tipoTitulo?: string;
+  tipoTituloIdLegado: number | null;
+  tituloObservacoesLegado: string | null;
+  multaLegado: number;
+  jurosLegado: number;
+  totalLegado: number;
+} | null {
   const novoStatus = statusLegadoParaEthos(detalhe);
   const valorPagoLegado = detalhe.tituloValorPago;
   const dataPagamentoLegado = parseDataLegado(detalhe.tituloDataPagamento ?? detalhe.tituloDataBaixa);
-  const tipoTituloLegado = tipoTituloDaDescricao(detalhe.tituloDescricao);
+  const tipoTituloLegado = tipoTituloDoDetalhe(detalhe);
 
   const mudouStatus = novoStatus !== null && novoStatus !== parcela.status;
   const mudouValor = Number(parcela.valorPago ?? 0) !== valorPagoLegado;
   const mudouData =
     (dataPagamentoLegado?.getTime() ?? null) !== (parcela.dataPagamento?.getTime() ?? null);
   const mudouTipo = tipoTituloLegado !== undefined && parcela.tipoTitulo !== tipoTituloLegado;
+  const mudouTipoId = (parcela.tipoTituloIdLegado as number | null) !== detalhe.tipoTituloId;
+  const mudouObservacoesLegado = parcela.tituloObservacoesLegado !== detalhe.tituloObservacoes;
+  // NaN quando a Parcela ainda não tem valor gravado (null) — força "mudou"
+  // na primeira sincronização, já que qualquer número é diferente de NaN.
+  const mudouMultaJuros =
+    Number(parcela.multaLegado ?? NaN) !== detalhe.multaCalc ||
+    Number(parcela.jurosLegado ?? NaN) !== detalhe.jurosCalc ||
+    Number(parcela.totalLegado ?? NaN) !== detalhe.totalCalc;
 
-  if (!mudouStatus && !mudouValor && !mudouData && !mudouTipo) return null;
+  if (
+    !mudouStatus &&
+    !mudouValor &&
+    !mudouData &&
+    !mudouTipo &&
+    !mudouTipoId &&
+    !mudouObservacoesLegado &&
+    !mudouMultaJuros
+  ) {
+    return null;
+  }
 
   return {
     ...(novoStatus ? { status: novoStatus } : {}),
@@ -79,6 +123,14 @@ export function aplicarDetalheNaParcela(
     valorPago: valorPagoLegado,
     dataPagamento: dataPagamentoLegado,
     ...(mudouTipo ? { tipoTitulo: tipoTituloLegado } : {}),
+    tipoTituloIdLegado: detalhe.tipoTituloId,
+    tituloObservacoesLegado: detalhe.tituloObservacoes,
+    // Idem para multa/juros/total — decisão do usuário, 2026-09-15: Parcela
+    // sincronizada com o legado nunca tem multa/juros calculados pelo Ethos,
+    // sempre reflete o valor que o próprio legado calculou.
+    multaLegado: detalhe.multaCalc,
+    jurosLegado: detalhe.jurosCalc,
+    totalLegado: detalhe.totalCalc,
   };
 }
 

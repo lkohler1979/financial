@@ -21,6 +21,12 @@ function detalhe(dados: Partial<LegadoTituloDetalhe> = {}): LegadoTituloDetalhe 
     tituloDataPagamento: null,
     tituloDataBaixa: null,
     diasAtraso: 10,
+    multaCalc: 0,
+    jurosCalc: 0,
+    totalCalc: 150,
+    tipoTituloId: null,
+    tipoTituloNome: null,
+    tituloObservacoes: null,
     ...dados,
   };
 }
@@ -33,6 +39,11 @@ function parcela(
     valorPago: unknown;
     dataPagamento: Date | null;
     tipoTitulo: string | null;
+    tipoTituloIdLegado: unknown;
+    tituloObservacoesLegado: string | null;
+    multaLegado: unknown;
+    jurosLegado: unknown;
+    totalLegado: unknown;
   }> = {},
 ) {
   return {
@@ -42,6 +53,15 @@ function parcela(
     valorPago: null,
     dataPagamento: null,
     tipoTitulo: "Mensalidade",
+    // Mesmos valores padrão de `detalhe()` (multaCalc/jurosCalc/totalCalc,
+    // tipoTituloId/tituloObservacoes) — já "sincronizados", para os testes de
+    // "sem alteração" não disparar falso positivo só por causa desses campos
+    // novos.
+    tipoTituloIdLegado: null,
+    tituloObservacoesLegado: null,
+    multaLegado: 0,
+    jurosLegado: 0,
+    totalLegado: 150,
     ...dados,
   };
 }
@@ -64,6 +84,11 @@ describe("reconciliarMatricula", () => {
       status: "PAGO",
       valorPago: 150,
       dataPagamento: new Date(2026, 5, 5),
+      tipoTituloIdLegado: null,
+      tituloObservacoesLegado: null,
+      multaLegado: 0,
+      jurosLegado: 0,
+      totalLegado: 150,
       statusSincronizacaoLegado: "SINCRONIZADO",
     });
   });
@@ -103,11 +128,16 @@ describe("reconciliarMatricula", () => {
       status: "RENEGOCIADO",
       valorPago: 0,
       dataPagamento: null,
+      tipoTituloIdLegado: null,
+      tituloObservacoesLegado: null,
+      multaLegado: 0,
+      jurosLegado: 0,
+      totalLegado: 150,
       statusSincronizacaoLegado: "SINCRONIZADO",
     });
   });
 
-  it("sincroniza tipoTitulo a partir da descrição do legado (Mensalidade/Renegociação)", async () => {
+  it("sincroniza tipoTitulo a partir da descrição do legado quando o legado não traz tipotituloNome (fallback)", async () => {
     financeiro.listarTodasPorMatricula.mockResolvedValue([
       parcela({ tipoTitulo: "Mensalidade" }),
     ] as never);
@@ -122,6 +152,42 @@ describe("reconciliarMatricula", () => {
       valorPago: 0,
       dataPagamento: null,
       tipoTitulo: "Renegociação",
+      tipoTituloIdLegado: null,
+      tituloObservacoesLegado: null,
+      multaLegado: 0,
+      jurosLegado: 0,
+      totalLegado: 150,
+      statusSincronizacaoLegado: "SINCRONIZADO",
+    });
+  });
+
+  it("prefere tipotituloId/tipotituloNome (campo estruturado) sobre a heurística de tituloDescricao quando ambos vêm do legado", async () => {
+    financeiro.listarTodasPorMatricula.mockResolvedValue([
+      parcela({ tipoTitulo: "Mensalidade" }),
+    ] as never);
+    // Descrição livre ainda diz "Mensalidade", mas o campo estruturado
+    // (mais confiável) já indica Renegociação — o estruturado deve vencer.
+    const buscarInformacoesTitulo = vi.fn().mockResolvedValue(
+      detalhe({
+        tituloDescricao: "Mensalidade - 3 / 13",
+        tipoTituloId: 33,
+        tipoTituloNome: "Renegociação",
+        tituloObservacoes: "Renegociado via acordo",
+      }),
+    );
+
+    const resultado = await reconciliarMatricula("matricula-1", buscarInformacoesTitulo);
+
+    expect(resultado.parcelasAtualizadas).toBe(1);
+    expect(financeiro.update).toHaveBeenCalledWith("parcela-1", {
+      valorPago: 0,
+      dataPagamento: null,
+      tipoTitulo: "Renegociação",
+      tipoTituloIdLegado: 33,
+      tituloObservacoesLegado: "Renegociado via acordo",
+      multaLegado: 0,
+      jurosLegado: 0,
+      totalLegado: 150,
       statusSincronizacaoLegado: "SINCRONIZADO",
     });
   });
@@ -139,6 +205,37 @@ describe("reconciliarMatricula", () => {
     expect(financeiro.update).toHaveBeenCalledWith("parcela-1", {
       valorPago: 0,
       dataPagamento: null,
+      tipoTituloIdLegado: null,
+      tituloObservacoesLegado: null,
+      multaLegado: 0,
+      jurosLegado: 0,
+      totalLegado: 150,
+      statusSincronizacaoLegado: "SINCRONIZADO",
+    });
+  });
+
+  it("sempre sincroniza multa/juros/total com o legado, mesmo sem outra mudança (juros cresce dia a dia)", async () => {
+    // Parcela já sincronizada antes (multaLegado/jurosLegado/totalLegado
+    // gravados na sincronização anterior) — o legado agora mostra juros
+    // maiores (mais dias de atraso), sem nenhuma outra mudança de status,
+    // valor pago ou tipo. Decisão do usuário, 2026-09-15: Parcela vinda do
+    // legado nunca é recalculada pelo Ethos, sempre reflete o legado.
+    financeiro.listarTodasPorMatricula.mockResolvedValue([parcela()] as never);
+    const buscarInformacoesTitulo = vi
+      .fn()
+      .mockResolvedValue(detalhe({ multaCalc: 3, jurosCalc: 12.5, totalCalc: 165.5 }));
+
+    const resultado = await reconciliarMatricula("matricula-1", buscarInformacoesTitulo);
+
+    expect(resultado.parcelasAtualizadas).toBe(1);
+    expect(financeiro.update).toHaveBeenCalledWith("parcela-1", {
+      valorPago: 0,
+      dataPagamento: null,
+      tipoTituloIdLegado: null,
+      tituloObservacoesLegado: null,
+      multaLegado: 3,
+      jurosLegado: 12.5,
+      totalLegado: 165.5,
       statusSincronizacaoLegado: "SINCRONIZADO",
     });
   });

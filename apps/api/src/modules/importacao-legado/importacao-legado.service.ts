@@ -32,6 +32,10 @@ export interface PreviaParcelaLegado {
   valorPago: number;
   estado: string;
   diasAtraso: number;
+  /** `tipotituloNome` do legado (ex.: "Mensalidade", "Renegociação") —
+   * confirmado ao vivo em 2026-09-17. Exibido na pré-visualização para o
+   * usuário conferir antes de confirmar a importação. */
+  tipoTitulo: string | null;
   /** Já existe uma Parcela no Ethos para este `codTitulo` — nesse caso a
    * confirmação atualiza a situação de pagamento em vez de criar de novo. */
   jaExisteNoEthos: boolean;
@@ -56,6 +60,23 @@ export interface PreviaImportacaoLegado {
   nome: string;
   alunoJaExiste: boolean;
   cursos: PreviaCursoLegado[];
+}
+
+/**
+ * Normaliza um código de título para comparação — o mesmo título pode vir do
+ * legado ora com zeros à esquerda (ex.: "00000002967", como em
+ * `buscarTitulosPorPessoa`), ora sem (ex.: "2967", como em planilhas de
+ * importação antigas ou títulos digitados manualmente), dependendo da
+ * origem. Comparar só os dígitos sem os zeros à esquerda evita criar uma
+ * Parcela duplicada quando o formato difere do que já está gravado em
+ * `Parcela.codTitulo` — pedido do usuário, 2026-09-15: "não deve duplicar e
+ * sim atualizar". Não é usado para decidir o valor gravado (esse continua
+ * sendo o `codTitulo` já existente, quando a Parcela já existe, ou o
+ * `tituloId` do legado tal como veio, quando é criada agora).
+ */
+function normalizarCodTitulo(valor: string): string {
+  const digitos = valor.replace(/\D/g, "");
+  return digitos.replace(/^0+(?=\d)/, "");
 }
 
 function agruparTitulosPorAlunocurso(titulos: LegadoTituloResumo[]): Map<string, LegadoTituloResumo[]> {
@@ -95,7 +116,7 @@ export const importacaoLegadoService = {
       const parcelasExistentesPorCodTitulo = matriculaExistente
         ? new Map(
             (await financeiroRepository.listarTodasPorMatricula(matriculaExistente.id)).map((p) => [
-              p.codTitulo,
+              normalizarCodTitulo(p.codTitulo),
               p,
             ]),
           )
@@ -110,7 +131,7 @@ export const importacaoLegadoService = {
           : null,
         matriculaJaExiste: !!matriculaExistente,
         parcelas: titulos.map((t) => {
-          const existente = parcelasExistentesPorCodTitulo.get(t.tituloId);
+          const existente = parcelasExistentesPorCodTitulo.get(normalizarCodTitulo(t.tituloId));
           return {
             tituloId: t.tituloId,
             descricao: t.tituloDescricao,
@@ -120,6 +141,7 @@ export const importacaoLegadoService = {
             valorPago: t.tituloValorPago,
             estado: t.tituloEstado,
             diasAtraso: t.diasAtraso,
+            tipoTitulo: t.tipoTituloNome ?? tipoTituloDaDescricao(t.tituloDescricao) ?? null,
             jaExisteNoEthos: !!existente,
             statusEthos: existente?.status ?? null,
             pagoNoLegado: statusLegadoParaEthos(t) === StatusParcela.PAGO,
@@ -252,8 +274,19 @@ export const importacaoLegadoService = {
         titulosSelecionadosSet.has(t.tituloId),
       );
 
+      // Mapa por código normalizado (ver `normalizarCodTitulo`) — o legado
+      // pode devolver o mesmo título com/sem zeros à esquerda em relação ao
+      // que já está gravado (planilha antiga, digitação manual etc.); casar
+      // só pelo `codTitulo` exato duplicaria a Parcela em vez de atualizar.
+      const parcelasExistentesPorCodTitulo = new Map(
+        (await financeiroRepository.listarTodasPorMatricula(matricula.id)).map((p) => [
+          normalizarCodTitulo(p.codTitulo),
+          p,
+        ]),
+      );
+
       for (const titulo of titulos) {
-        const existente = await financeiroRepository.findByChaveNatural(matricula.id, titulo.tituloId);
+        const existente = parcelasExistentesPorCodTitulo.get(normalizarCodTitulo(titulo.tituloId));
 
         if (existente) {
           // Já existe — atualiza a situação de pagamento a partir do legado
@@ -289,10 +322,21 @@ export const importacaoLegadoService = {
           parcela: titulo.tituloParcela,
           vencimento,
           valor: titulo.tituloValor,
-          tipoTitulo: tipoTituloDaDescricao(titulo.tituloDescricao),
+          tipoTitulo: titulo.tipoTituloNome ?? tipoTituloDaDescricao(titulo.tituloDescricao),
           status,
           valorPago: titulo.tituloValorPago || undefined,
           dataPagamento,
+          // Decisão do usuário, 2026-09-15: Parcela importada do legado nunca
+          // tem multa/juros calculados pelo Ethos — sempre usa os valores que
+          // o próprio legado já calculou.
+          multaLegado: titulo.multaCalc,
+          jurosLegado: titulo.jurosCalc,
+          totalLegado: titulo.totalCalc,
+          // Campo estruturado de tipo de título do legado, confirmado ao vivo
+          // em 2026-09-17 — guardado para exibição/conferência na Ficha de
+          // Cobrança (ver Parcela.tipoTituloIdLegado no schema).
+          tipoTituloIdLegado: titulo.tipoTituloId,
+          tituloObservacoesLegado: titulo.tituloObservacoes,
         });
         parcelasNovas++;
         await registrarAuditoria({

@@ -2,7 +2,7 @@ import { Prisma, TipoTituloProtesto } from "@prisma/client";
 import { prisma } from "../../database/prisma";
 import {
   calcularDiasAtraso,
-  calcularMultaJuros,
+  calcularMultaJurosParcela,
   ConfiguracaoFinanceira,
 } from "./calculo-financeiro";
 
@@ -23,10 +23,26 @@ function dataLimiteAtraso(hoje: Date, diasAtrasoMinimo: number): Date {
   return limite;
 }
 
-/** AMBOS (padrão) não restringe — inclui qualquer tipoTitulo, mesmo nulo/outro valor. */
-function filtroTipoTitulo(tipoTituloProtesto: TipoTituloProtesto): Prisma.StringFilter | undefined {
+/** Formas literais já observadas em Parcela.tipoTitulo para cada valor do
+ * enum — o campo é texto livre (vindo da planilha ou do legado), gravado com
+ * acentuação ("Renegociação"), enquanto o enum não tem acento
+ * ("RENEGOCIACAO"). `mode: "insensitive"` sozinho só neutraliza
+ * maiúsc./minúsc., não cedilha/acentuação (depende de collation do
+ * Postgres) — por isso comparamos contra as duas formas explicitamente, em
+ * vez de confiar em normalização no banco. Bug encontrado e corrigido em
+ * 2026-09-17: o filtro "Somente Renegociação" podia não casar nenhuma
+ * parcela dependendo da collation. */
+const FORMAS_TIPO_TITULO: Record<"MENSALIDADE" | "RENEGOCIACAO", string[]> = {
+  MENSALIDADE: ["Mensalidade", "MENSALIDADE"],
+  RENEGOCIACAO: ["Renegociação", "Renegociacao", "RENEGOCIACAO"],
+};
+
+/** AMBOS (padrão) não restringe — inclui qualquer tipoTitulo, mesmo nulo/outro valor.
+ * Exportado só para teste unitário direto (relatorios.repository.ts não tem
+ * dependência de banco nesta função, mas o resto do módulo tem). */
+export function filtroTipoTitulo(tipoTituloProtesto: TipoTituloProtesto): Prisma.StringFilter | undefined {
   if (tipoTituloProtesto === "AMBOS") return undefined;
-  return { equals: tipoTituloProtesto, mode: "insensitive" };
+  return { in: FORMAS_TIPO_TITULO[tipoTituloProtesto], mode: "insensitive" };
 }
 
 export interface MatriculaElegivel {
@@ -132,9 +148,15 @@ export const relatoriosRepository = {
         ),
       );
       const calculos = parcelasVencidas.map((p) =>
-        calcularMultaJuros(
-          Number(p.valor),
-          calcularDiasAtraso(p.vencimento, hoje, configFinanceira.jurosContarDiaGeracao),
+        calcularMultaJurosParcela(
+          {
+            valor: Number(p.valor),
+            vencimento: p.vencimento,
+            multaLegado: p.multaLegado !== null ? Number(p.multaLegado) : null,
+            jurosLegado: p.jurosLegado !== null ? Number(p.jurosLegado) : null,
+            totalLegado: p.totalLegado !== null ? Number(p.totalLegado) : null,
+          },
+          hoje,
           configFinanceira,
         ),
       );

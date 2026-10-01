@@ -9,8 +9,7 @@ import { relatoriosRepository } from "../../modules/relatorios/relatorios.reposi
 import { gerarDocumentoProtesto } from "../../modules/relatorios/documento-protesto.generator";
 import { gerarDocumentoProtestoPdf } from "../../modules/relatorios/documento-protesto-pdf.generator";
 import {
-  calcularDiasAtraso,
-  calcularMultaJuros,
+  calcularMultaJurosParcela,
   ConfiguracaoFinanceira,
 } from "../../modules/relatorios/calculo-financeiro";
 import { situacoesRepository } from "../../modules/cobranca/situacoes.repository";
@@ -108,10 +107,20 @@ async function gerarDocumentoParaGrupo(
   );
   if (parcelas.length === 0) return null;
 
-  const calculosParcelas = parcelas.map((p) => {
-    const diasAtraso = calcularDiasAtraso(p.vencimento, ctx.hoje, ctx.configFinanceira.jurosContarDiaGeracao);
-    return { vencimento: p.vencimento, ...calcularMultaJuros(Number(p.valor), diasAtraso, ctx.configFinanceira) };
-  });
+  const calculosParcelas = parcelas.map((p) => ({
+    vencimento: p.vencimento,
+    ...calcularMultaJurosParcela(
+      {
+        valor: Number(p.valor),
+        vencimento: p.vencimento,
+        multaLegado: p.multaLegado !== null ? Number(p.multaLegado) : null,
+        jurosLegado: p.jurosLegado !== null ? Number(p.jurosLegado) : null,
+        totalLegado: p.totalLegado !== null ? Number(p.totalLegado) : null,
+      },
+      ctx.hoje,
+      ctx.configFinanceira,
+    ),
+  }));
 
   const dadosDocumento = {
     alunoNome: item.alunoNome,

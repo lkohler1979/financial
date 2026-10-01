@@ -58,6 +58,23 @@ export interface LegadoTituloResumo {
   tituloDataPagamento: string | null;
   tituloDataBaixa: string | null;
   diasAtraso: number;
+  /** Multa/juros/total já calculados pelo próprio legado (`titulo_multa_calc`/
+   * `titulo_juros_calc`/`titulo_valor_calc`, confirmados ao vivo em
+   * 2026-09-15) — decisão do usuário, 2026-09-15: para Parcela importada do
+   * legado, o Ethos nunca recalcula multa/juros, sempre usa estes valores. */
+  multaCalc: number;
+  jurosCalc: number;
+  totalCalc: number;
+  /** Mesmos campos de `LegadoTituloDetalhe.tipoTituloId`/`tipoTituloNome`/
+   * `tituloObservacoes` (ver lá), só que lidos das colunas em snake_case
+   * deste endpoint em lote (`tipotitulo_id`/`tipotitulo_nome`/
+   * `titulo_observacoes`). PENDÊNCIA: diferente de `titulo-informacoes/{id}`
+   * (confirmado ao vivo em 2026-09-17), esses 3 nomes de coluna aqui NÃO
+   * foram confirmados numa captura de rede real deste endpoint em lote —
+   * ver docs/PENDENCIAS.md. */
+  tipoTituloId: number | null;
+  tipoTituloNome: string | null;
+  tituloObservacoes: string | null;
 }
 
 export interface LegadoTituloDetalhe {
@@ -75,6 +92,25 @@ export interface LegadoTituloDetalhe {
   tituloDataPagamento: string | null;
   tituloDataBaixa: string | null;
   diasAtraso: number;
+  /** Multa/juros/total já calculados pelo próprio legado (`tituloMultaCalc`/
+   * `tituloJurosCalc`/`tituloValorFinal`, confirmados ao vivo em 2026-09-11)
+   * — mesma decisão de `LegadoTituloResumo` acima. */
+  multaCalc: number;
+  jurosCalc: number;
+  totalCalc: number;
+  /** `tipotituloId`/`tipotituloNome` — campo estruturado de tipo de título do
+   * legado (ex.: `tipotituloId: 2`, `tipotituloNome: "Mensalidade"`;
+   * `tipotituloId: 33` = "Renegociação"), confirmado ao vivo em 2026-09-17
+   * (captura de rede real contra `titulo-informacoes/00000029907`). Mais
+   * confiável que `tipoTituloDaDescricao(tituloDescricao)` (heurística sobre
+   * texto livre) — usado como fonte preferida para `Parcela.tipoTitulo`. */
+  tipoTituloId: number | null;
+  tipoTituloNome: string | null;
+  /** `tituloObservacoes` do legado — texto livre do sistema de origem
+   * (ex.: motivo de desconto aplicado), confirmado ao vivo em 2026-09-17.
+   * Nunca confundir com `Parcela.observacoes` (campo de gestão interna do
+   * Ethos). */
+  tituloObservacoes: string | null;
 }
 
 class SessaoExpiradaError extends Error {
@@ -251,6 +287,12 @@ export class LegadoClient {
           tituloDataPagamento: d.titulo_data_pagamento ? String(d.titulo_data_pagamento) : null,
           tituloDataBaixa: d.titulo_data_baixa ? String(d.titulo_data_baixa) : null,
           diasAtraso: Number(d.dias_atraso ?? 0),
+          multaCalc: Number(d.titulo_multa_calc ?? 0),
+          jurosCalc: Number(d.titulo_juros_calc ?? 0),
+          totalCalc: Number(d.titulo_valor_calc ?? d.titulo_valor ?? 0),
+          tipoTituloId: d.tipotitulo_id != null ? Number(d.tipotitulo_id) : null,
+          tipoTituloNome: d.tipotitulo_nome != null ? String(d.tipotitulo_nome) : null,
+          tituloObservacoes: d.titulo_observacoes != null ? String(d.titulo_observacoes) : null,
         });
       }
 
@@ -293,6 +335,12 @@ export class LegadoClient {
       tituloDataPagamento: d.tituloDataPagamento ? String(d.tituloDataPagamento) : null,
       tituloDataBaixa: d.tituloDataBaixa ? String(d.tituloDataBaixa) : null,
       diasAtraso: Number(d.diasAtraso ?? 0),
+      multaCalc: Number(d.tituloMultaCalc ?? 0),
+      jurosCalc: Number(d.tituloJurosCalc ?? 0),
+      totalCalc: Number(d.tituloValorFinal ?? d.tituloValor ?? 0),
+      tipoTituloId: d.tipotituloId != null ? Number(d.tipotituloId) : null,
+      tipoTituloNome: d.tipotituloNome != null ? String(d.tipotituloNome) : null,
+      tituloObservacoes: d.tituloObservacoes != null ? String(d.tituloObservacoes) : null,
     };
   }
 }

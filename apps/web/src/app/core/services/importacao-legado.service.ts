@@ -12,6 +12,10 @@ export interface PreviaParcelaLegado {
   valorPago: number;
   estado: string;
   diasAtraso: number;
+  /** Tipo de título do legado (ex.: "Mensalidade", "Renegociação"),
+   * confirmado ao vivo em 2026-09-17 — exibido para conferência antes da
+   * confirmação da importação. */
+  tipoTitulo: string | null;
   jaExisteNoEthos: boolean;
   statusEthos: string | null;
   pagoNoLegado: boolean;

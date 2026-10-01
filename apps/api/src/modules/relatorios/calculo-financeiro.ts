@@ -34,6 +34,42 @@ export function calcularMultaJuros(
   return { valorBruto: arredondarAbnt(valorBruto), multa, juros, total };
 }
 
+export interface ParcelaComPossivelOrigemLegado {
+  valor: number;
+  vencimento: Date;
+  /** Presentes quando a Parcela foi importada/sincronizada do sistema
+   * legado (`Parcela.multaLegado`/`jurosLegado`/`totalLegado`). */
+  multaLegado?: number | null;
+  jurosLegado?: number | null;
+  totalLegado?: number | null;
+}
+
+/**
+ * Multa/juros/total de uma parcela — usa o valor já calculado pelo sistema
+ * legado quando disponível (`totalLegado` não nulo), em vez de recalcular
+ * com a fórmula do Ethos. Decisão do usuário, 2026-09-15: parcela vinda do
+ * legado nunca é recalculada pelo Ethos, o legado é sempre a fonte de
+ * verdade para multa/juros. Sem esses valores (parcela nunca sincronizada
+ * com o legado), cai no cálculo próprio de sempre.
+ */
+export function calcularMultaJurosParcela(
+  parcela: ParcelaComPossivelOrigemLegado,
+  referencia: Date,
+  config: ConfiguracaoFinanceira,
+): CalculoParcela {
+  if (parcela.totalLegado !== undefined && parcela.totalLegado !== null) {
+    return {
+      valorBruto: arredondarAbnt(parcela.valor),
+      multa: arredondarAbnt(parcela.multaLegado ?? 0),
+      juros: arredondarAbnt(parcela.jurosLegado ?? 0),
+      total: arredondarAbnt(parcela.totalLegado),
+    };
+  }
+
+  const diasAtraso = calcularDiasAtraso(parcela.vencimento, referencia, config.jurosContarDiaGeracao);
+  return calcularMultaJuros(parcela.valor, diasAtraso, config);
+}
+
 /**
  * Dias corridos entre o vencimento e a data de referência (geração do
  * relatório). Quando `jurosContarDiaGeracao` é false, subtrai 1 dia — ou

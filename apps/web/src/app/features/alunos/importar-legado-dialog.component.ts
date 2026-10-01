@@ -146,6 +146,7 @@ function cursoHabilitado(curso: CursoSelecao): boolean {
                     <th class="pr-2">Parcela</th>
                     <th class="pr-2">Vencimento</th>
                     <th class="pr-2">Valor</th>
+                    <th class="pr-2">Tipo de título</th>
                     <th class="pr-2">Estado</th>
                     <th></th>
                   </tr>
@@ -163,6 +164,7 @@ function cursoHabilitado(curso: CursoSelecao): boolean {
                       <td class="pr-2">{{ p.parcela }}</td>
                       <td class="pr-2">{{ p.vencimento | date: "dd/MM/yyyy" }}</td>
                       <td class="pr-2">{{ p.valor | currency: "BRL" }}</td>
+                      <td class="pr-2">{{ p.tipoTitulo || "—" }}</td>
                       <td class="pr-2">{{ p.estado }}</td>
                       <td class="text-xs text-gray-500">
                         @if (p.jaExisteNoEthos) {

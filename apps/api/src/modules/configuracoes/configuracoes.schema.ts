@@ -39,6 +39,12 @@ export const atualizarConfiguracaoSchema = z
     asaasWebhookToken: z.string().min(1).max(300).optional(),
     // Formas de cobrança liberadas no menu "Gerar cobrança" — pelo menos uma.
     asaasMetodosAceitos: z.array(z.enum(["BOLETO", "PIX", "CREDIT_CARD"])).min(1).optional(),
+    // Multa/juros/desconto enviados em toda cobrança gerada no Asaas — null
+    // limpa (deixa de enviar o campo), undefined mantém o que já tem salvo.
+    asaasMultaPercentual: z.coerce.number().min(0).max(100).nullable().optional(),
+    asaasJurosMensalPercentual: z.coerce.number().min(0).max(100).nullable().optional(),
+    asaasDescontoPercentual: z.coerce.number().min(0).max(100).nullable().optional(),
+    asaasDescontoDiasAntesVencimento: z.coerce.number().int().min(0).max(30).nullable().optional(),
   })
   .refine((obj) => Object.keys(obj).length > 0, "Informe ao menos um campo para atualizar");
 

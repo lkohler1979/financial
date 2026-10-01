@@ -351,6 +351,21 @@ model Configuracao {
   /// Cobrança — admin pode habilitar uma ou mais (ex.: só Boleto+Pix, sem
   /// cartão). Lista nunca vazia (validado no Zod, não no banco).
   asaasMetodosAceitos            AsaasBillingType[] @default([BOLETO, PIX, CREDIT_CARD]) @map("asaas_metodos_aceitos")
+  /// Multa (%) cobrada pelo Asaas quando o cliente paga depois do vencimento
+  /// — enviada no campo `fine` da cobrança. Null = não envia `fine` (deixa a
+  /// configuração padrão da conta Asaas valer, se houver).
+  asaasMultaPercentual            Decimal?           @db.Decimal(5, 2) @map("asaas_multa_percentual")
+  /// Juros (% AO MÊS, não ao dia — assim que o Asaas trata) cobrado quando o
+  /// cliente paga depois do vencimento — enviado no campo `interest`.
+  asaasJurosMensalPercentual      Decimal?           @db.Decimal(5, 2) @map("asaas_juros_mensal_percentual")
+  /// Desconto (%) por antecipação — enviado no campo `discount` (sempre
+  /// `type: PERCENTAGE`). Null = não envia `discount` nenhum.
+  asaasDescontoPercentual         Decimal?           @db.Decimal(5, 2) @map("asaas_desconto_percentual")
+  /// Quantos dias ANTES do vencimento o desconto acima continua valendo (ex.:
+  /// 5 = paga com desconto se pagar até 5 dias antes de vencer) — campo
+  /// `discount.dueDateLimitDays` do Asaas. Só tem efeito se o percentual
+  /// acima também estiver preenchido.
+  asaasDescontoDiasAntesVencimento Int?              @map("asaas_desconto_dias_antes_vencimento")
 
   @@map("configuracoes")
 }

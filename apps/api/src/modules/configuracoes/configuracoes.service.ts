@@ -29,6 +29,10 @@ function serializarConfiguracao(configuracao: {
   asaasApiKeyCriptografada: string | null;
   asaasWebhookTokenCriptografado: string | null;
   asaasMetodosAceitos: ("BOLETO" | "PIX" | "CREDIT_CARD")[];
+  asaasMultaPercentual: Prisma.Decimal | number | null;
+  asaasJurosMensalPercentual: Prisma.Decimal | number | null;
+  asaasDescontoPercentual: Prisma.Decimal | number | null;
+  asaasDescontoDiasAntesVencimento: number | null;
 }) {
   // A senha/API key/token criptografados nunca saem da API — só um
   // indicador se já foram definidos.
@@ -38,6 +42,16 @@ function serializarConfiguracao(configuracao: {
     ...resto,
     multaPercentual: Number(configuracao.multaPercentual),
     jurosDiarioPercentual: Number(configuracao.jurosDiarioPercentual),
+    asaasMultaPercentual:
+      configuracao.asaasMultaPercentual != null ? Number(configuracao.asaasMultaPercentual) : null,
+    asaasJurosMensalPercentual:
+      configuracao.asaasJurosMensalPercentual != null
+        ? Number(configuracao.asaasJurosMensalPercentual)
+        : null,
+    asaasDescontoPercentual:
+      configuracao.asaasDescontoPercentual != null
+        ? Number(configuracao.asaasDescontoPercentual)
+        : null,
     legadoSenhaConfigurada: Boolean(legadoSenhaCriptografada),
     asaasApiKeyConfigurada: Boolean(asaasApiKeyCriptografada),
     asaasWebhookTokenConfigurado: Boolean(asaasWebhookTokenCriptografado),
@@ -94,6 +108,18 @@ export const configuracoesService = {
         : {}),
       ...(input.asaasMetodosAceitos !== undefined
         ? { asaasMetodosAceitos: input.asaasMetodosAceitos }
+        : {}),
+      ...(input.asaasMultaPercentual !== undefined
+        ? { asaasMultaPercentual: input.asaasMultaPercentual }
+        : {}),
+      ...(input.asaasJurosMensalPercentual !== undefined
+        ? { asaasJurosMensalPercentual: input.asaasJurosMensalPercentual }
+        : {}),
+      ...(input.asaasDescontoPercentual !== undefined
+        ? { asaasDescontoPercentual: input.asaasDescontoPercentual }
+        : {}),
+      ...(input.asaasDescontoDiasAntesVencimento !== undefined
+        ? { asaasDescontoDiasAntesVencimento: input.asaasDescontoDiasAntesVencimento }
         : {}),
     };
 

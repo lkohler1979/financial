@@ -219,6 +219,53 @@ import {
           }
         </div>
 
+        <div class="mt-4 pt-4 border-t">
+          <p class="text-sm text-gray-700 mb-1">Multa, juros e desconto por antecipação</p>
+          <p class="text-xs text-gray-500 mb-2">
+            Aplicados pelo Asaas em toda cobrança gerada. Deixe em branco para não enviar (mantém
+            a configuração padrão da conta Asaas, se houver).
+          </p>
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Multa (%) após o vencimento</mat-label>
+              <input matInput type="number" min="0" max="100" step="0.01" formControlName="asaasMultaPercentual" />
+            </mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Juros (% ao mês) após o vencimento</mat-label>
+              <input
+                matInput
+                type="number"
+                min="0"
+                max="100"
+                step="0.01"
+                formControlName="asaasJurosMensalPercentual"
+              />
+            </mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Desconto (%) por antecipação</mat-label>
+              <input
+                matInput
+                type="number"
+                min="0"
+                max="100"
+                step="0.01"
+                formControlName="asaasDescontoPercentual"
+              />
+            </mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Desconto válido até (dias antes do vencimento)</mat-label>
+              <input
+                matInput
+                type="number"
+                min="0"
+                max="30"
+                formControlName="asaasDescontoDiasAntesVencimento"
+              />
+              <mat-hint>Ex.: 5 = paga com desconto até 5 dias antes de vencer.</mat-hint>
+            </mat-form-field>
+          </div>
+        </div>
+
         <p class="text-xs text-gray-500 mt-2">
           URL para cadastrar no painel do Asaas (Configurações → Webhooks):
           <code class="bg-gray-100 px-1 rounded">{{ asaasWebhookUrl }}</code>
@@ -440,6 +487,10 @@ export class ConfiguracoesComponent implements OnInit {
     legadoUsuario: this.fb.nonNullable.control(""),
     legadoIntervaloHoras: this.fb.nonNullable.control(24, [Validators.min(1)]),
     asaasAmbiente: this.fb.nonNullable.control<AsaasAmbiente>("SANDBOX"),
+    asaasMultaPercentual: this.fb.control<number | null>(null),
+    asaasJurosMensalPercentual: this.fb.control<number | null>(null),
+    asaasDescontoPercentual: this.fb.control<number | null>(null),
+    asaasDescontoDiasAntesVencimento: this.fb.control<number | null>(null),
   });
 
   /** Senha do sistema legado: nunca vem do backend — campo separado, só

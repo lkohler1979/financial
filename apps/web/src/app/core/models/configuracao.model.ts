@@ -31,6 +31,15 @@ export interface Configuracao {
   /** Formas de cobrança liberadas no menu "Gerar cobrança" da Ficha de
    * Cobrança — sempre ao menos uma. */
   asaasMetodosAceitos: AsaasBillingType[];
+  /** Multa/juros/desconto enviados em toda cobrança gerada no Asaas — null
+   * quando não configurado (o Asaas não recebe o campo nesse caso). */
+  asaasMultaPercentual: number | null;
+  /** Sempre % AO MÊS — é assim que o Asaas interpreta, não ao dia. */
+  asaasJurosMensalPercentual: number | null;
+  asaasDescontoPercentual: number | null;
+  /** Dias ANTES do vencimento em que o desconto acima ainda vale (0 = só até
+   * o dia do vencimento). Só tem efeito com asaasDescontoPercentual preenchido. */
+  asaasDescontoDiasAntesVencimento: number | null;
 }
 
 export type AtualizarConfiguracaoPayload = Omit<

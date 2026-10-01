@@ -42,6 +42,36 @@ function selecionarCamposCobranca(parcela: {
   };
 }
 
+/** Monta `fine`/`interest`/`discount` a partir da Configuração — cada um só
+ * entra no payload se o respectivo percentual estiver preenchido (o Asaas
+ * recomenda não enviar o campo com valor nulo, pra não sobrescrever a
+ * configuração padrão da conta). `dueDateLimitDays` do desconto cai pra 0
+ * (= vale só até o vencimento) quando não configurado. */
+function montarJurosMultaDesconto(configuracao: {
+  asaasMultaPercentual: unknown;
+  asaasJurosMensalPercentual: unknown;
+  asaasDescontoPercentual: unknown;
+  asaasDescontoDiasAntesVencimento: number | null;
+}) {
+  return {
+    ...(configuracao.asaasMultaPercentual != null
+      ? { fine: { value: Number(configuracao.asaasMultaPercentual), type: "PERCENTAGE" as const } }
+      : {}),
+    ...(configuracao.asaasJurosMensalPercentual != null
+      ? { interest: { value: Number(configuracao.asaasJurosMensalPercentual) } }
+      : {}),
+    ...(configuracao.asaasDescontoPercentual != null
+      ? {
+          discount: {
+            value: Number(configuracao.asaasDescontoPercentual),
+            type: "PERCENTAGE" as const,
+            dueDateLimitDays: configuracao.asaasDescontoDiasAntesVencimento ?? 0,
+          },
+        }
+      : {}),
+  };
+}
+
 async function obterClienteAsaas(): Promise<AsaasClient> {
   const configuracao = await configuracoesRepository.obterOuCriar();
   if (!configuracao.asaasApiKeyCriptografada) {
@@ -111,6 +141,7 @@ export const asaasService = {
       dueDate: parcela.vencimento.toISOString().slice(0, 10),
       description: `${parcela.matricula.curso.nome} — parcela ${parcela.parcela}`,
       externalReference: parcela.id,
+      ...montarJurosMultaDesconto(configuracao),
     });
 
     // O resto é melhor esforço: a cobrança já foi criada no Asaas — uma

@@ -37,6 +37,17 @@ export interface AsaasCriarCobrancaInput {
   dueDate: string;
   description?: string;
   externalReference?: string;
+  /** Multa cobrada se o cliente pagar depois do vencimento. Omitir (não
+   * enviar `undefined`/`null`) quando não configurado — o próprio Asaas
+   * orienta a nunca mandar o campo com valor nulo, pra não sobrescrever a
+   * configuração padrão da conta. */
+  fine?: { value: number; type: "PERCENTAGE" };
+  /** Juros cobrado se o cliente pagar depois do vencimento — `value` é
+   * sempre % AO MÊS (não ao dia), é assim que o Asaas interpreta. */
+  interest?: { value: number };
+  /** Desconto por antecipação — `dueDateLimitDays` é quantos dias ANTES do
+   * vencimento o desconto ainda vale (0 = só até o dia do vencimento). */
+  discount?: { value: number; type: "PERCENTAGE"; dueDateLimitDays: number };
 }
 
 export interface AsaasCobranca {

@@ -159,6 +159,56 @@ describe("asaasService.gerarCobrancaParcela", () => {
     expect(criarCobrancaMock).not.toHaveBeenCalled();
   });
 
+  it("envia fine/interest/discount quando configurados em Configurações", async () => {
+    financeiro.findById.mockResolvedValue(parcelaFake as never);
+    alunos.findById.mockResolvedValue({ ...alunoFake, asaasCustomerId: "cus_1" } as never);
+    configRepo.obterOuCriar.mockResolvedValue({
+      ...CONFIG_COM_ASAAS,
+      asaasMultaPercentual: 2,
+      asaasJurosMensalPercentual: 1,
+      asaasDescontoPercentual: 10,
+      asaasDescontoDiasAntesVencimento: 5,
+    } as never);
+    criarCobrancaMock.mockResolvedValue({
+      id: "pay_novo",
+      status: "PENDING",
+      bankSlipUrl: "https://asaas/boleto/pay_novo",
+      invoiceUrl: "https://asaas/fatura/pay_novo",
+    });
+    obterLinhaDigitavelMock.mockResolvedValue({ identificationField: "00190.00009...", barCode: "x" });
+    financeiro.update.mockResolvedValue(parcelaFake as never);
+
+    await asaasService.gerarCobrancaParcela("parcela-1", "BOLETO", USUARIO);
+
+    expect(criarCobrancaMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fine: { value: 2, type: "PERCENTAGE" },
+        interest: { value: 1 },
+        discount: { value: 10, type: "PERCENTAGE", dueDateLimitDays: 5 },
+      }),
+    );
+  });
+
+  it("não envia fine/interest/discount quando não configurados (evita sobrescrever a conta)", async () => {
+    financeiro.findById.mockResolvedValue(parcelaFake as never);
+    alunos.findById.mockResolvedValue({ ...alunoFake, asaasCustomerId: "cus_1" } as never);
+    criarCobrancaMock.mockResolvedValue({
+      id: "pay_novo",
+      status: "PENDING",
+      bankSlipUrl: null,
+      invoiceUrl: "https://asaas/fatura/pay_novo",
+    });
+    obterLinhaDigitavelMock.mockResolvedValue({ identificationField: "x", barCode: "x" });
+    financeiro.update.mockResolvedValue(parcelaFake as never);
+
+    await asaasService.gerarCobrancaParcela("parcela-1", "BOLETO", USUARIO);
+
+    const payloadEnviado = criarCobrancaMock.mock.calls[0][0];
+    expect(payloadEnviado).not.toHaveProperty("fine");
+    expect(payloadEnviado).not.toHaveProperty("interest");
+    expect(payloadEnviado).not.toHaveProperty("discount");
+  });
+
   it("gera um BOLETO: cria a cobrança, busca a linha digitável e audita", async () => {
     financeiro.findById.mockResolvedValue(parcelaFake as never);
     alunos.findById.mockResolvedValue({ ...alunoFake, asaasCustomerId: "cus_1" } as never);

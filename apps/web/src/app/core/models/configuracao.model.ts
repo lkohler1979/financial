@@ -4,6 +4,8 @@ export type TipoTituloProtesto = "MENSALIDADE" | "RENEGOCIACAO" | "AMBOS";
 
 export type AsaasAmbiente = "SANDBOX" | "PRODUCAO";
 
+export type AsaasBillingType = "BOLETO" | "PIX" | "CREDIT_CARD";
+
 export interface Configuracao {
   id: string;
   frequenciaImportacao: FrequenciaImportacao;
@@ -26,6 +28,9 @@ export interface Configuracao {
   asaasApiKeyConfigurada: boolean;
   /** Nunca vem o token em si — só se já foi configurado (a API nunca o retorna). */
   asaasWebhookTokenConfigurado: boolean;
+  /** Formas de cobrança liberadas no menu "Gerar cobrança" da Ficha de
+   * Cobrança — sempre ao menos uma. */
+  asaasMetodosAceitos: AsaasBillingType[];
 }
 
 export type AtualizarConfiguracaoPayload = Omit<

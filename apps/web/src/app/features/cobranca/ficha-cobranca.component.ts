@@ -285,11 +285,17 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
                       {{ gerandoBoletoId === parcela.id ? "Gerando..." : "Gerar cobrança" }}
                     </button>
                     <mat-menu #menuCobranca="matMenu">
-                      <button mat-menu-item (click)="gerarCobranca(parcela, 'BOLETO')">Boleto</button>
-                      <button mat-menu-item (click)="gerarCobranca(parcela, 'PIX')">Pix</button>
-                      <button mat-menu-item (click)="gerarCobranca(parcela, 'CREDIT_CARD')">
-                        Cartão de crédito
-                      </button>
+                      @if (metodosAceitos.includes("BOLETO")) {
+                        <button mat-menu-item (click)="gerarCobranca(parcela, 'BOLETO')">Boleto</button>
+                      }
+                      @if (metodosAceitos.includes("PIX")) {
+                        <button mat-menu-item (click)="gerarCobranca(parcela, 'PIX')">Pix</button>
+                      }
+                      @if (metodosAceitos.includes("CREDIT_CARD")) {
+                        <button mat-menu-item (click)="gerarCobranca(parcela, 'CREDIT_CARD')">
+                          Cartão de crédito
+                        </button>
+                      }
                     </mat-menu>
                   } @else {
                     <span class="text-gray-400 text-xs">—</span>
@@ -389,6 +395,9 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
   /** Id da parcela cujo boleto está sendo gerado agora, pra desabilitar só
    * aquele botão (não a tela toda) enquanto a chamada ao Asaas está em voo. */
   gerandoBoletoId?: string;
+  /** Formas de pagamento liberadas em Configurações — controla quais itens
+   * aparecem no menu "Gerar cobrança" abaixo. */
+  metodosAceitos: AsaasBillingType[] = ["BOLETO", "PIX", "CREDIT_CARD"];
 
   private pollingSub?: Subscription;
 
@@ -410,6 +419,7 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
       this.tipoTituloProtestoControl.setValue(res.tipoTituloProtestoDefault);
       this.jurosDiarioPercentual = res.jurosDiarioPercentual;
       this.jurosContarDiaGeracao = res.jurosContarDiaGeracao;
+      this.metodosAceitos = res.asaasMetodosAceitos;
     });
     this.carregar();
   }

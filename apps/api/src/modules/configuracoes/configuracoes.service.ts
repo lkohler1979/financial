@@ -28,6 +28,7 @@ function serializarConfiguracao(configuracao: {
   asaasAmbiente: "SANDBOX" | "PRODUCAO";
   asaasApiKeyCriptografada: string | null;
   asaasWebhookTokenCriptografado: string | null;
+  asaasMetodosAceitos: ("BOLETO" | "PIX" | "CREDIT_CARD")[];
 }) {
   // A senha/API key/token criptografados nunca saem da API — só um
   // indicador se já foram definidos.
@@ -90,6 +91,9 @@ export const configuracoesService = {
         : {}),
       ...(input.asaasWebhookToken !== undefined
         ? { asaasWebhookTokenCriptografado: criptografar(input.asaasWebhookToken) }
+        : {}),
+      ...(input.asaasMetodosAceitos !== undefined
+        ? { asaasMetodosAceitos: input.asaasMetodosAceitos }
         : {}),
     };
 

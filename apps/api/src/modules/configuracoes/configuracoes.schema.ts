@@ -37,6 +37,8 @@ export const atualizarConfiguracaoSchema = z
     // antes de persistir e nunca os devolve (mesmo padrão de legadoSenha).
     asaasApiKey: z.string().min(1).max(300).optional(),
     asaasWebhookToken: z.string().min(1).max(300).optional(),
+    // Formas de cobrança liberadas no menu "Gerar cobrança" — pelo menos uma.
+    asaasMetodosAceitos: z.array(z.enum(["BOLETO", "PIX", "CREDIT_CARD"])).min(1).optional(),
   })
   .refine((obj) => Object.keys(obj).length > 0, "Informe ao menos um campo para atualizar");
 

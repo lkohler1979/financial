@@ -62,6 +62,7 @@ const CONFIG_COM_ASAAS = {
   asaasAmbiente: "SANDBOX" as const,
   asaasApiKeyCriptografada: "cripto(chave-sandbox)",
   asaasWebhookTokenCriptografado: "cripto(token-webhook)",
+  asaasMetodosAceitos: ["BOLETO", "PIX", "CREDIT_CARD"] as const,
 };
 
 const alunoFake = {
@@ -142,6 +143,19 @@ describe("asaasService.gerarCobrancaParcela", () => {
     const resultado = await asaasService.gerarCobrancaParcela("parcela-1", "BOLETO", USUARIO);
 
     expect(resultado.asaasPaymentId).toBe("pay_existente");
+    expect(criarCobrancaMock).not.toHaveBeenCalled();
+  });
+
+  it("recusa gerar cobrança de um método não habilitado em Configurações", async () => {
+    financeiro.findById.mockResolvedValue(parcelaFake as never);
+    configRepo.obterOuCriar.mockResolvedValue({
+      ...CONFIG_COM_ASAAS,
+      asaasMetodosAceitos: ["BOLETO"],
+    } as never);
+
+    await expect(asaasService.gerarCobrancaParcela("parcela-1", "PIX", USUARIO)).rejects.toThrow(
+      "Esta forma de pagamento não está habilitada",
+    );
     expect(criarCobrancaMock).not.toHaveBeenCalled();
   });
 

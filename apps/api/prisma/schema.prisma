@@ -82,6 +82,12 @@ enum AsaasAmbiente {
   PRODUCAO
 }
 
+enum AsaasBillingType {
+  BOLETO
+  PIX
+  CREDIT_CARD
+}
+
 model Usuario {
   id        String        @id @default(uuid())
   nome      String
@@ -341,6 +347,10 @@ model Configuracao {
   /// (enviado de volta no header `asaas-access-token` a cada chamada) — usado
   /// pra validar que o POST em /api/asaas/webhook realmente veio do Asaas.
   asaasWebhookTokenCriptografado String?       @map("asaas_webhook_token_criptografado")
+  /// Formas de cobrança liberadas no menu "Gerar cobrança" da Ficha de
+  /// Cobrança — admin pode habilitar uma ou mais (ex.: só Boleto+Pix, sem
+  /// cartão). Lista nunca vazia (validado no Zod, não no banco).
+  asaasMetodosAceitos            AsaasBillingType[] @default([BOLETO, PIX, CREDIT_CARD]) @map("asaas_metodos_aceitos")
 
   @@map("configuracoes")
 }

@@ -94,6 +94,13 @@ export const asaasService = {
       return selecionarCamposCobranca(parcela);
     }
 
+    const configuracao = await configuracoesRepository.obterOuCriar();
+    if (!configuracao.asaasMetodosAceitos.includes(billingType)) {
+      throw new ValidationError(
+        "Esta forma de pagamento não está habilitada (tela de Configurações)",
+      );
+    }
+
     const customerId = await this.obterOuCriarClienteAluno(parcela.matricula.aluno.id);
     const client = await obterClienteAsaas();
 

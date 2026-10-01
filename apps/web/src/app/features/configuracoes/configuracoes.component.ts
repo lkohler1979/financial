@@ -204,6 +204,21 @@ import {
             }
           </mat-form-field>
         </div>
+
+        <div class="mt-4 pt-4 border-t" [formGroup]="asaasMetodosForm">
+          <p class="text-sm text-gray-700 mb-2">
+            Formas de pagamento aceitas (menu "Gerar cobrança" na Ficha de Cobrança)
+          </p>
+          <div class="flex flex-wrap gap-4">
+            <mat-checkbox formControlName="BOLETO">Boleto</mat-checkbox>
+            <mat-checkbox formControlName="PIX">Pix</mat-checkbox>
+            <mat-checkbox formControlName="CREDIT_CARD">Cartão de crédito</mat-checkbox>
+          </div>
+          @if (nenhumMetodoSelecionado()) {
+            <p class="text-xs text-red-600 mt-1">Selecione ao menos uma forma de pagamento.</p>
+          }
+        </div>
+
         <p class="text-xs text-gray-500 mt-2">
           URL para cadastrar no painel do Asaas (Configurações → Webhooks):
           <code class="bg-gray-100 px-1 rounded">{{ asaasWebhookUrl }}</code>
@@ -215,7 +230,7 @@ import {
           mat-raised-button
           color="primary"
           type="submit"
-          [disabled]="form.invalid || salvando"
+          [disabled]="form.invalid || salvando || nenhumMetodoSelecionado()"
         >
           <mat-icon>save</mat-icon> Salvar configurações
         </button>
@@ -441,6 +456,20 @@ export class ConfiguracoesComponent implements OnInit {
   asaasWebhookTokenConfigurado = false;
   readonly asaasWebhookUrl = `${window.location.origin}/api/asaas/webhook`;
 
+  /** Grupo separado (fora do `form` principal) só pra os 3 checkboxes de
+   * forma de pagamento — mais simples que modelar como FormArray pra só 3
+   * opções fixas. Convertido pra array no salvar()/carregar(). */
+  readonly asaasMetodosForm = this.fb.nonNullable.group({
+    BOLETO: this.fb.nonNullable.control(true),
+    PIX: this.fb.nonNullable.control(true),
+    CREDIT_CARD: this.fb.nonNullable.control(true),
+  });
+
+  nenhumMetodoSelecionado(): boolean {
+    const valor = this.asaasMetodosForm.getRawValue();
+    return !valor.BOLETO && !valor.PIX && !valor.CREDIT_CARD;
+  }
+
   carregando = false;
   salvando = false;
 
@@ -473,6 +502,11 @@ export class ConfiguracoesComponent implements OnInit {
         this.legadoSenhaConfigurada = configuracao.legadoSenhaConfigurada;
         this.asaasApiKeyConfigurada = configuracao.asaasApiKeyConfigurada;
         this.asaasWebhookTokenConfigurado = configuracao.asaasWebhookTokenConfigurado;
+        this.asaasMetodosForm.setValue({
+          BOLETO: configuracao.asaasMetodosAceitos.includes("BOLETO"),
+          PIX: configuracao.asaasMetodosAceitos.includes("PIX"),
+          CREDIT_CARD: configuracao.asaasMetodosAceitos.includes("CREDIT_CARD"),
+        });
         this.carregando = false;
       },
       error: () => (this.carregando = false),
@@ -480,12 +514,13 @@ export class ConfiguracoesComponent implements OnInit {
   }
 
   salvar(): void {
-    if (this.form.invalid) return;
+    if (this.form.invalid || this.nenhumMetodoSelecionado()) return;
     this.salvando = true;
     const valor = this.form.getRawValue();
     const novaSenha = this.legadoSenhaControl.value.trim();
     const novaChaveAsaas = this.asaasApiKeyControl.value.trim();
     const novoTokenAsaas = this.asaasWebhookTokenControl.value.trim();
+    const metodos = this.asaasMetodosForm.getRawValue();
     const payload: AtualizarConfiguracaoPayload = {
       ...valor,
       legadoUrl: valor.legadoUrl.trim() || null,
@@ -493,6 +528,9 @@ export class ConfiguracoesComponent implements OnInit {
       ...(novaSenha ? { legadoSenha: novaSenha } : {}),
       ...(novaChaveAsaas ? { asaasApiKey: novaChaveAsaas } : {}),
       ...(novoTokenAsaas ? { asaasWebhookToken: novoTokenAsaas } : {}),
+      asaasMetodosAceitos: (["BOLETO", "PIX", "CREDIT_CARD"] as const).filter(
+        (metodo) => metodos[metodo],
+      ),
     };
 
     this.service.atualizar(payload).subscribe({
@@ -504,6 +542,11 @@ export class ConfiguracoesComponent implements OnInit {
         this.asaasWebhookTokenConfigurado = configuracao.asaasWebhookTokenConfigurado;
         this.asaasApiKeyControl.setValue("");
         this.asaasWebhookTokenControl.setValue("");
+        this.asaasMetodosForm.setValue({
+          BOLETO: configuracao.asaasMetodosAceitos.includes("BOLETO"),
+          PIX: configuracao.asaasMetodosAceitos.includes("PIX"),
+          CREDIT_CARD: configuracao.asaasMetodosAceitos.includes("CREDIT_CARD"),
+        });
         this.salvando = false;
         this.snackBar.open("Configurações salvas", "Fechar", { duration: 3000 });
       },

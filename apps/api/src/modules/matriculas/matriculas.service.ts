@@ -1,8 +1,9 @@
 import { Prisma } from "@prisma/client";
-import { ConflictError, NotFoundError } from "../../shared/errors/app-error";
+import { ConflictError, NotFoundError, ValidationError } from "../../shared/errors/app-error";
 import { registrarAuditoria } from "../auditoria/auditoria.service";
 import { alunosRepository } from "../alunos/alunos.repository";
 import { cursosRepository } from "../cursos/cursos.repository";
+import { financeiroService } from "../financeiro/financeiro.service";
 import { matriculasRepository } from "./matriculas.repository";
 import type {
   AtualizarMatriculaInput,
@@ -11,6 +12,64 @@ import type {
 } from "./matriculas.schema";
 
 const ENTIDADE = "Matricula";
+
+/**
+ * Calcula o mês/ano da primeira parcela: o mês de `dataBase` (dataMatricula,
+ * ou hoje se omitida) no `diaVencimento` escolhido — ou o mês seguinte, se
+ * esse dia já tiver passado (evita a matrícula nascer com uma parcela já
+ * vencida). Pedido do usuário, 2026-10-01.
+ */
+function calcularMesPrimeiraParcela(
+  dataBase: Date,
+  diaVencimento: number,
+): { ano: number; mes: number } {
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+
+  const ano = dataBase.getFullYear();
+  const mes = dataBase.getMonth();
+  const candidata = new Date(ano, mes, diaVencimento);
+  return candidata < hoje ? { ano, mes: mes + 1 } : { ano, mes };
+}
+
+/** Divide `valorTotal` em `quantidade` parcelas iguais (2 casas decimais) —
+ * a última parcela absorve a diferença de arredondamento, para a soma bater
+ * exatamente com `valorTotal`. */
+function dividirValorEmParcelas(valorTotal: number, quantidade: number): number[] {
+  const base = Math.floor((valorTotal / quantidade) * 100) / 100;
+  const valores = new Array(quantidade).fill(base) as number[];
+  const diferenca = Math.round((valorTotal - base * quantidade) * 100) / 100;
+  valores[quantidade - 1] = Math.round((valores[quantidade - 1] + diferenca) * 100) / 100;
+  return valores;
+}
+
+/**
+ * Gera as N parcelas mensais de uma matrícula recém-criada, a partir de
+ * valorCurso/numeroParcelas/diaVencimento (pedido do usuário, 2026-10-01) —
+ * reaproveita financeiroService.criar (mesma validação/auditoria de uma
+ * parcela lançada manualmente), uma por vez, em sequência.
+ */
+async function gerarParcelasAutomaticas(
+  matriculaId: string,
+  dados: { valorCurso: number; numeroParcelas: number; diaVencimento: number; dataMatricula?: Date },
+  usuarioId: string,
+): Promise<void> {
+  const { ano, mes } = calcularMesPrimeiraParcela(dados.dataMatricula ?? new Date(), dados.diaVencimento);
+  const valores = dividirValorEmParcelas(dados.valorCurso, dados.numeroParcelas);
+
+  for (let indice = 0; indice < dados.numeroParcelas; indice++) {
+    await financeiroService.criar(
+      {
+        matriculaId,
+        codTitulo: String(indice + 1),
+        parcela: `${indice + 1}/${dados.numeroParcelas}`,
+        vencimento: new Date(ano, mes + indice, dados.diaVencimento),
+        valor: valores[indice],
+      },
+      usuarioId,
+    );
+  }
+}
 
 interface ParcelaResumida {
   status: string;
@@ -129,6 +188,17 @@ export const matriculasService = {
       await garantirChaveNaturalLivre(input.alunoId, input.cursoId, input.numeroMatricula);
     }
 
+    // Geração automática de parcelas (pedido do usuário, 2026-10-01): só
+    // dispara quando valorCurso E numeroParcelas vêm preenchidos; nesse caso
+    // diaVencimento passa a ser obrigatório. Validado antes de criar a
+    // matrícula, para não deixar um registro "pela metade" se faltar o dia.
+    const gerarParcelas = input.valorCurso !== undefined && input.numeroParcelas !== undefined;
+    if (gerarParcelas && input.diaVencimento === undefined) {
+      throw new ValidationError(
+        "Informe o dia de vencimento para gerar as parcelas automaticamente",
+      );
+    }
+
     const data: Prisma.MatriculaCreateInput = {
       aluno: { connect: { id: input.alunoId } },
       curso: { connect: { id: input.cursoId } },
@@ -138,9 +208,25 @@ export const matriculasService = {
       tcdAssinado: input.tcdAssinado,
       situacao: input.situacao,
       observacoes: input.observacoes,
+      valorCurso: input.valorCurso,
+      numeroParcelas: input.numeroParcelas,
+      diaVencimento: input.diaVencimento,
     };
 
     const matricula = await matriculasRepository.create(data);
+
+    if (gerarParcelas) {
+      await gerarParcelasAutomaticas(
+        matricula.id,
+        {
+          valorCurso: input.valorCurso as number,
+          numeroParcelas: input.numeroParcelas as number,
+          diaVencimento: input.diaVencimento as number,
+          dataMatricula: input.dataMatricula,
+        },
+        usuarioId,
+      );
+    }
 
     await registrarAuditoria({
       usuarioId,
@@ -181,6 +267,11 @@ export const matriculasService = {
       ...(input.tcdAssinado !== undefined ? { tcdAssinado: input.tcdAssinado } : {}),
       ...(input.situacao !== undefined ? { situacao: input.situacao } : {}),
       ...(input.observacoes !== undefined ? { observacoes: input.observacoes } : {}),
+      // Só grava o valor — editar aqui nunca regenera/apaga parcelas já
+      // existentes (a geração automática só roda na criação, ver criar()).
+      ...(input.valorCurso !== undefined ? { valorCurso: input.valorCurso } : {}),
+      ...(input.numeroParcelas !== undefined ? { numeroParcelas: input.numeroParcelas } : {}),
+      ...(input.diaVencimento !== undefined ? { diaVencimento: input.diaVencimento } : {}),
     };
 
     const matricula = await matriculasRepository.update(id, data);

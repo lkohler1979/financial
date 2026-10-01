@@ -25,14 +25,21 @@ function serializarConfiguracao(configuracao: {
   legadoUsuario: string | null;
   legadoSenhaCriptografada: string | null;
   legadoIntervaloHoras: number;
+  asaasAmbiente: "SANDBOX" | "PRODUCAO";
+  asaasApiKeyCriptografada: string | null;
+  asaasWebhookTokenCriptografado: string | null;
 }) {
-  // A senha criptografada nunca sai da API — só um indicador se já foi definida.
-  const { legadoSenhaCriptografada, ...resto } = configuracao;
+  // A senha/API key/token criptografados nunca saem da API — só um
+  // indicador se já foram definidos.
+  const { legadoSenhaCriptografada, asaasApiKeyCriptografada, asaasWebhookTokenCriptografado, ...resto } =
+    configuracao;
   return {
     ...resto,
     multaPercentual: Number(configuracao.multaPercentual),
     jurosDiarioPercentual: Number(configuracao.jurosDiarioPercentual),
     legadoSenhaConfigurada: Boolean(legadoSenhaCriptografada),
+    asaasApiKeyConfigurada: Boolean(asaasApiKeyCriptografada),
+    asaasWebhookTokenConfigurado: Boolean(asaasWebhookTokenCriptografado),
   };
 }
 
@@ -77,17 +84,27 @@ export const configuracoesService = {
       ...(input.legadoIntervaloHoras !== undefined
         ? { legadoIntervaloHoras: input.legadoIntervaloHoras }
         : {}),
+      ...(input.asaasAmbiente !== undefined ? { asaasAmbiente: input.asaasAmbiente } : {}),
+      ...(input.asaasApiKey !== undefined
+        ? { asaasApiKeyCriptografada: criptografar(input.asaasApiKey) }
+        : {}),
+      ...(input.asaasWebhookToken !== undefined
+        ? { asaasWebhookTokenCriptografado: criptografar(input.asaasWebhookToken) }
+        : {}),
     };
 
     const configuracao = await configuracoesRepository.atualizar(dados);
 
-    // Nunca loga a senha em texto puro na Auditoria, só quais campos mudaram.
+    // Nunca loga segredos em texto puro na Auditoria, só quais campos mudaram.
+    const CAMPOS_SENSIVEIS = ["legadoSenha", "asaasApiKey", "asaasWebhookToken"];
     await registrarAuditoria({
       usuarioId,
       entidade: ENTIDADE,
       entidadeId: atual.id,
       acao: "ATUALIZACAO",
-      detalhes: { camposAlterados: Object.keys(input).filter((campo) => campo !== "legadoSenha") },
+      detalhes: {
+        camposAlterados: Object.keys(input).filter((campo) => !CAMPOS_SENSIVEIS.includes(campo)),
+      },
     });
 
     if (input.legadoSincronizacaoAtiva !== undefined || input.legadoIntervaloHoras !== undefined) {

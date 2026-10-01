@@ -75,6 +75,13 @@ enum TipoExecucaoSincronizacaoLegado {
   AGENDADA
 }
 
+// Ambiente da API do Asaas usado para gerar boletos — sandbox (testes, sem
+// movimentação real) ou produção. Configurável na tela de Configurações.
+enum AsaasAmbiente {
+  SANDBOX
+  PRODUCAO
+}
+
 model Usuario {
   id        String        @id @default(uuid())
   nome      String
@@ -110,6 +117,9 @@ model Aluno {
   estado     String?
   criadoEm   DateTime @default(now()) @map("criado_em")
   atualizadoEm DateTime @updatedAt @map("atualizado_em")
+  /// ID do cliente já criado no Asaas (POST /customers) — cacheado aqui pra
+  /// não recriar um cliente novo a cada boleto gerado para o mesmo aluno.
+  asaasCustomerId String? @unique @map("asaas_customer_id")
 
   matriculas Matricula[]
 
@@ -122,6 +132,10 @@ model Curso {
   nome        String
   situacao    Boolean  @default(true)
   observacoes String?
+  /// Valor sugerido ao criar uma matrícula neste curso — só um default pro
+  /// formulário, o valor final fica gravado em Matricula.valorCurso (pode
+  /// ser ajustado por desconto/negociação por aluno).
+  valorPadrao Decimal? @db.Decimal(12, 2) @map("valor_padrao")
 
   matriculas              Matricula[]
   relatoriosInadimplencia RelatorioInadimplencia[]
@@ -143,6 +157,16 @@ model Matricula {
   /// sincronização com o sistema legado roda com sucesso para esta matrícula
   /// (independente de ter encontrado alguma divergência para aplicar).
   statusSincronizacaoLegado StatusSincronizacaoLegado @default(PENDENTE) @map("status_sincronizacao_legado")
+  /// Valor total do curso para esta matrícula (pode divergir do
+  /// Curso.valorPadrao por desconto/negociação) — junto com numeroParcelas,
+  /// dispara a geração automática das parcelas mensais na criação da
+  /// matrícula (ver matriculas.service.ts). Nulo = sem geração automática
+  /// (matrícula sem cobrança associada, ou parcelas lançadas manualmente).
+  valorCurso     Decimal? @db.Decimal(12, 2) @map("valor_curso")
+  numeroParcelas Int?     @map("numero_parcelas")
+  /// Dia do mês (1-28) em que cada parcela gerada automaticamente vence —
+  /// independente do dia da dataMatricula (pedido do usuário).
+  diaVencimento  Int?     @map("dia_vencimento")
 
   aluno Aluno @relation(fields: [alunoId], references: [id])
   curso Curso @relation(fields: [cursoId], references: [id])
@@ -190,6 +214,56 @@ model Parcela {
   /// Parcela é consultada com sucesso contra o sistema legado (mesmo que o
   /// legado não tenha trazido nenhuma mudança a aplicar).
   statusSincronizacaoLegado StatusSincronizacaoLegado @default(PENDENTE) @map("status_sincronizacao_legado")
+  /// Multa/juros/total calculados pelo próprio sistema legado (não pelo
+  /// Ethos) — presentes só em Parcelas importadas/sincronizadas do legado
+  /// (`titulo_multa_calc`/`titulo_juros_calc`/`titulo_valor_calc` do legado).
+  /// Quando presentes, o Ethos NUNCA recalcula multa/juros para esta
+  /// Parcela — sempre exibe/usa estes valores (fonte de verdade é o
+  /// legado), atualizados a cada sincronização/importação. Decisão do
+  /// usuário, 2026-09-15 — diferente de `valorOrigemComJurosEMulta` (que é
+  /// só referência da importação por planilha, nunca substitui o cálculo).
+  multaLegado Decimal? @db.Decimal(12, 2) @map("multa_legado")
+  jurosLegado Decimal? @db.Decimal(12, 2) @map("juros_legado")
+  totalLegado Decimal? @db.Decimal(12, 2) @map("total_legado")
+  /// Código numérico literal do campo `tipoTituloId` trazido pelo endpoint
+  /// `titulo-informacoes/{id}` do legado (33 = Renegociação, 2 = Mensalidade
+  /// — decisão do usuário, 2026-09-17) — guardado só para exibição/
+  /// conferência na Ficha de Cobrança. `tipoTitulo` (acima) continua sendo o
+  /// campo normalizado ("Mensalidade"/"Renegociação") usado no filtro de
+  /// geração de protesto; quando este código está presente, ele passa a ser
+  /// a fonte preferida para derivar `tipoTitulo` (mais confiável que a
+  /// heurística sobre `tituloDescricao`, mantida como fallback).
+  tipoTituloIdLegado Int? @map("tipo_titulo_id_legado")
+  /// `tituloObservacoes` do endpoint `titulo-informacoes/{id}` do legado —
+  /// texto livre do próprio sistema de origem, nunca editado pelo Ethos.
+  /// Diferente de `observacoes` (acima), que é campo de gestão interna do
+  /// Ethos (decisão do usuário, 2026-09-17: nunca sobrescrever um pelo
+  /// outro).
+  tituloObservacoesLegado String? @map("titulo_observacoes_legado")
+
+  /// Campos da integração com o Asaas (boleto/Pix/cartão) — todos nulos até
+  /// alguém clicar em "Gerar cobrança" pra esta parcela. `asaasPaymentId` é a
+  /// chave usada tanto pra idempotência (não gerar 2 cobranças pra mesma
+  /// parcela) quanto pra casar o webhook de confirmação com a Parcela.
+  asaasPaymentId      String?   @unique @map("asaas_payment_id")
+  /// Forma de cobrança usada nesta cobrança específica — BOLETO, PIX ou
+  /// CREDIT_CARD (cartão só cria a cobrança; o cliente insere os dados na
+  /// página segura do próprio Asaas via asaasInvoiceUrl — ver asaas.service.ts
+  /// sobre por que não coletamos número de cartão no Ethos).
+  asaasBillingType    String?   @map("asaas_billing_type")
+  asaasBoletoUrl      String?   @map("asaas_boleto_url")
+  asaasLinhaDigitavel String?   @map("asaas_linha_digitavel")
+  /// Fatura hospedada pelo Asaas — usada principalmente pra cobrança via
+  /// cartão (o cliente insere os dados lá), mas disponível pra qualquer tipo.
+  asaasInvoiceUrl         String?   @map("asaas_invoice_url")
+  asaasPixQrCodeImagem   String?   @map("asaas_pix_qrcode_imagem")
+  asaasPixCopiaECola     String?   @map("asaas_pix_copia_e_cola")
+  asaasPixQrCodeExpiracao DateTime? @map("asaas_pix_qrcode_expiracao")
+  /// Status cru devolvido pelo Asaas (ex.: "PENDING", "RECEIVED") — só
+  /// referência/exibição; o StatusParcela interno continua sendo a fonte de
+  /// verdade pro resto do sistema (protesto, relatórios etc.).
+  asaasStatus         String?   @map("asaas_status")
+  asaasDataGeracao    DateTime? @map("asaas_data_geracao")
 
   matricula Matricula @relation(fields: [matriculaId], references: [id])
 
@@ -255,6 +329,18 @@ model Configuracao {
   /// Intervalo, em horas, entre execuções automáticas (ex.: 24 = uma vez ao
   /// dia, 1 = de hora em hora). Reprogramado no BullMQ a cada alteração.
   legadoIntervaloHoras     Int     @default(24) @map("legado_intervalo_horas")
+
+  // --- Integração com o Asaas (boleto) ---
+  // Mesmo padrão da integração com o legado acima: credenciais administráveis
+  // só pela tela de Configurações, nunca hardcoded.
+  asaasAmbiente                  AsaasAmbiente @default(SANDBOX) @map("asaas_ambiente")
+  /// API key do Asaas, sempre criptografada (AES-256-GCM, mesma função usada
+  /// em legadoSenhaCriptografada) — nunca gravada nem retornada em texto puro.
+  asaasApiKeyCriptografada       String?       @map("asaas_api_key_criptografada")
+  /// Token de autenticação configurado no painel de Webhooks do Asaas
+  /// (enviado de volta no header `asaas-access-token` a cada chamada) — usado
+  /// pra validar que o POST em /api/asaas/webhook realmente veio do Asaas.
+  asaasWebhookTokenCriptografado String?       @map("asaas_webhook_token_criptografado")
 
   @@map("configuracoes")
 }

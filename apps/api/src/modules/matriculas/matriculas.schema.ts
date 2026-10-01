@@ -7,6 +7,23 @@ const dadosMatricula = {
   tcdAssinado: z.boolean().optional(),
   situacao: z.string().trim().min(1).max(50).optional(),
   observacoes: z.string().trim().max(1000).optional(),
+  // Integração com Asaas (pedido do usuário): informando valorCurso +
+  // numeroParcelas (+ diaVencimento) na criação, o sistema gera as parcelas
+  // mensais automaticamente (ver matriculas.service.ts). Nenhum dos três é
+  // obrigatório — matrícula sem cobrança associada continua válida.
+  valorCurso: z.coerce.number().positive("Valor do curso deve ser maior que zero").optional(),
+  numeroParcelas: z.coerce
+    .number()
+    .int()
+    .positive("Número de parcelas deve ser maior que zero")
+    .max(360)
+    .optional(),
+  diaVencimento: z.coerce
+    .number()
+    .int()
+    .min(1, "Dia de vencimento deve ser entre 1 e 28")
+    .max(28, "Dia de vencimento deve ser entre 1 e 28")
+    .optional(),
 };
 
 export const criarMatriculaSchema = z.object({

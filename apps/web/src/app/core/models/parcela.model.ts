@@ -35,4 +35,34 @@ export interface Parcela {
   multaProtesto?: number | null;
   jurosProtesto?: number | null;
   totalProtesto?: number | null;
+  /** Multa/juros/total calculados pelo próprio sistema legado — presentes só
+   * em Parcelas importadas/sincronizadas do legado. Quando presentes, a
+   * Ficha de Cobrança nunca recalcula, sempre exibe estes valores (decisão
+   * do usuário, 2026-09-15: o legado é sempre a fonte de verdade para
+   * multa/juros de Parcela vinda de lá). */
+  multaLegado?: number | null;
+  jurosLegado?: number | null;
+  totalLegado?: number | null;
+  /** Código `tipotituloId` do legado (33 = Renegociação, 2 = Mensalidade) —
+   * confirmado ao vivo em 2026-09-17 contra `titulo-informacoes/{id}`.
+   * Presente só em Parcelas importadas/sincronizadas do legado; usado só
+   * para exibição/conferência — `tipoTitulo` (acima) é o campo normalizado
+   * usado no filtro de geração de protesto. */
+  tipoTituloIdLegado?: number | null;
+  /** `tituloObservacoes` do legado (texto livre do sistema de origem) —
+   * nunca confundir com `observacoes` (gestão interna do Ethos). */
+  tituloObservacoesLegado?: string | null;
+  /** Campos da integração com o Asaas (Boleto/Pix/Cartão) — presentes só
+   * depois de "Gerar cobrança" ser clicado para esta parcela. Só
+   * leitura/exibição. */
+  asaasPaymentId?: string | null;
+  asaasBillingType?: "BOLETO" | "PIX" | "CREDIT_CARD" | null;
+  asaasBoletoUrl?: string | null;
+  asaasLinhaDigitavel?: string | null;
+  /** Fatura hospedada pelo Asaas — usada principalmente pra cartão (o
+   * cliente insere os dados lá, o Ethos nunca coleta número/CVV). */
+  asaasInvoiceUrl?: string | null;
+  asaasPixQrCodeImagem?: string | null;
+  asaasPixCopiaECola?: string | null;
+  asaasStatus?: string | null;
 }

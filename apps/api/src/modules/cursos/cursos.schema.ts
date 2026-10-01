@@ -5,6 +5,9 @@ const dadosCurso = {
   nome: z.string().trim().min(1, "Nome é obrigatório").max(200),
   situacao: z.boolean().optional(),
   observacoes: z.string().trim().max(1000).optional(),
+  // Valor sugerido ao criar uma matrícula neste curso — editável por
+  // matrícula, não obrigatório (curso sem preço continua válido).
+  valorPadrao: z.coerce.number().positive("Valor deve ser maior que zero").optional(),
 };
 
 export const criarCursoSchema = z.object(dadosCurso);

@@ -19,6 +19,7 @@ import { ConfiguracoesService } from "../../core/services/configuracoes.service"
 import { FinanceiroService } from "../../core/services/financeiro.service";
 import { RelatoriosService } from "../../core/services/relatorios.service";
 import { SincronizacaoLegadoService } from "../../core/services/sincronizacao-legado.service";
+import { AsaasBillingType, AsaasService } from "../../core/services/asaas.service";
 import { FichaCobranca, SituacaoCobranca, Tag } from "../../core/models/cobranca.model";
 import { Parcela } from "../../core/models/parcela.model";
 import { TipoTituloProtesto } from "../../core/models/relatorio.model";
@@ -124,46 +125,52 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
         <mat-progress-bar mode="indeterminate" class="mb-4"></mat-progress-bar>
       }
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5">
-        <div class="bg-white rounded-xl border p-5">
-          <p class="text-xs font-medium text-gray-600 mb-2">Situação da cobrança</p>
-          <mat-form-field appearance="outline" class="w-full">
-            <mat-select [formControl]="situacaoControl" (selectionChange)="mudarSituacao($event.value)">
-              @for (situacao of situacoes; track situacao.id) {
-                <mat-option [value]="situacao.id">{{ situacao.nome }}</mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-
-          <p class="text-xs font-medium text-gray-600 mb-2 mt-3">Tags</p>
-          <div class="flex gap-2 flex-wrap items-center">
-            <mat-chip-set>
-              @for (tag of ficha.tags; track tag.id) {
-                <mat-chip [removable]="true" (removed)="removerTag(tag)">
-                  {{ tag.nome }}
-                  <mat-icon matChipRemove aria-label="Remover tag">cancel</mat-icon>
-                </mat-chip>
-              }
-            </mat-chip-set>
-            <mat-form-field appearance="outline" class="!w-48 !text-xs" subscriptSizing="dynamic">
-              <input
-                matInput
-                [formControl]="novaTagControl"
-                [matAutocomplete]="autoTag"
-                placeholder="Digite e Enter"
-                (keydown.enter)="$event.preventDefault(); confirmarNovaTag()"
-              />
-              <mat-autocomplete #autoTag="matAutocomplete" (optionSelected)="confirmarNovaTag()">
-                @for (tag of tagsFiltradas(); track tag.id) {
-                  <mat-option [value]="tag.nome">{{ tag.nome }}</mat-option>
+      <div class="bg-white rounded-xl border p-5 mb-3">
+        <div class="flex flex-wrap gap-6 items-start">
+          <div class="w-full sm:w-56 flex-shrink-0">
+            <p class="text-xs font-medium text-gray-600 mb-2">Situação da cobrança</p>
+            <mat-form-field appearance="outline" class="w-full" subscriptSizing="dynamic">
+              <mat-select [formControl]="situacaoControl" (selectionChange)="mudarSituacao($event.value)">
+                @for (situacao of situacoes; track situacao.id) {
+                  <mat-option [value]="situacao.id">{{ situacao.nome }}</mat-option>
                 }
-              </mat-autocomplete>
+              </mat-select>
             </mat-form-field>
           </div>
-        </div>
 
-        <div class="bg-white rounded-xl border p-5">
-          <p class="text-xs font-medium text-gray-600 mb-3">Parcelas</p>
+          <div class="flex-1 min-w-[260px]">
+            <p class="text-xs font-medium text-gray-600 mb-2">Tags</p>
+            <div class="flex gap-2 flex-wrap items-center">
+              <mat-chip-set>
+                @for (tag of ficha.tags; track tag.id) {
+                  <mat-chip [removable]="true" (removed)="removerTag(tag)">
+                    {{ tag.nome }}
+                    <mat-icon matChipRemove aria-label="Remover tag">cancel</mat-icon>
+                  </mat-chip>
+                }
+              </mat-chip-set>
+              <mat-form-field appearance="outline" class="!w-48 !text-xs" subscriptSizing="dynamic">
+                <input
+                  matInput
+                  [formControl]="novaTagControl"
+                  [matAutocomplete]="autoTag"
+                  placeholder="Digite e Enter"
+                  (keydown.enter)="$event.preventDefault(); confirmarNovaTag()"
+                />
+                <mat-autocomplete #autoTag="matAutocomplete" (optionSelected)="confirmarNovaTag()">
+                  @for (tag of tagsFiltradas(); track tag.id) {
+                    <mat-option [value]="tag.nome">{{ tag.nome }}</mat-option>
+                  }
+                </mat-autocomplete>
+              </mat-form-field>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl border p-5 mb-5">
+        <p class="text-xs font-medium text-gray-600 mb-3">Parcelas</p>
+        <div class="overflow-x-auto">
           <table class="w-full text-sm">
             <thead>
               <tr class="text-left text-xs text-gray-400">
@@ -190,6 +197,7 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
                 >
                   Valor c/ juros (origem)
                 </th>
+                <th class="py-1 font-medium">Cobrança</th>
               </tr>
             </thead>
             @for (parcela of parcelas; track parcela.id) {
@@ -197,7 +205,17 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
                 <td class="py-1">{{ parcela.parcela }}</td>
                 <td class="py-1">{{ parcela.codTitulo }}</td>
                 <td class="py-1">{{ parcela.vencimento | date: "dd/MM/yyyy" }}</td>
-                <td class="py-1">{{ parcela.tipoTitulo || "—" }}</td>
+                <td class="py-1">
+                  @if (parcela.tipoTituloIdLegado != null) {
+                    <div
+                      class="text-[10px] text-gray-400 leading-none mb-0.5"
+                      [title]="parcela.tituloObservacoesLegado || ''"
+                    >
+                      {{ parcela.tipoTituloIdLegado }}-{{ parcela.tipoTitulo || "?" }}
+                    </div>
+                  }
+                  <div>{{ parcela.tipoTitulo || "—" }}</div>
+                </td>
                 <td class="py-1">
                   <span
                     class="px-2 py-0.5 rounded text-xs"
@@ -224,6 +242,59 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
                       : "—"
                   }}
                 </td>
+                <td class="py-1 whitespace-nowrap">
+                  @if (parcela.asaasPaymentId) {
+                    @if (parcela.asaasBillingType === "BOLETO" && parcela.asaasBoletoUrl) {
+                      <a mat-button class="!min-w-0 !px-2" [href]="parcela.asaasBoletoUrl" target="_blank">
+                        Ver boleto
+                      </a>
+                    }
+                    @if (parcela.asaasBillingType === "PIX") {
+                      @if (parcela.asaasPixQrCodeImagem) {
+                        <a
+                          mat-button
+                          class="!min-w-0 !px-2"
+                          [href]="'data:image/png;base64,' + parcela.asaasPixQrCodeImagem"
+                          target="_blank"
+                        >
+                          QR Code
+                        </a>
+                      }
+                      @if (parcela.asaasPixCopiaECola) {
+                        <button
+                          mat-button
+                          class="!min-w-0 !px-2"
+                          (click)="copiarCodigoPix(parcela.asaasPixCopiaECola)"
+                        >
+                          Copiar Pix
+                        </button>
+                      }
+                    }
+                    @if (parcela.asaasBillingType === "CREDIT_CARD" && parcela.asaasInvoiceUrl) {
+                      <a mat-button class="!min-w-0 !px-2" [href]="parcela.asaasInvoiceUrl" target="_blank">
+                        Pagar com cartão
+                      </a>
+                    }
+                  } @else if (parcela.status === "EM_ABERTO") {
+                    <button
+                      mat-button
+                      class="!min-w-0 !px-2"
+                      [disabled]="gerandoBoletoId === parcela.id"
+                      [matMenuTriggerFor]="menuCobranca"
+                    >
+                      {{ gerandoBoletoId === parcela.id ? "Gerando..." : "Gerar cobrança" }}
+                    </button>
+                    <mat-menu #menuCobranca="matMenu">
+                      <button mat-menu-item (click)="gerarCobranca(parcela, 'BOLETO')">Boleto</button>
+                      <button mat-menu-item (click)="gerarCobranca(parcela, 'PIX')">Pix</button>
+                      <button mat-menu-item (click)="gerarCobranca(parcela, 'CREDIT_CARD')">
+                        Cartão de crédito
+                      </button>
+                    </mat-menu>
+                  } @else {
+                    <span class="text-gray-400 text-xs">—</span>
+                  }
+                </td>
               </tr>
             }
             @if (parcelas.length === 0) {
@@ -239,6 +310,7 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
                 <td class="py-1 text-right">{{ totalJurosDevedor() | currency: "BRL" }}</td>
                 <td class="py-1 text-right">{{ totalComMultaEJurosDevedor() | currency: "BRL" }}</td>
                 <td class="py-1"></td>
+                <td class="py-1"></td>
               </tr>
             }
           </table>
@@ -247,6 +319,7 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
 
       <div class="bg-white rounded-xl border p-5 mb-5">
         <p class="text-xs font-medium text-gray-600 mb-3">Nova observação</p>
+
         <div class="flex gap-2">
           <mat-form-field appearance="outline" class="flex-1" subscriptSizing="dynamic">
             <input
@@ -290,6 +363,7 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
   private readonly financeiroService = inject(FinanceiroService);
   private readonly relatoriosService = inject(RelatoriosService);
   private readonly sincronizacaoLegadoService = inject(SincronizacaoLegadoService);
+  private readonly asaasService = inject(AsaasService);
   private readonly snackBar = inject(MatSnackBar);
   protected readonly formatarCpf = formatarCpf;
 
@@ -312,6 +386,9 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
   /** Relatório da última geração de documento nesta sessão — habilita o menu
    * de download (Word/PDF) sem precisar abrir o histórico de relatórios. */
   ultimoRelatorioGeradoId?: string;
+  /** Id da parcela cujo boleto está sendo gerado agora, pra desabilitar só
+   * aquele botão (não a tela toda) enquanto a chamada ao Asaas está em voo. */
+  gerandoBoletoId?: string;
 
   private pollingSub?: Subscription;
 
@@ -471,6 +548,17 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
       };
     }
 
+    // Parcela importada/sincronizada do sistema legado nunca é recalculada
+    // pelo Ethos — o legado é sempre a fonte de verdade para multa/juros
+    // dela (decisão do usuário, 2026-09-15).
+    if (parcela.totalLegado !== undefined && parcela.totalLegado !== null) {
+      return {
+        multa: Number(parcela.multaLegado ?? 0),
+        juros: Number(parcela.jurosLegado ?? 0),
+        total: Number(parcela.totalLegado),
+      };
+    }
+
     const valor = Number(parcela.valor);
     const hoje = new Date();
     const vencimento = new Date(parcela.vencimento);
@@ -526,6 +614,29 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
 
   removerTag(tag: Tag): void {
     this.service.removerTag(this.matriculaId, tag.id).subscribe(() => this.carregar());
+  }
+
+  gerarCobranca(parcela: Parcela, billingType: AsaasBillingType): void {
+    this.gerandoBoletoId = parcela.id;
+    this.asaasService.gerarCobranca(parcela.id, billingType).subscribe({
+      next: () => {
+        this.gerandoBoletoId = undefined;
+        this.carregar();
+      },
+      error: () => {
+        this.gerandoBoletoId = undefined;
+        this.snackBar.open("Não foi possível gerar a cobrança", "Fechar", { duration: 5000 });
+      },
+    });
+  }
+
+  copiarCodigoPix(codigo: string): void {
+    navigator.clipboard
+      .writeText(codigo)
+      .then(() => this.snackBar.open("Código Pix copiado", "Fechar", { duration: 3000 }))
+      .catch(() =>
+        this.snackBar.open("Não foi possível copiar o código Pix", "Fechar", { duration: 3000 }),
+      );
   }
 
   adicionarObservacao(): void {

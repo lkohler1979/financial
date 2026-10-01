@@ -43,6 +43,11 @@ export interface Matricula {
   /** Ver StatusSincronizacaoLegado (parcela.model.ts) — marcado SINCRONIZADO
    * quando esta Matrícula já foi conferida com sucesso contra o legado. */
   statusSincronizacaoLegado?: "PENDENTE" | "SINCRONIZADO";
+  /** Junto com numeroParcelas/diaVencimento, dispara a geração automática
+   * das parcelas mensais na criação da matrícula (integração Asaas). */
+  valorCurso?: number | null;
+  numeroParcelas?: number | null;
+  diaVencimento?: number | null;
 }
 
 export interface MatriculaPayload {
@@ -54,4 +59,7 @@ export interface MatriculaPayload {
   tcdAssinado?: boolean;
   situacao?: string;
   observacoes?: string;
+  valorCurso?: number;
+  numeroParcelas?: number;
+  diaVencimento?: number;
 }

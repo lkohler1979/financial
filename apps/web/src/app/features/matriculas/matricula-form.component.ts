@@ -120,6 +120,27 @@ const SITUACOES = ["ATIVA", "TRANCADA", "CANCELADA", "CONCLUIDA"];
         </div>
       </div>
 
+      @if (!editando) {
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-x-4 border-t pt-4 mt-2">
+          <p class="text-xs font-medium text-gray-600 col-span-1 md:col-span-3 mb-0">
+            Cobrança (opcional) — preenchendo valor e nº de parcelas, as parcelas mensais são
+            geradas automaticamente
+          </p>
+          <mat-form-field appearance="outline">
+            <mat-label>Valor do curso</mat-label>
+            <input matInput type="number" min="0" step="0.01" formControlName="valorCurso" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Número de parcelas</mat-label>
+            <input matInput type="number" min="1" max="360" formControlName="numeroParcelas" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Dia de vencimento</mat-label>
+            <input matInput type="number" min="1" max="28" formControlName="diaVencimento" />
+          </mat-form-field>
+        </div>
+      }
+
       <mat-form-field appearance="outline" class="w-full">
         <mat-label>Observações</mat-label>
         <textarea matInput formControlName="observacoes" rows="3"></textarea>
@@ -216,6 +237,9 @@ export class MatriculaFormComponent implements OnInit {
     contratoAssinado: [false],
     tcdAssinado: [false],
     observacoes: [""],
+    valorCurso: this.fb.control<number | undefined>(undefined),
+    numeroParcelas: this.fb.control<number | undefined>(undefined),
+    diaVencimento: this.fb.control<number | undefined>(undefined),
   });
 
   ngOnInit(): void {
@@ -243,6 +267,17 @@ export class MatriculaFormComponent implements OnInit {
       )
       .subscribe((res) => (this.cursos = res.data));
 
+    // Ao escolher um curso (não ao digitar), sugere o valor padrão dele no
+    // campo "Valor do curso" — só se o campo ainda estiver vazio, pra nunca
+    // sobrescrever um valor já digitado/negociado pelo usuário.
+    this.form.controls.curso.valueChanges.subscribe((valor) => {
+      if (valor && typeof valor !== "string" && valor.valorPadrao != null) {
+        if (this.form.controls.valorCurso.value === undefined) {
+          this.form.controls.valorCurso.setValue(valor.valorPadrao);
+        }
+      }
+    });
+
     this.id = this.route.snapshot.paramMap.get("id");
     this.editando = !!this.id;
 
@@ -263,6 +298,9 @@ export class MatriculaFormComponent implements OnInit {
             contratoAssinado: m.contratoAssinado,
             tcdAssinado: m.tcdAssinado,
             observacoes: m.observacoes ?? "",
+            valorCurso: m.valorCurso ?? undefined,
+            numeroParcelas: m.numeroParcelas ?? undefined,
+            diaVencimento: m.diaVencimento ?? undefined,
           });
           this.carregando = false;
         },
@@ -368,6 +406,15 @@ export class MatriculaFormComponent implements OnInit {
       contratoAssinado: bruto.contratoAssinado ?? false,
       tcdAssinado: bruto.tcdAssinado ?? false,
       observacoes: bruto.observacoes || undefined,
+      // Campos de geração automática de parcelas só fazem sentido na criação
+      // (ver matriculas.service.ts — editar nunca regenera/apaga parcelas).
+      ...(this.editando
+        ? {}
+        : {
+            valorCurso: bruto.valorCurso ?? undefined,
+            numeroParcelas: bruto.numeroParcelas ?? undefined,
+            diaVencimento: bruto.diaVencimento ?? undefined,
+          }),
     };
 
     this.salvando = true;

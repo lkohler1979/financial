@@ -16,6 +16,7 @@ import { relatoriosRouter } from "./modules/relatorios/relatorios.routes";
 import { cobrancaRouter } from "./modules/cobranca/cobranca.routes";
 import { sincronizacaoLegadoRouter } from "./modules/sincronizacao-legado/sincronizacao-legado.routes";
 import { importacaoLegadoRouter } from "./modules/importacao-legado/importacao-legado.routes";
+import { asaasRouter, asaasWebhookRouter } from "./modules/asaas/asaas.routes";
 import { configuracoesRouter } from "./modules/configuracoes/configuracoes.routes";
 import { auditoriaRouter } from "./modules/auditoria/auditoria.routes";
 import { dashboardRouter } from "./modules/dashboard/dashboard.routes";
@@ -43,6 +44,10 @@ app.get("/api/health", (_req: Request, res: Response) => {
 
 // Login é a única rota de negócio pública — todo o resto exige JWT (Sprint 7).
 app.use("/api/auth", authRouter);
+// Webhook do Asaas também é público — autenticado pelo token configurado em
+// Configurações (header `asaas-access-token`), não por JWT (quem chama é o
+// Asaas, não um usuário logado).
+app.use("/api/asaas/webhook", asaasWebhookRouter);
 
 app.use("/api", requireAuth);
 app.use("/api", auditoriaRequestContext);
@@ -70,6 +75,7 @@ app.use("/api/cobranca", cobrancaRouter);
 app.use("/api/sincronizacao-legado", sincronizacaoLegadoRouter);
 // RBAC fino por rota dentro do próprio módulo (ver importacao-legado.routes.ts).
 app.use("/api/importacao-legado", importacaoLegadoRouter);
+app.use("/api/asaas", requireRole("ADMINISTRADOR", "FINANCEIRO"), asaasRouter);
 app.use("/api/configuracoes", requireRole("ADMINISTRADOR"), configuracoesRouter);
 app.use("/api/auditoria", requireRole("ADMINISTRADOR"), auditoriaRouter);
 

@@ -30,6 +30,12 @@ export const financeiroRepository = {
     });
   },
 
+  /** Usada pelo webhook do Asaas pra casar um pagamento confirmado com a
+   * Parcela que originou a cobrança. */
+  findByAsaasPaymentId(asaasPaymentId: string) {
+    return prisma.parcela.findUnique({ where: { asaasPaymentId } });
+  },
+
   async list({ matriculaId, status, skip, take }: ListarParcelasParams) {
     const where: Prisma.ParcelaWhereInput = {
       ...(matriculaId ? { matriculaId } : {}),

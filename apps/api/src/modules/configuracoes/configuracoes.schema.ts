@@ -32,6 +32,11 @@ export const atualizarConfiguracaoSchema = z
     // persistir e nunca a devolve (nem criptografada) nas respostas.
     legadoSenha: z.string().min(1).max(200).optional(),
     legadoIntervaloHoras: z.coerce.number().int().min(1).max(720).optional(),
+    asaasAmbiente: z.enum(["SANDBOX", "PRODUCAO"]).optional(),
+    // API key/token em texto puro, só nesta entrada — o service criptografa
+    // antes de persistir e nunca os devolve (mesmo padrão de legadoSenha).
+    asaasApiKey: z.string().min(1).max(300).optional(),
+    asaasWebhookToken: z.string().min(1).max(300).optional(),
   })
   .refine((obj) => Object.keys(obj).length > 0, "Informe ao menos um campo para atualizar");
 

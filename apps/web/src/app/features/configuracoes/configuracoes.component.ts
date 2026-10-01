@@ -12,6 +12,7 @@ import { MatSnackBar } from "@angular/material/snack-bar";
 import { ConfiguracoesService } from "../../core/services/configuracoes.service";
 import { MapeamentoImportacaoService } from "../../core/services/mapeamento-importacao.service";
 import {
+  AsaasAmbiente,
   AtualizarConfiguracaoPayload,
   FRASE_CONFIRMACAO_LIMPAR_BASE,
   FrequenciaImportacao,
@@ -170,6 +171,43 @@ import {
             </mat-checkbox>
           </div>
         </div>
+      </section>
+
+      <section class="bg-white rounded-lg border p-5">
+        <p class="text-sm font-medium text-gray-700 mb-1">Integração Asaas</p>
+        <p class="text-xs text-gray-500 mb-4">
+          Credenciais usadas para gerar cobranças (boleto/Pix/cartão) na Ficha de Cobrança.
+          Deixe a chave/token em branco para manter os atuais.
+        </p>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <mat-form-field appearance="outline">
+            <mat-label>Ambiente</mat-label>
+            <mat-select formControlName="asaasAmbiente">
+              <mat-option value="SANDBOX">Sandbox</mat-option>
+              <mat-option value="PRODUCAO">Produção</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>{{ asaasApiKeyConfigurada ? "Nova chave (opcional)" : "Chave de API" }}</mat-label>
+            <input matInput type="password" [formControl]="asaasApiKeyControl" autocomplete="new-password" />
+            @if (asaasApiKeyConfigurada) {
+              <mat-hint>Chave já configurada — preencha só para trocar.</mat-hint>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>{{ asaasWebhookTokenConfigurado ? "Novo token (opcional)" : "Token do webhook" }}</mat-label>
+            <input matInput type="password" [formControl]="asaasWebhookTokenControl" autocomplete="new-password" />
+            @if (asaasWebhookTokenConfigurado) {
+              <mat-hint>Token já configurado — preencha só para trocar.</mat-hint>
+            }
+          </mat-form-field>
+        </div>
+        <p class="text-xs text-gray-500 mt-2">
+          URL para cadastrar no painel do Asaas (Configurações → Webhooks):
+          <code class="bg-gray-100 px-1 rounded">{{ asaasWebhookUrl }}</code>
+        </p>
       </section>
 
       <div class="flex justify-end">
@@ -386,12 +424,22 @@ export class ConfiguracoesComponent implements OnInit {
     legadoUrl: this.fb.nonNullable.control(""),
     legadoUsuario: this.fb.nonNullable.control(""),
     legadoIntervaloHoras: this.fb.nonNullable.control(24, [Validators.min(1)]),
+    asaasAmbiente: this.fb.nonNullable.control<AsaasAmbiente>("SANDBOX"),
   });
 
   /** Senha do sistema legado: nunca vem do backend — campo separado, só
    * enviado quando o admin digita algo (deixar em branco mantém a atual). */
   readonly legadoSenhaControl = this.fb.nonNullable.control("");
   legadoSenhaConfigurada = false;
+
+  /** Chave de API e token do webhook do Asaas: nunca vêm do backend — campos
+   * separados, só enviados quando o admin digita algo (mesmo padrão da senha
+   * do sistema legado). */
+  readonly asaasApiKeyControl = this.fb.nonNullable.control("");
+  readonly asaasWebhookTokenControl = this.fb.nonNullable.control("");
+  asaasApiKeyConfigurada = false;
+  asaasWebhookTokenConfigurado = false;
+  readonly asaasWebhookUrl = `${window.location.origin}/api/asaas/webhook`;
 
   carregando = false;
   salvando = false;
@@ -423,6 +471,8 @@ export class ConfiguracoesComponent implements OnInit {
       next: (configuracao) => {
         this.form.patchValue({ ...configuracao, legadoUrl: configuracao.legadoUrl ?? "", legadoUsuario: configuracao.legadoUsuario ?? "" });
         this.legadoSenhaConfigurada = configuracao.legadoSenhaConfigurada;
+        this.asaasApiKeyConfigurada = configuracao.asaasApiKeyConfigurada;
+        this.asaasWebhookTokenConfigurado = configuracao.asaasWebhookTokenConfigurado;
         this.carregando = false;
       },
       error: () => (this.carregando = false),
@@ -434,11 +484,15 @@ export class ConfiguracoesComponent implements OnInit {
     this.salvando = true;
     const valor = this.form.getRawValue();
     const novaSenha = this.legadoSenhaControl.value.trim();
+    const novaChaveAsaas = this.asaasApiKeyControl.value.trim();
+    const novoTokenAsaas = this.asaasWebhookTokenControl.value.trim();
     const payload: AtualizarConfiguracaoPayload = {
       ...valor,
       legadoUrl: valor.legadoUrl.trim() || null,
       legadoUsuario: valor.legadoUsuario.trim() || null,
       ...(novaSenha ? { legadoSenha: novaSenha } : {}),
+      ...(novaChaveAsaas ? { asaasApiKey: novaChaveAsaas } : {}),
+      ...(novoTokenAsaas ? { asaasWebhookToken: novoTokenAsaas } : {}),
     };
 
     this.service.atualizar(payload).subscribe({
@@ -446,6 +500,10 @@ export class ConfiguracoesComponent implements OnInit {
         this.form.patchValue({ ...configuracao, legadoUrl: configuracao.legadoUrl ?? "", legadoUsuario: configuracao.legadoUsuario ?? "" });
         this.legadoSenhaConfigurada = configuracao.legadoSenhaConfigurada;
         this.legadoSenhaControl.setValue("");
+        this.asaasApiKeyConfigurada = configuracao.asaasApiKeyConfigurada;
+        this.asaasWebhookTokenConfigurado = configuracao.asaasWebhookTokenConfigurado;
+        this.asaasApiKeyControl.setValue("");
+        this.asaasWebhookTokenControl.setValue("");
         this.salvando = false;
         this.snackBar.open("Configurações salvas", "Fechar", { duration: 3000 });
       },

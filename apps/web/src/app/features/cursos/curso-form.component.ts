@@ -53,6 +53,12 @@ import { CursoPayload } from "../../core/models/curso.model";
             <mat-error>Nome é obrigatório</mat-error>
           }
         </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Valor padrão</mat-label>
+          <input matInput type="number" min="0" step="0.01" formControlName="valorPadrao" />
+          <mat-hint>Sugestão ao criar uma matrícula — ajustável por aluno</mat-hint>
+        </mat-form-field>
       </div>
 
       <mat-form-field appearance="outline" class="w-full">
@@ -88,6 +94,7 @@ export class CursoFormComponent implements OnInit {
   readonly form = this.fb.nonNullable.group({
     codigo: ["", [Validators.required]],
     nome: ["", [Validators.required]],
+    valorPadrao: this.fb.control<number | undefined>(undefined),
     observacoes: [""],
     situacao: [true],
   });
@@ -103,6 +110,7 @@ export class CursoFormComponent implements OnInit {
           this.form.patchValue({
             codigo: curso.codigo,
             nome: curso.nome,
+            valorPadrao: curso.valorPadrao ?? undefined,
             observacoes: curso.observacoes ?? "",
             situacao: curso.situacao,
           });
@@ -124,6 +132,7 @@ export class CursoFormComponent implements OnInit {
     const payload: CursoPayload = {
       codigo: bruto.codigo,
       nome: bruto.nome,
+      valorPadrao: bruto.valorPadrao ?? undefined,
       situacao: bruto.situacao,
       observacoes: bruto.observacoes || undefined,
     };

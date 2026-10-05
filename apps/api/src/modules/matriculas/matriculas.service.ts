@@ -4,6 +4,7 @@ import { registrarAuditoria } from "../auditoria/auditoria.service";
 import { alunosRepository } from "../alunos/alunos.repository";
 import { cursosRepository } from "../cursos/cursos.repository";
 import { financeiroService } from "../financeiro/financeiro.service";
+import { sacadosService } from "../sacados/sacados.service";
 import { situacaoService } from "./situacao.service";
 import { emissaoCobrancaService, emiteNaMatricula } from "../asaas/emissao-cobranca.service";
 import { tiposCobrancaRepository } from "../tipos-cobranca/tipos-cobranca.repository";
@@ -323,6 +324,12 @@ export const matriculasService = {
     // diaVencimento passa a ser obrigatório. Validado antes de criar a
     // matrícula, para não deixar um registro "pela metade" se faltar o dia.
     const curso = await cursosRepository.findById(input.cursoId);
+    // Sacado (responsável financeiro) — só quando não é o próprio aluno.
+    const sacado = input.sacado
+      ? await sacadosService.obterOuCriar(input.sacado, usuarioId)
+      : input.sacadoId
+        ? await sacadosService.buscarPorId(input.sacadoId)
+        : null;
     const cupom = input.cupomCodigo ? await cuponsService.obterValido(input.cupomCodigo) : null;
     const cobrancas = input.cobrancas?.length
       ? await resolverCobrancas(
@@ -362,6 +369,7 @@ export const matriculasService = {
         ? { agenteEducacional: { connect: { id: input.agenteEducacionalId } } }
         : {}),
       ...(cupom ? { cupom: { connect: { id: cupom.id } } } : {}),
+      ...(sacado ? { sacado: { connect: { id: sacado.id } } } : {}),
       valorCurso: mensalidade?.valor ?? input.valorCurso,
       numeroParcelas: mensalidade?.numeroParcelas ?? input.numeroParcelas,
       diaVencimento: mensalidade

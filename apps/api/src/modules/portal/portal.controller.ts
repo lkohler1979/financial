@@ -3,21 +3,22 @@ import { asyncHandler } from "../../shared/utils/async-handler";
 import { paramString } from "../../shared/utils/http";
 import {
   gerarCobrancaAlunoSchema,
-  loginAlunoSchema,
+  loginPortalSchema,
   solicitarDocumentoSchema,
 } from "./portal.schema";
 import { portalService } from "./portal.service";
 
 const alunoAtual = (req: Request) => req.alunoId as string;
+const sessaoAtual = (req: Request) => ({ alunoId: req.alunoId, sacadoId: req.sacadoId });
 
 export const portalController = {
   login: asyncHandler(async (req: Request, res: Response) => {
-    const input = loginAlunoSchema.parse(req.body);
+    const input = loginPortalSchema.parse(req.body);
     res.json(await portalService.login(input, req.ip ?? "desconhecido"));
   }),
 
   me: asyncHandler(async (req: Request, res: Response) => {
-    res.json(await portalService.me(alunoAtual(req)));
+    res.json(await portalService.me(sessaoAtual(req)));
   }),
 
   listarDocumentos: asyncHandler(async (req: Request, res: Response) => {
@@ -45,7 +46,7 @@ export const portalController = {
   }),
 
   listarParcelas: asyncHandler(async (req: Request, res: Response) => {
-    res.json(await portalService.listarParcelas(alunoAtual(req)));
+    res.json(await portalService.listarParcelas(sessaoAtual(req)));
   }),
 
   formasPagamento: asyncHandler(async (_req: Request, res: Response) => {
@@ -55,7 +56,7 @@ export const portalController = {
   gerarCobranca: asyncHandler(async (req: Request, res: Response) => {
     const { formaPagamento } = gerarCobrancaAlunoSchema.parse(req.body ?? {});
     res.json(
-      await portalService.gerarCobranca(alunoAtual(req), paramString(req, "parcelaId"), formaPagamento),
+      await portalService.gerarCobranca(sessaoAtual(req), paramString(req, "parcelaId"), formaPagamento),
     );
   }),
 

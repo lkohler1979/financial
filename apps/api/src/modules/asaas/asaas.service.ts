@@ -3,6 +3,7 @@ import { AppError, NotFoundError, ValidationError } from "../../shared/errors/ap
 import { decifrar } from "../../shared/utils/criptografia";
 import { registrarAuditoria } from "../auditoria/auditoria.service";
 import { configuracoesRepository } from "../configuracoes/configuracoes.repository";
+import { sacadosRepository } from "../sacados/sacados.repository";
 import { alunosRepository } from "../alunos/alunos.repository";
 import { financeiroRepository } from "../financeiro/financeiro.repository";
 import { financeiroService } from "../financeiro/financeiro.service";
@@ -143,6 +144,24 @@ export const asaasService = {
     return clienteAsaas.id;
   },
 
+  /** Cliente Asaas do sacado (pessoa/empresa que paga em lugar do aluno). */
+  async obterOuCriarClienteSacado(sacadoId: string): Promise<string> {
+    const sacado = await sacadosRepository.findById(sacadoId);
+    if (!sacado) throw new NotFoundError("Sacado não encontrado");
+    if (sacado.asaasCustomerId) return sacado.asaasCustomerId;
+
+    const client = await obterClienteAsaas();
+    const clienteAsaas = await client.criarCliente({
+      name: sacado.nome,
+      cpfCnpj: sacado.cpfCnpj,
+      email: sacado.email ?? undefined,
+      mobilePhone: sacado.telefone ?? undefined,
+      externalReference: sacado.id,
+    });
+    await sacadosRepository.update(sacado.id, { asaasCustomerId: clienteAsaas.id });
+    return clienteAsaas.id;
+  },
+
   /**
    * Gera a cobrança de uma Parcela via Asaas — Boleto, Pix ou Cartão.
    * Idempotente: se a parcela já tem `asaasPaymentId`, devolve a cobrança já
@@ -179,7 +198,10 @@ export const asaasService = {
       return this.gerarCobrancaPixRede(parcela, usuarioId);
     }
 
-    const customerId = await this.obterOuCriarClienteAluno(parcela.matricula.aluno.id);
+    // A cobrança sai em nome do sacado quando a matrícula tem um; senão, do aluno.
+    const customerId = parcela.matricula.sacado
+      ? await this.obterOuCriarClienteSacado(parcela.matricula.sacado.id)
+      : await this.obterOuCriarClienteAluno(parcela.matricula.aluno.id);
     const client = await obterClienteAsaas();
 
     const cobranca = await client.criarCobranca({

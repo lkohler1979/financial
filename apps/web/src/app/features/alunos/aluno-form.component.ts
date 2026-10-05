@@ -1,3 +1,4 @@
+import { DatePipe } from "@angular/common";
 import { Component, inject, OnInit } from "@angular/core";
 import { ActivatedRoute, Router, RouterLink } from "@angular/router";
 import {
@@ -17,7 +18,12 @@ import { MatSnackBar } from "@angular/material/snack-bar";
 import { AlunosService } from "../../core/services/alunos.service";
 import { MatriculasService } from "../../core/services/matriculas.service";
 import { AlunoPayload } from "../../core/models/aluno.model";
-import { AgenteEducacional } from "../../core/models/matricula.model";
+import {
+  AgenteEducacional,
+  classeSituacaoMatricula,
+  Matricula,
+  rotuloSituacaoMatricula,
+} from "../../core/models/matricula.model";
 import { validarCpf } from "../../shared/utils/cpf.util";
 
 function cpfValidator(control: AbstractControl): ValidationErrors | null {
@@ -48,6 +54,7 @@ const ORIGENS_CADASTRO = [
   imports: [
     RouterLink,
     ReactiveFormsModule,
+    DatePipe,
     MatButtonModule,
     MatIconModule,
     MatFormFieldModule,
@@ -274,6 +281,49 @@ const ORIGENS_CADASTRO = [
         </button>
       </div>
     </form>
+
+    @if (editando && id) {
+      <section class="bg-white rounded shadow-sm p-6 max-w-4xl mt-4">
+        <div class="flex items-center mb-3">
+          <p class="text-sm font-medium text-gray-700 m-0">Matrículas / cursos</p>
+          <a mat-flat-button color="primary" class="ml-auto" [routerLink]="['/matriculas/cadastro']" [queryParams]="{ alunoId: id }">
+            <mat-icon>add</mat-icon> Adicionar curso
+          </a>
+        </div>
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-xs text-gray-400">
+              <th class="py-1 pr-2">Matrícula</th>
+              <th class="pr-2">Curso</th>
+              <th class="pr-2">Data</th>
+              <th class="pr-2">Situação</th>
+              <th class="pr-2">Agente educacional</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (m of matriculas; track m.id) {
+              <tr class="border-t">
+                <td class="py-1 pr-2 whitespace-nowrap">{{ m.numeroMatricula || "—" }}</td>
+                <td class="pr-2">{{ m.curso?.nome }}</td>
+                <td class="pr-2 whitespace-nowrap">{{ m.dataMatricula ? (m.dataMatricula | date: "dd/MM/yyyy") : "—" }}</td>
+                <td class="pr-2">
+                  <span class="px-2 py-0.5 rounded text-xs whitespace-nowrap" [class]="classeSituacao(m.situacao)">{{ rotuloSituacao(m.situacao) }}</span>
+                </td>
+                <td class="pr-2">{{ m.agenteEducacional?.nome || "—" }}</td>
+                <td class="text-right">
+                  <a mat-icon-button [routerLink]="['/matriculas', m.id]" aria-label="Abrir matrícula">
+                    <mat-icon>edit</mat-icon>
+                  </a>
+                </td>
+              </tr>
+            } @empty {
+              <tr><td class="py-3 text-gray-500" colspan="6">Este aluno ainda não tem matrícula.</td></tr>
+            }
+          </tbody>
+        </table>
+      </section>
+    }
   `,
 })
 export class AlunoFormComponent implements OnInit {
@@ -294,7 +344,10 @@ export class AlunoFormComponent implements OnInit {
   salvando = false;
   codigo: string | null = null;
   agentes: AgenteEducacional[] = [];
-  private id: string | null = null;
+  id: string | null = null;
+  matriculas: Matricula[] = [];
+  protected readonly rotuloSituacao = rotuloSituacaoMatricula;
+  protected readonly classeSituacao = classeSituacaoMatricula;
 
   readonly form = this.fb.group({
     cpf: ["", [Validators.required, cpfValidator]],
@@ -335,6 +388,9 @@ export class AlunoFormComponent implements OnInit {
       // CPF é a identidade do aluno: não editável após a criação.
       this.form.controls.cpf.disable();
       this.carregando = true;
+      this.matriculasService
+        .listar({ alunoId: this.id, pageSize: 50 })
+        .subscribe((res) => (this.matriculas = res.data));
       this.service.buscarPorId(this.id).subscribe({
         next: (aluno) => {
           this.codigo = aluno.codigo ?? null;

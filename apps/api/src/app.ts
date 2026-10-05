@@ -25,6 +25,7 @@ import { tiposCobrancaRouter } from "./modules/tipos-cobranca/tipos-cobranca.rou
 import { documentosRouter } from "./modules/documentos/documentos.routes";
 import { portalRouter } from "./modules/portal/portal.routes";
 import { solicitacoesRouter } from "./modules/solicitacoes/solicitacoes.routes";
+import { sacadosRouter } from "./modules/sacados/sacados.routes";
 import { dashboardRouter } from "./modules/dashboard/dashboard.routes";
 
 export const app = express();
@@ -80,6 +81,7 @@ app.use("/api/matriculas", requireRole("ADMINISTRADOR", "FINANCEIRO", "USUARIO")
 app.use("/api/cupons", requireRole("ADMINISTRADOR", "FINANCEIRO", "USUARIO"), cuponsRouter);
 app.use("/api/tipos-cobranca", requireRole("ADMINISTRADOR", "FINANCEIRO", "USUARIO"), tiposCobrancaRouter);
 app.use("/api/documentos", requireRole("ADMINISTRADOR", "FINANCEIRO", "USUARIO"), documentosRouter);
+app.use("/api/sacados", requireRole("ADMINISTRADOR", "FINANCEIRO", "USUARIO"), sacadosRouter);
 app.use("/api/solicitacoes", requireRole("ADMINISTRADOR", "FINANCEIRO", "USUARIO"), solicitacoesRouter);
 app.use("/api/financeiro", requireRole("ADMINISTRADOR", "FINANCEIRO"), financeiroRouter);
 app.use("/api/importacao", requireRole("ADMINISTRADOR", "FINANCEIRO"), importacaoRouter);

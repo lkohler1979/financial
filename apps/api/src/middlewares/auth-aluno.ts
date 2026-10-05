@@ -14,9 +14,19 @@ export function requireAluno(req: Request, _res: Response, next: NextFunction): 
   try {
     const payload = verificarTokenAluno(token);
     if (!payload) throw new Error("não é token de aluno");
-    req.alunoId = payload.sub;
+    if (payload.tipo === "SACADO") req.sacadoId = payload.sub;
+    else req.alunoId = payload.sub;
     next();
   } catch {
     next(new AppError("Sessão expirada ou token inválido", 401, "TOKEN_INVALIDO"));
   }
+}
+
+// Rotas exclusivas do aluno (documentos, solicitações): o sacado só consulta e paga títulos.
+export function requireSomenteAluno(req: Request, _res: Response, next: NextFunction): void {
+  if (!req.alunoId) {
+    next(new AppError("Você não tem permissão para acessar este recurso", 403, "SEM_PERMISSAO"));
+    return;
+  }
+  next();
 }

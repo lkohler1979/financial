@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { sacadoDadosSchema } from "../sacados/sacados.schema";
 
 const dadosMatricula = {
   numeroMatricula: z.string().trim().max(50).optional(),
@@ -60,6 +61,10 @@ export const criarMatriculaSchema = z.object({
   cobrancas: z.array(cobrancaSchema).optional(),
   // Só cupons já cadastrados (e válidos) são aceitos — ver cupons.service.ts.
   cupomCodigo: z.string().trim().min(1).optional(),
+  // Responsável financeiro diferente do aluno: um sacado já cadastrado ou os dados
+  // de um novo (reaproveita o cadastro com o mesmo CPF/CNPJ).
+  sacadoId: z.string().uuid().optional(),
+  sacado: sacadoDadosSchema.optional(),
   alunoId: z.string().uuid("alunoId inválido"),
   cursoId: z.string().uuid("cursoId inválido"),
   ...dadosMatricula,

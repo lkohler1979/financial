@@ -6,10 +6,10 @@ import type { AsaasBillingType } from "../asaas/asaas-client";
 import { documentosService, type ArquivoEnviado } from "../documentos/documentos.service";
 import { tiposCobrancaService } from "../tipos-cobranca/tipos-cobranca.service";
 import { solicitacoesService } from "../solicitacoes/solicitacoes.service";
-import { portalRepository } from "./portal.repository";
-import type { LoginAlunoInput, SolicitarDocumentoInput } from "./portal.schema";
+import { portalRepository, type SessaoPortal } from "./portal.repository";
+import type { LoginPortalInput, SolicitarDocumentoInput } from "./portal.schema";
 
-const CREDENCIAIS_INVALIDAS = "CPF ou data de nascimento inválidos";
+const CREDENCIAIS_INVALIDAS = "Dados de acesso inválidos";
 
 // Limite de tentativas de login por CPF e por IP — o login é só CPF + data de
 // nascimento (dados pouco secretos), então travamos força bruta. Em memória:
@@ -54,11 +54,22 @@ export function limparLimitesLogin() {
 }
 
 export const portalService = {
-  async login({ cpf, dataNascimento }: LoginAlunoInput, ip: string, agora = Date.now()) {
-    const cpfNumeros = normalizarCpf(cpf);
-    const chaveCpf = `cpf:${cpfNumeros}`;
+  /**
+   * Acesso à área do aluno:
+   * - CPF + data de nascimento → aluno (vê tudo dele) ou, se o CPF for de um
+   *   sacado pessoa física, o sacado (vê só os títulos que paga);
+   * - CNPJ + número de uma matrícula que a empresa paga → sacado.
+   * Mensagem de erro igual para qualquer falha (não revela se o documento existe).
+   */
+  async login(
+    { documento, dataNascimento, numeroMatricula }: LoginPortalInput,
+    ip: string,
+    agora = Date.now(),
+  ) {
+    const digitos = normalizarCpf(documento);
+    const chaveDoc = `doc:${digitos}`;
     const chaveIp = `ip:${ip}`;
-    if (bloqueado(chaveCpf, agora, MAX_FALHAS_CPF) || bloqueado(chaveIp, agora, MAX_FALHAS_IP)) {
+    if (bloqueado(chaveDoc, agora, MAX_FALHAS_CPF) || bloqueado(chaveIp, agora, MAX_FALHAS_IP)) {
       throw new AppError(
         "Muitas tentativas. Aguarde alguns minutos e tente novamente.",
         429,
@@ -66,25 +77,54 @@ export const portalService = {
       );
     }
 
-    const aluno = await portalRepository.findAlunoPorCpf(cpfNumeros);
-    if (!aluno || !mesmaData(aluno.dataNascimento, dataNascimento)) {
-      registrarFalha(chaveCpf, agora);
+    const acesso = await this.autenticar(digitos, dataNascimento, numeroMatricula);
+    if (!acesso) {
+      registrarFalha(chaveDoc, agora);
       registrarFalha(chaveIp, agora);
       throw new AppError(CREDENCIAIS_INVALIDAS, 401, "CREDENCIAIS_INVALIDAS");
     }
 
-    falhas.delete(chaveCpf);
+    falhas.delete(chaveDoc);
     return {
-      token: gerarTokenAluno({ sub: aluno.id, nome: aluno.nome }),
-      aluno: { id: aluno.id, codigo: aluno.codigo, nome: aluno.nome },
+      token: gerarTokenAluno({ sub: acesso.id, nome: acesso.nome, tipo: acesso.tipo }),
+      tipoAcesso: acesso.tipo,
+      aluno: { id: acesso.id, codigo: acesso.codigo, nome: acesso.nome },
     };
   },
 
-  async me(alunoId: string) {
-    const aluno = await portalRepository.findAluno(alunoId);
+  async autenticar(digitos: string, dataNascimento?: string, numeroMatricula?: string) {
+    if (digitos.length === 11 && dataNascimento) {
+      const aluno = await portalRepository.findAlunoPorCpf(digitos);
+      if (aluno && mesmaData(aluno.dataNascimento, dataNascimento)) {
+        return { tipo: "ALUNO" as const, id: aluno.id, nome: aluno.nome, codigo: aluno.codigo };
+      }
+      const sacado = await portalRepository.findSacadoPorDocumento(digitos);
+      if (sacado && mesmaData(sacado.dataNascimento, dataNascimento)) {
+        return { tipo: "SACADO" as const, id: sacado.id, nome: sacado.nome, codigo: null };
+      }
+    }
+    if (digitos.length === 14 && numeroMatricula) {
+      const sacado = await portalRepository.findSacadoPorDocumento(digitos);
+      if (
+        sacado &&
+        (await portalRepository.findMatriculaDoSacadoPorNumero(sacado.id, numeroMatricula.trim()))
+      ) {
+        return { tipo: "SACADO" as const, id: sacado.id, nome: sacado.nome, codigo: null };
+      }
+    }
+    return null;
+  },
+
+  async me(sessao: SessaoPortal) {
+    const matriculas = await portalRepository.listarMatriculas(sessao);
+    if (sessao.sacadoId) {
+      const sacado = await portalRepository.findSacado(sessao.sacadoId);
+      if (!sacado) throw new NotFoundError("Sacado não encontrado");
+      return { tipoAcesso: "SACADO" as const, aluno: { ...sacado, codigo: null, cpf: sacado.cpfCnpj }, matriculas };
+    }
+    const aluno = await portalRepository.findAluno(sessao.alunoId as string);
     if (!aluno) throw new NotFoundError("Aluno não encontrado");
-    const matriculas = await portalRepository.listarMatriculas(alunoId);
-    return { aluno, matriculas };
+    return { tipoAcesso: "ALUNO" as const, aluno, matriculas };
   },
 
   // ---- Documentos ----
@@ -145,8 +185,8 @@ export const portalService = {
 
   // ---- Pagamentos ----
 
-  listarParcelas(alunoId: string) {
-    return portalRepository.listarParcelas(alunoId);
+  listarParcelas(sessao: SessaoPortal) {
+    return portalRepository.listarParcelas(sessao);
   },
 
   /** Formas de pagamento habilitadas em Configurações. */
@@ -155,8 +195,8 @@ export const portalService = {
   },
 
   /** Emite (ou devolve, se já emitida) a cobrança de uma parcela em aberto. */
-  async gerarCobranca(alunoId: string, parcelaId: string, forma?: AsaasBillingType) {
-    const parcela = await portalRepository.findParcelaDoAluno(parcelaId, alunoId);
+  async gerarCobranca(sessao: SessaoPortal, parcelaId: string, forma?: AsaasBillingType) {
+    const parcela = await portalRepository.findParcelaDoDono(parcelaId, sessao);
     if (!parcela) throw new NotFoundError("Parcela não encontrada");
     if (parcela.status !== "EM_ABERTO") {
       throw new ValidationError("Só é possível emitir cobrança de parcelas em aberto");

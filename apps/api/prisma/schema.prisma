@@ -232,6 +232,9 @@ model Matricula {
   historicoSituacoes  HistoricoSituacaoMatricula[]
   solicitacoes        SolicitacaoDocumento[]
   cupomId             String?                      @map("cupom_id")
+  /// Responsável financeiro quando não é o próprio aluno (pessoa ou empresa).
+  sacadoId            String?                      @map("sacado_id")
+  sacado              Sacado?                      @relation(fields: [sacadoId], references: [id])
   cupom               Cupom?                       @relation(fields: [cupomId], references: [id])
   parcelas            Parcela[]
   tags                MatriculaTag[]
@@ -819,4 +822,30 @@ model HistoricoSituacaoMatricula {
 
   @@index([matriculaId])
   @@map("historico_situacao_matricula")
+}
+
+enum TipoPessoaSacado {
+  FISICA
+  JURIDICA
+}
+
+// Responsável financeiro de uma matrícula quando não é o próprio aluno (ex.: mãe,
+// empresa que paga o curso). A cobrança (boleto/Pix) sai em nome do sacado.
+model Sacado {
+  id              String           @id @default(uuid())
+  tipoPessoa      TipoPessoaSacado @map("tipo_pessoa")
+  /// CPF (11) ou CNPJ (14), só dígitos.
+  cpfCnpj         String           @unique @map("cpf_cnpj")
+  nome            String
+  email           String?
+  telefone        String?
+  /// Só pessoa física — segundo fator de acesso à consulta de títulos.
+  dataNascimento  DateTime?        @map("data_nascimento")
+  asaasCustomerId String?          @unique @map("asaas_customer_id")
+  criadoEm        DateTime         @default(now()) @map("criado_em")
+  atualizadoEm    DateTime         @updatedAt @map("atualizado_em")
+
+  matriculas Matricula[]
+
+  @@map("sacados")
 }

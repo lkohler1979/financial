@@ -37,27 +37,35 @@ import { PortalSolicitacoesComponent } from "./portal-solicitacoes.component";
     <div class="max-w-5xl mx-auto p-3 sm:p-6">
       @if (me(); as dados) {
         <p class="text-sm text-gray-600 mb-3">
-          Código do aluno <strong>{{ dados.aluno.codigo ?? "—" }}</strong>
+          @if (dados.tipoAcesso === "ALUNO") {
+            Código do aluno <strong>{{ dados.aluno.codigo ?? "—" }}</strong>
+          } @else {
+            Responsável financeiro: <strong>{{ dados.aluno.nome }}</strong>
+          }
         </p>
         @if (dados.matriculas.length === 0) {
           <p class="text-gray-500">Você ainda não tem matrícula registrada.</p>
         } @else {
           <mat-tab-group animationDuration="0ms">
-            <mat-tab label="Documentos">
-              <div class="pt-4">
-                <app-portal-documentos [matriculas]="dados.matriculas"></app-portal-documentos>
-              </div>
-            </mat-tab>
+            @if (dados.tipoAcesso === "ALUNO") {
+              <mat-tab label="Documentos">
+                <div class="pt-4">
+                  <app-portal-documentos [matriculas]="dados.matriculas"></app-portal-documentos>
+                </div>
+              </mat-tab>
+            }
             <mat-tab label="Pagamentos">
               <div class="pt-4">
                 <app-portal-pagamentos [matriculas]="dados.matriculas"></app-portal-pagamentos>
               </div>
             </mat-tab>
-            <mat-tab label="Solicitações">
-              <div class="pt-4">
-                <app-portal-solicitacoes [matriculas]="dados.matriculas"></app-portal-solicitacoes>
-              </div>
-            </mat-tab>
+            @if (dados.tipoAcesso === "ALUNO") {
+              <mat-tab label="Solicitações">
+                <div class="pt-4">
+                  <app-portal-solicitacoes [matriculas]="dados.matriculas"></app-portal-solicitacoes>
+                </div>
+              </mat-tab>
+            }
           </mat-tab-group>
         }
       } @else {

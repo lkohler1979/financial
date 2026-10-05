@@ -28,6 +28,8 @@ const ROTULO_STATUS: Record<string, string> = {
           <tr class="text-left text-xs text-gray-400">
             <th class="p-2">Título</th>
             <th class="p-2">Descrição</th>
+            <th class="p-2">Sacado</th>
+            <th class="p-2">Aluno</th>
             <th class="p-2">Curso</th>
             <th class="p-2">Vencimento</th>
             <th class="p-2">Pagamento</th>
@@ -41,6 +43,8 @@ const ROTULO_STATUS: Record<string, string> = {
             <tr class="border-t align-top" [class]="classeLinha(p)">
               <td class="p-2 whitespace-nowrap">{{ p.codTitulo }}</td>
               <td class="p-2">{{ p.tipoTitulo ?? "Parcela" }} - {{ p.parcela.replace("/", " / ") }}</td>
+              <td class="p-2">{{ p.matricula.sacado?.nome ?? p.matricula.aluno.nome }}</td>
+              <td class="p-2">{{ p.matricula.aluno.nome }}</td>
               <td class="p-2">{{ p.matricula.curso.nome }}</td>
               <td class="p-2 whitespace-nowrap">{{ p.vencimento | date: "dd/MM/yyyy" : "UTC" }}</td>
               <td class="p-2 whitespace-nowrap">
@@ -88,7 +92,7 @@ const ROTULO_STATUS: Record<string, string> = {
               </td>
             </tr>
           } @empty {
-            <tr><td class="p-4 text-gray-500" colspan="8">Nenhum pagamento encontrado.</td></tr>
+            <tr><td class="p-4 text-gray-500" colspan="10">Nenhum pagamento encontrado.</td></tr>
           }
         </tbody>
       </table>

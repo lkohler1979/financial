@@ -1,8 +1,8 @@
 import { CurrencyPipe } from "@angular/common";
-import { Component, inject, OnInit } from "@angular/core";
+import { Component, inject, OnInit, ViewChild } from "@angular/core";
 import { forkJoin } from "rxjs";
 import { FormsModule, ReactiveFormsModule, Validators, FormBuilder } from "@angular/forms";
-import { Router, RouterLink } from "@angular/router";
+import { ActivatedRoute, Router, RouterLink } from "@angular/router";
 import { MatButtonModule } from "@angular/material/button";
 import { MatCheckboxModule } from "@angular/material/checkbox";
 import { MatFormFieldModule } from "@angular/material/form-field";
@@ -11,9 +11,11 @@ import { MatInputModule } from "@angular/material/input";
 import { MatProgressBarModule } from "@angular/material/progress-bar";
 import { MatSelectModule } from "@angular/material/select";
 import { MatSnackBar } from "@angular/material/snack-bar";
-import { MatStepperModule } from "@angular/material/stepper";
+import { MatStepper, MatStepperModule } from "@angular/material/stepper";
+import { SacadoMatriculaComponent } from "./sacado-matricula.component";
+import { SacadoPayload } from "../../core/models/sacado.model";
 import { AuthService } from "../../core/auth/auth.service";
-import { AlunoPayload } from "../../core/models/aluno.model";
+import { Aluno, AlunoPayload } from "../../core/models/aluno.model";
 import { Curso } from "../../core/models/curso.model";
 import { AgenteEducacional } from "../../core/models/matricula.model";
 import { CupomValidado } from "../../core/models/cupom.model";
@@ -27,7 +29,7 @@ import { AlunosService } from "../../core/services/alunos.service";
 import { CursosService } from "../../core/services/cursos.service";
 import { MatriculasService } from "../../core/services/matriculas.service";
 import { TiposCobrancaService } from "../../core/services/tipos-cobranca.service";
-import { normalizarCpf, validarCpf } from "../../shared/utils/cpf.util";
+import { formatarCpf, normalizarCpf, validarCpf } from "../../shared/utils/cpf.util";
 
 const UFS = [
   "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR",
@@ -72,6 +74,7 @@ function hojeIso(): string {
     MatCheckboxModule,
     MatFormFieldModule,
     MatIconModule,
+    SacadoMatriculaComponent,
     MatInputModule,
     MatProgressBarModule,
     MatSelectModule,
@@ -374,6 +377,8 @@ function hojeIso(): string {
                 </div>
               </div>
             }
+            <app-sacado-matricula (alterado)="aoMudarSacado($event)"></app-sacado-matricula>
+
             <p class="text-xs font-medium text-gray-600 border-b pb-1 mb-3 mt-4">CUPOM DE DESCONTO</p>
             <div class="flex flex-wrap items-center gap-3">
               @if (cupom) {
@@ -426,6 +431,7 @@ function hojeIso(): string {
 export class MatriculaWizardComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   private readonly snackBar = inject(MatSnackBar);
   private readonly auth = inject(AuthService);
   private readonly alunosService = inject(AlunosService);
@@ -435,6 +441,9 @@ export class MatriculaWizardComponent implements OnInit {
   private readonly cuponsService = inject(CuponsService);
 
   formas: FormaPagamento[] = [];
+  /** Responsável financeiro diferente do aluno (null = o próprio aluno). */
+  sacado: SacadoPayload | null = null;
+  sacadoValido = true;
   cupom: CupomValidado | null = null;
   cupomDigitado = "";
 
@@ -478,7 +487,18 @@ export class MatriculaWizardComponent implements OnInit {
     cursoId: ["", Validators.required],
   });
 
+  @ViewChild("stepper") private stepper?: MatStepper;
+
+  aoMudarSacado(evento: { sacado: SacadoPayload | null; valido: boolean }): void {
+    this.sacado = evento.sacado;
+    this.sacadoValido = evento.valido;
+  }
+
   ngOnInit(): void {
+    // "Adicionar curso" na ficha do aluno: abre o cadastro já com o aluno carregado,
+    // direto no passo de curso e pagamento.
+    const alunoId = this.route.snapshot.queryParamMap.get("alunoId");
+    if (alunoId) this.carregarAlunoPorId(alunoId);
     this.pessoal.controls.agenteEducacionalId.setValue(this.auth.usuario()?.id ?? "");
     this.matriculasService.listarAgentes().subscribe((a) => (this.agentes = a));
     this.cursosService.listar({ situacao: true, pageSize: 100 }).subscribe((res) => {
@@ -577,6 +597,19 @@ export class MatriculaWizardComponent implements OnInit {
       .reduce((soma, l) => soma + (this.valorFinal(l) ?? 0), 0);
   }
 
+  private carregarAlunoPorId(id: string): void {
+    this.alunosService.buscarPorId(id).subscribe((aluno) => {
+      this.preencherAluno(aluno);
+      // Passos 1 e 2 já vêm preenchidos: marca como concluídos e vai ao passo 3.
+      setTimeout(() => {
+        const passos = this.stepper?.steps.toArray() ?? [];
+        passos[0] && (passos[0].completed = true);
+        passos[1] && (passos[1].completed = true);
+        if (this.stepper) this.stepper.selectedIndex = 2;
+      });
+    });
+  }
+
   /** Ao sair do CPF: se o aluno já existe, carrega os dados dele. */
   buscarAluno(): void {
     const cpf = this.pessoal.controls.cpf.value;
@@ -585,7 +618,14 @@ export class MatriculaWizardComponent implements OnInit {
     this.alunosService.listar({ busca: digitos, pageSize: 5 }).subscribe((res) => {
       const aluno = res.data.find((a) => a.cpf === digitos);
       if (!aluno) return;
+      this.preencherAluno(aluno);
+    });
+  }
+
+  private preencherAluno(aluno: Aluno): void {
+    {
       this.alunoExistente = { id: aluno.id, codigo: aluno.codigo ?? null };
+      this.pessoal.controls.cpf.setValue(formatarCpf(aluno.cpf));
       this.pessoal.patchValue({
         nome: aluno.nome,
         genero: aluno.genero ?? "",
@@ -607,7 +647,7 @@ export class MatriculaWizardComponent implements OnInit {
         cidade: aluno.cidade ?? "",
         estado: aluno.estado ?? "",
       });
-    });
+    }
   }
 
   /** Preenche o endereço pelo CEP (ViaCEP) — se falhar, o usuário digita. */
@@ -642,6 +682,10 @@ export class MatriculaWizardComponent implements OnInit {
     }
     if (this.cursoForm.invalid) {
       this.cursoForm.markAllAsTouched();
+      return;
+    }
+    if (!this.sacadoValido) {
+      this.snackBar.open("Revise os dados do responsável financeiro (CPF/CNPJ e nome)", "Fechar", { duration: 5000 });
       return;
     }
     const geradas = this.linhas.filter((l) => l.gerar);
@@ -681,6 +725,7 @@ export class MatriculaWizardComponent implements OnInit {
               ...(l.observacoes.trim() ? { observacoes: l.observacoes.trim() } : {}),
             })),
             ...(this.cupom ? { cupomCodigo: this.cupom.codigo } : {}),
+            ...(this.sacado ? { sacado: this.sacado } : {}),
           })
           .subscribe({
             next: (matricula) => {

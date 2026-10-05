@@ -23,7 +23,7 @@ import { AgenteEducacional, MatriculaPayload } from "../../core/models/matricula
 import { Aluno } from "../../core/models/aluno.model";
 import { Curso } from "../../core/models/curso.model";
 import { SituacaoCobranca, Tag } from "../../core/models/cobranca.model";
-import { formatarCpf } from "../../shared/utils/cpf.util";
+import { formatarCnpj, formatarCpf } from "../../shared/utils/cpf.util";
 
 @Component({
   selector: "app-matricula-form",
@@ -220,6 +220,13 @@ import { formatarCpf } from "../../shared/utils/cpf.util";
         </div>
       }
 
+      @if (editando && sacadoNome) {
+        <p class="text-sm bg-blue-50 border border-blue-200 rounded px-3 py-2 mb-4">
+          Responsável financeiro (sacado): <strong>{{ sacadoNome }}</strong> — {{ sacadoDocumento }}.
+          Boleto e Pix saem em nome dele.
+        </p>
+      }
+
       @if (editando && id && situacaoAtual) {
         <app-situacao-matricula [matriculaId]="id" [situacaoInicial]="situacaoAtual"></app-situacao-matricula>
       }
@@ -250,6 +257,8 @@ export class MatriculaFormComponent implements OnInit {
   protected readonly formatarCpf = formatarCpf;
   /** Situação carregada da matrícula (a troca é feita pelo componente próprio). */
   situacaoAtual = "";
+  sacadoNome = "";
+  sacadoDocumento = "";
 
   editando = false;
   carregando = false;
@@ -332,6 +341,12 @@ export class MatriculaFormComponent implements OnInit {
       this.service.buscarPorId(this.id).subscribe({
         next: (m) => {
           this.situacaoAtual = m.situacao;
+          this.sacadoNome = m.sacado?.nome ?? "";
+          this.sacadoDocumento = m.sacado
+            ? m.sacado.tipoPessoa === "FISICA"
+              ? formatarCpf(m.sacado.cpfCnpj)
+              : formatarCnpj(m.sacado.cpfCnpj)
+            : "";
           this.form.patchValue({
             aluno: m.aluno
               ? ({ id: m.alunoId, cpf: m.aluno.cpf, nome: m.aluno.nome } as Aluno)

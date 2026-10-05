@@ -1,11 +1,15 @@
 import { z } from "zod";
 
-export const loginAlunoSchema = z.object({
-  cpf: z.string().trim().min(11, "CPF inválido").max(14, "CPF inválido"),
+// documento = CPF (com data de nascimento) ou CNPJ (com o número de uma matrícula
+// que a empresa paga) — ver portalService.login.
+export const loginPortalSchema = z.object({
+  documento: z.string().trim().min(11, "CPF/CNPJ inválido").max(18, "CPF/CNPJ inválido"),
   dataNascimento: z
     .string()
     .trim()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "Data de nascimento inválida"),
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Data de nascimento inválida")
+    .optional(),
+  numeroMatricula: z.string().trim().max(50).optional(),
 });
 
 export const solicitarDocumentoSchema = z.object({
@@ -18,5 +22,5 @@ export const gerarCobrancaAlunoSchema = z.object({
   formaPagamento: z.enum(["BOLETO", "PIX", "CREDIT_CARD"]).optional(),
 });
 
-export type LoginAlunoInput = z.infer<typeof loginAlunoSchema>;
+export type LoginPortalInput = z.infer<typeof loginPortalSchema>;
 export type SolicitarDocumentoInput = z.infer<typeof solicitarDocumentoSchema>;

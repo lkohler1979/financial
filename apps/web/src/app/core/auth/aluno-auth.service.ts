@@ -14,6 +14,7 @@ export interface AlunoLogado {
 
 interface LoginAlunoResposta {
   token: string;
+  tipoAcesso: "ALUNO" | "SACADO";
   aluno: AlunoLogado;
 }
 
@@ -36,10 +37,13 @@ export class AlunoAuthService {
   readonly aluno = computed(() => this.alunoSignal());
   readonly autenticado = computed(() => this.alunoSignal() !== null);
 
-  /** `dataNascimento` no formato YYYY-MM-DD. */
-  login(cpf: string, dataNascimento: string): Observable<LoginAlunoResposta> {
+  /** CPF + `dataNascimento` (YYYY-MM-DD) ou CNPJ + `numeroMatricula`. */
+  login(
+    documento: string,
+    segundoFator: { dataNascimento?: string; numeroMatricula?: string },
+  ): Observable<LoginAlunoResposta> {
     return this.http
-      .post<LoginAlunoResposta>(`${environment.apiUrl}/portal/login`, { cpf, dataNascimento })
+      .post<LoginAlunoResposta>(`${environment.apiUrl}/portal/login`, { documento, ...segundoFator })
       .pipe(
         tap((r) => {
           localStorage.setItem(CHAVE_TOKEN, r.token);

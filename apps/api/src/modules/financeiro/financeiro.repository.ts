@@ -14,6 +14,7 @@ const incluiMatricula = {
       id: true,
       numeroMatricula: true,
       aluno: { select: { id: true, cpf: true, nome: true } },
+      sacado: { select: { id: true } },
       curso: { select: { id: true, codigo: true, nome: true } },
     },
   },

@@ -23,6 +23,7 @@ const incluiAlunoCurso = {
     select: { id: true, codigo: true, cpf: true, nome: true, email: true, telefone1: true, telefone2: true },
   },
   agenteEducacional: { select: { id: true, nome: true } },
+  sacado: { select: { id: true, tipoPessoa: true, cpfCnpj: true, nome: true, email: true } },
   curso: { select: { id: true, codigo: true, nome: true } },
   situacaoCobranca: { select: { id: true, nome: true, cor: true } },
   // Usado por matriculasService.gerarParcelas para saber se a matrícula já

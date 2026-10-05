@@ -11,6 +11,8 @@ declare global {
       usuarioPerfil?: PerfilUsuario;
       /** Id do aluno autenticado na área do aluno (`requireAluno`). */
       alunoId?: string;
+      /** Id do sacado autenticado na área do aluno (acesso só a pagamentos). */
+      sacadoId?: string;
     }
   }
 }

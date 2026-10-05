@@ -56,6 +56,8 @@ export interface Matricula {
   agenteEducacionalId?: string | null;
   agenteEducacional?: AgenteEducacional | null;
   aluno?: MatriculaResumoAluno;
+  /** Responsável financeiro quando não é o próprio aluno. */
+  sacado?: { id: string; tipoPessoa: "FISICA" | "JURIDICA"; cpfCnpj: string; nome: string; email?: string | null } | null;
   curso?: MatriculaResumoCurso;
   situacaoCobranca?: MatriculaResumoSituacaoCobranca | null;
   resumoParcelas?: MatriculaResumoParcelas;
@@ -73,6 +75,8 @@ export interface Matricula {
 }
 
 export interface MatriculaPayload {
+  sacadoId?: string;
+  sacado?: import("./sacado.model").SacadoPayload;
   cupomCodigo?: string;
   cobrancas?: import("./tipo-cobranca.model").CobrancaMatriculaPayload[];
   agenteEducacionalId?: string;

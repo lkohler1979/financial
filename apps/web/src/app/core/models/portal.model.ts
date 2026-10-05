@@ -9,6 +9,8 @@ export interface PortalMatricula {
 }
 
 export interface PortalMe {
+  /** Aluno vê tudo dele; sacado (quem paga) vê só os pagamentos. */
+  tipoAcesso: "ALUNO" | "SACADO";
   aluno: { id: string; codigo: string | null; nome: string; cpf: string; email: string | null };
   matriculas: PortalMatricula[];
 }
@@ -42,7 +44,7 @@ export interface PortalParcela {
   id: string;
   matriculaId: string;
   codTitulo: string;
-  matricula: { curso: { nome: string } };
+  matricula: { curso: { nome: string }; aluno: { nome: string }; sacado: { nome: string } | null };
   parcela: string;
   tipoTitulo: string | null;
   vencimento: string;

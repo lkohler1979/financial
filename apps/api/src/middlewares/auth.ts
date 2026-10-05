@@ -18,7 +18,7 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction): v
   try {
     const payload = verificarToken(token);
     // Token da área do aluno nunca acessa a API interna.
-    if ((payload as { tipo?: string }).tipo === "ALUNO") {
+    if ((payload as { tipo?: string }).tipo) {
       next(new AppError("Você não tem permissão para acessar este recurso", 403, "SEM_PERMISSAO"));
       return;
     }

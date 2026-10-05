@@ -5,6 +5,8 @@ import { alunosRepository } from "../alunos/alunos.repository";
 import { cursosRepository } from "../cursos/cursos.repository";
 import { financeiroService } from "../financeiro/financeiro.service";
 import { tiposCobrancaRepository } from "../tipos-cobranca/tipos-cobranca.repository";
+import { tiposCobrancaService } from "../tipos-cobranca/tipos-cobranca.service";
+import { aplicarDesconto, cuponsService } from "../cupons/cupons.service";
 import { matriculasRepository } from "./matriculas.repository";
 import type {
   AtualizarMatriculaInput,
@@ -85,6 +87,7 @@ interface CobrancaResolvida {
   valor: number;
   numeroParcelas: number;
   primeiroVencimento: Date;
+  formaPagamento: "BOLETO" | "PIX" | "CREDIT_CARD" | null;
 }
 
 /** Vencimento da parcela `indice`: mesmo dia do primeiro vencimento nos meses
@@ -105,7 +108,9 @@ function vencimentoDaParcela(primeiro: Date, indice: number): Date {
 async function resolverCobrancas(
   cobrancas: NonNullable<CriarMatriculaInput["cobrancas"]>,
   valorPadraoCurso: number | null,
+  cupom: { tipoDesconto: "PERCENTUAL" | "VALOR"; valor: unknown } | null,
 ): Promise<CobrancaResolvida[]> {
+  const formasHabilitadas = await tiposCobrancaService.formasPagamentoHabilitadas();
   const tipos = await tiposCobrancaRepository.findManyByIds(cobrancas.map((c) => c.tipoCobrancaId));
   const obrigatorios = await tiposCobrancaRepository.listObrigatoriosAtivos();
 
@@ -127,13 +132,23 @@ async function resolverCobrancas(
     if (valor == null) {
       throw new ValidationError(`${tipo.nome}: informe o valor (o curso/tipo não tem valor padrão)`);
     }
+    const formaPagamento = c.formaPagamento ?? tipo.formaPagamentoPadrao ?? null;
+    if (formaPagamento && !formasHabilitadas.includes(formaPagamento)) {
+      throw new ValidationError(`${tipo.nome}: a forma de pagamento escolhida não está habilitada`);
+    }
     return {
       tipo,
-      valor,
+      // Cupom só incide nos tipos que aceitam (ex.: Mensalidade).
+      valor: cupom && tipo.aceitaCupom ? aplicarDesconto(cupom, valor) : valor,
       numeroParcelas: c.numeroParcelas,
       primeiroVencimento: c.primeiroVencimento,
+      formaPagamento,
     };
   });
+
+  if (cupom && !cobrancas.some((c) => tipos.find((t) => t.id === c.tipoCobrancaId)?.aceitaCupom)) {
+    throw new ValidationError("Nenhuma das cobranças escolhidas aceita cupom de desconto");
+  }
 
   for (const obrigatorio of obrigatorios) {
     if (!resolvidas.some((r) => r.tipo.id === obrigatorio.id)) {
@@ -160,6 +175,7 @@ async function gerarParcelasDaCobranca(
         vencimento: vencimentoDaParcela(cobranca.primeiroVencimento, indice),
         valor: valores[indice],
         tipoTitulo: cobranca.tipo.nome,
+        ...(cobranca.formaPagamento ? { formaPagamento: cobranca.formaPagamento } : {}),
       },
       usuarioId,
     );
@@ -293,12 +309,17 @@ export const matriculasService = {
     // diaVencimento passa a ser obrigatório. Validado antes de criar a
     // matrícula, para não deixar um registro "pela metade" se faltar o dia.
     const curso = await cursosRepository.findById(input.cursoId);
+    const cupom = input.cupomCodigo ? await cuponsService.obterValido(input.cupomCodigo) : null;
     const cobrancas = input.cobrancas?.length
       ? await resolverCobrancas(
           input.cobrancas,
           curso?.valorPadrao == null ? null : Number(curso.valorPadrao),
+          cupom,
         )
       : [];
+    if (cupom && cobrancas.length === 0) {
+      throw new ValidationError("Cupom só pode ser aplicado junto com as cobranças do cadastro");
+    }
     // A mensalidade (valor vindo do curso) também fica gravada na matrícula,
     // pra tela de edição mostrar valor/parcelas/dia como antes.
     const mensalidade = cobrancas.find((c) => c.tipo.usaValorDoCurso);
@@ -325,6 +346,7 @@ export const matriculasService = {
       ...(input.agenteEducacionalId
         ? { agenteEducacional: { connect: { id: input.agenteEducacionalId } } }
         : {}),
+      ...(cupom ? { cupom: { connect: { id: cupom.id } } } : {}),
       valorCurso: mensalidade?.valor ?? input.valorCurso,
       numeroParcelas: mensalidade?.numeroParcelas ?? input.numeroParcelas,
       diaVencimento: mensalidade

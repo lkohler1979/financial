@@ -15,6 +15,10 @@ const dadosTipo = {
     .nullable(),
   ordem: z.coerce.number().int().min(0).max(999),
   ativo: z.boolean(),
+  formaPagamentoPadrao: z.enum(["BOLETO", "PIX", "CREDIT_CARD"]).nullable(),
+  aceitaCupom: z.boolean(),
+  entraNoProtesto: z.boolean(),
+  disponivelNoCadastro: z.boolean(),
 };
 
 export const criarTipoCobrancaSchema = z.object({
@@ -25,6 +29,10 @@ export const criarTipoCobrancaSchema = z.object({
   prefixoTitulo: dadosTipo.prefixoTitulo.optional(),
   ordem: dadosTipo.ordem.default(0),
   ativo: dadosTipo.ativo.default(true),
+  formaPagamentoPadrao: dadosTipo.formaPagamentoPadrao.optional(),
+  aceitaCupom: dadosTipo.aceitaCupom.default(false),
+  entraNoProtesto: dadosTipo.entraNoProtesto.default(true),
+  disponivelNoCadastro: dadosTipo.disponivelNoCadastro.default(true),
 });
 
 export const atualizarTipoCobrancaSchema = z

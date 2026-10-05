@@ -275,6 +275,15 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
                         Pagar com cartão
                       </a>
                     }
+                  } @else if (parcela.status === "EM_ABERTO" && formaDefinida(parcela)) {
+                    <button
+                      mat-button
+                      class="!min-w-0 !px-2"
+                      [disabled]="gerandoBoletoId === parcela.id"
+                      (click)="gerarCobranca(parcela, parcela.formaPagamento!)"
+                    >
+                      {{ gerandoBoletoId === parcela.id ? "Gerando..." : "Gerar " + rotuloForma(parcela.formaPagamento!) }}
+                    </button>
                   } @else if (parcela.status === "EM_ABERTO") {
                     <button
                       mat-button
@@ -632,6 +641,15 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
 
   removerTag(tag: Tag): void {
     this.service.removerTag(this.matriculaId, tag.id).subscribe(() => this.carregar());
+  }
+
+  /** Forma escolhida no cadastro e ainda habilitada em Configurações. */
+  formaDefinida(parcela: Parcela): boolean {
+    return !!parcela.formaPagamento && this.metodosAceitos.includes(parcela.formaPagamento);
+  }
+
+  rotuloForma(forma: AsaasBillingType): string {
+    return { BOLETO: "boleto", PIX: "Pix", CREDIT_CARD: "cobrança no cartão" }[forma];
   }
 
   gerarCobranca(parcela: Parcela, billingType: AsaasBillingType): void {

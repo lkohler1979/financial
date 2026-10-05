@@ -14,6 +14,10 @@ export const tiposCobrancaController = {
     res.json(await tiposCobrancaService.listar(incluirInativos));
   }),
 
+  formasPagamento: asyncHandler(async (_req: Request, res: Response) => {
+    res.json(await tiposCobrancaService.formasPagamentoHabilitadas());
+  }),
+
   criar: asyncHandler(async (req: Request, res: Response) => {
     const input = criarTipoCobrancaSchema.parse(req.body);
     res.status(201).json(await tiposCobrancaService.criar(input, usuarioAtual(req)));

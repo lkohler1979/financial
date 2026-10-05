@@ -1,3 +1,11 @@
+export type FormaPagamento = "BOLETO" | "PIX" | "CREDIT_CARD";
+
+export const ROTULO_FORMA_PAGAMENTO: Record<FormaPagamento, string> = {
+  BOLETO: "Boleto",
+  PIX: "Pix",
+  CREDIT_CARD: "Cartão de crédito",
+};
+
 export interface TipoCobranca {
   id: string;
   nome: string;
@@ -12,6 +20,14 @@ export interface TipoCobranca {
   prefixoTitulo: string | null;
   ordem: number;
   ativo: boolean;
+  /** Forma de pagamento sugerida no cadastro (editável por título). */
+  formaPagamentoPadrao: FormaPagamento | null;
+  /** O cupom de desconto só incide nos tipos que aceitam. */
+  aceitaCupom: boolean;
+  /** false = nunca entra no protesto (ex.: Taxa de matrícula). */
+  entraNoProtesto: boolean;
+  /** false = não aparece no cadastro da matrícula (ex.: Renegociação). */
+  disponivelNoCadastro: boolean;
 }
 
 export type TipoCobrancaPayload = Partial<Omit<TipoCobranca, "id">>;
@@ -22,4 +38,5 @@ export interface CobrancaMatriculaPayload {
   valor?: number;
   numeroParcelas: number;
   primeiroVencimento: string;
+  formaPagamento?: FormaPagamento;
 }

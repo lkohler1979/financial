@@ -2,7 +2,7 @@ import { HttpClient, HttpParams } from "@angular/common/http";
 import { inject, Injectable } from "@angular/core";
 import { Observable } from "rxjs";
 import { environment } from "../../../environments/environment";
-import { TipoCobranca, TipoCobrancaPayload } from "../models/tipo-cobranca.model";
+import { FormaPagamento, TipoCobranca, TipoCobrancaPayload } from "../models/tipo-cobranca.model";
 
 @Injectable({ providedIn: "root" })
 export class TiposCobrancaService {
@@ -12,6 +12,11 @@ export class TiposCobrancaService {
   listar(incluirInativos = false): Observable<TipoCobranca[]> {
     const params = new HttpParams().set("incluirInativos", incluirInativos);
     return this.http.get<TipoCobranca[]>(this.baseUrl, { params });
+  }
+
+  /** Formas de pagamento habilitadas em Configurações. */
+  formasPagamento(): Observable<FormaPagamento[]> {
+    return this.http.get<FormaPagamento[]>(`${this.baseUrl}/formas-pagamento`);
   }
 
   criar(payload: TipoCobrancaPayload): Observable<TipoCobranca> {

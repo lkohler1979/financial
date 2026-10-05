@@ -5,6 +5,7 @@ import { alunosRepository } from "../../src/modules/alunos/alunos.repository";
 import { cursosRepository } from "../../src/modules/cursos/cursos.repository";
 import { financeiroService } from "../../src/modules/financeiro/financeiro.service";
 import { tiposCobrancaRepository } from "../../src/modules/tipos-cobranca/tipos-cobranca.repository";
+import { cuponsRepository } from "../../src/modules/cupons/cupons.repository";
 import { registrarAuditoria } from "../../src/modules/auditoria/auditoria.service";
 import { ConflictError, NotFoundError, ValidationError } from "../../src/shared/errors/app-error";
 
@@ -27,6 +28,12 @@ vi.mock("../../src/modules/cursos/cursos.repository", () => ({
 }));
 vi.mock("../../src/modules/financeiro/financeiro.service", () => ({
   financeiroService: { criar: vi.fn() },
+}));
+vi.mock("../../src/modules/tipos-cobranca/tipos-cobranca.service", () => ({
+  tiposCobrancaService: { formasPagamentoHabilitadas: vi.fn().mockResolvedValue(["BOLETO", "PIX"]) },
+}));
+vi.mock("../../src/modules/cupons/cupons.repository", () => ({
+  cuponsRepository: { findByCodigo: vi.fn() },
 }));
 vi.mock("../../src/modules/tipos-cobranca/tipos-cobranca.repository", () => ({
   tiposCobrancaRepository: { findManyByIds: vi.fn(), listObrigatoriosAtivos: vi.fn() },
@@ -254,6 +261,8 @@ describe("matriculasService.criar — cobranças por tipo", () => {
     valorPadrao: null,
     opcoesParcelas: [1, 6, 12],
     prefixoTitulo: null,
+    aceitaCupom: true,
+    formaPagamentoPadrao: "BOLETO",
   };
   const TAXA = {
     id: "22222222-bbbb-bbbb-bbbb-222222222222",
@@ -264,6 +273,8 @@ describe("matriculasService.criar — cobranças por tipo", () => {
     valorPadrao: 49.9,
     opcoesParcelas: [1],
     prefixoTitulo: "TM",
+    aceitaCupom: false,
+    formaPagamentoPadrao: null,
   };
 
   beforeEach(() => {
@@ -339,6 +350,88 @@ describe("matriculasService.criar — cobranças por tipo", () => {
           alunoId: ALUNO,
           cursoId: CURSO,
           cobrancas: [{ tipoCobrancaId: MENSALIDADE.id, numeroParcelas: 1, primeiroVencimento: new Date() }],
+        },
+        USUARIO,
+      ),
+    ).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it("aplica o cupom só na mensalidade (taxa não aceita) e liga o cupom à matrícula", async () => {
+    tiposRepo.findManyByIds.mockResolvedValue([MENSALIDADE, TAXA] as never);
+    vi.mocked(cuponsRepository.findByCodigo).mockResolvedValue({
+      id: "cupom-1",
+      ativo: true,
+      validadeAte: null,
+      tipoDesconto: "PERCENTUAL",
+      valor: 50,
+    } as never);
+
+    await matriculasService.criar(
+      {
+        alunoId: ALUNO,
+        cursoId: CURSO,
+        cupomCodigo: "METADE",
+        cobrancas: [
+          { tipoCobrancaId: MENSALIDADE.id, numeroParcelas: 6, primeiroVencimento: new Date(2026, 9, 10) },
+          { tipoCobrancaId: TAXA.id, numeroParcelas: 1, primeiroVencimento: new Date(2026, 9, 10) },
+        ],
+      },
+      USUARIO,
+    );
+
+    const chamadas = financeiro.criar.mock.calls.map(([i]) => i);
+    expect(chamadas[0].valor).toBe(100); // 1200 / 2 / 6
+    expect(chamadas[6].valor).toBe(49.9); // taxa sem desconto
+    expect(repo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ cupom: { connect: { id: "cupom-1" } } }),
+    );
+  });
+
+  it("recusa cupom que não está cadastrado", async () => {
+    tiposRepo.findManyByIds.mockResolvedValue([MENSALIDADE] as never);
+    vi.mocked(cuponsRepository.findByCodigo).mockResolvedValue(null);
+    await expect(
+      matriculasService.criar(
+        {
+          alunoId: ALUNO,
+          cursoId: CURSO,
+          cupomCodigo: "INVENTADO",
+          cobrancas: [{ tipoCobrancaId: MENSALIDADE.id, numeroParcelas: 1, primeiroVencimento: new Date() }],
+        },
+        USUARIO,
+      ),
+    ).rejects.toBeInstanceOf(ValidationError);
+    expect(repo.create).not.toHaveBeenCalled();
+  });
+
+  it("grava a forma de pagamento no título (padrão do tipo ou escolhida)", async () => {
+    tiposRepo.findManyByIds.mockResolvedValue([MENSALIDADE, TAXA] as never);
+    await matriculasService.criar(
+      {
+        alunoId: ALUNO,
+        cursoId: CURSO,
+        cobrancas: [
+          { tipoCobrancaId: MENSALIDADE.id, numeroParcelas: 1, primeiroVencimento: new Date(2026, 9, 10) },
+          { tipoCobrancaId: TAXA.id, numeroParcelas: 1, primeiroVencimento: new Date(2026, 9, 10), formaPagamento: "PIX" },
+        ],
+      },
+      USUARIO,
+    );
+    const chamadas = financeiro.criar.mock.calls.map(([i]) => i);
+    expect(chamadas[0]).toMatchObject({ formaPagamento: "BOLETO" });
+    expect(chamadas[1]).toMatchObject({ formaPagamento: "PIX" });
+  });
+
+  it("recusa forma de pagamento não habilitada em Configurações", async () => {
+    tiposRepo.findManyByIds.mockResolvedValue([MENSALIDADE] as never);
+    await expect(
+      matriculasService.criar(
+        {
+          alunoId: ALUNO,
+          cursoId: CURSO,
+          cobrancas: [
+            { tipoCobrancaId: MENSALIDADE.id, numeroParcelas: 1, primeiroVencimento: new Date(), formaPagamento: "CREDIT_CARD" },
+          ],
         },
         USUARIO,
       ),

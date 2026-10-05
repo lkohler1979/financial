@@ -49,6 +49,19 @@ import {
       <mat-icon matSuffix>search</mat-icon>
     </mat-form-field>
 
+    <datalist id="niveis-ensino">
+      <option value="Aperfeiçoamento"></option>
+      <option value="Lato Sensu"></option>
+      <option value="Livre/Profissionalizante"></option>
+    </datalist>
+
+    @if (semConfiguracao() > 0) {
+      <p class="text-sm text-amber-700 m-0 mb-2">
+        {{ semConfiguracao() }} curso(s) desta página sem valor padrão ou nível de ensino — preencha
+        direto na tabela para a Mensalidade vir automática no cadastro da matrícula.
+      </p>
+    }
+
     @if (carregando) {
       <mat-progress-bar mode="indeterminate"></mat-progress-bar>
     }
@@ -62,6 +75,32 @@ import {
         <ng-container matColumnDef="nome">
           <th mat-header-cell *matHeaderCellDef>Nome</th>
           <td mat-cell *matCellDef="let c">{{ c.nome }}</td>
+        </ng-container>
+        <ng-container matColumnDef="nivel">
+          <th mat-header-cell *matHeaderCellDef>Nível de ensino</th>
+          <td mat-cell *matCellDef="let c">
+            <input
+              class="border rounded px-2 py-1 w-40 text-sm"
+              list="niveis-ensino"
+              placeholder="—"
+              [value]="c.grauEnsino ?? ''"
+              (change)="salvarCampo(c, 'grauEnsino', $any($event.target).value)"
+            />
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="valor">
+          <th mat-header-cell *matHeaderCellDef>Valor padrão (R$)</th>
+          <td mat-cell *matCellDef="let c">
+            <input
+              class="border rounded px-2 py-1 w-28 text-sm"
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="—"
+              [value]="c.valorPadrao ?? ''"
+              (change)="salvarCampo(c, 'valorPadrao', $any($event.target).value)"
+            />
+          </td>
         </ng-container>
         <ng-container matColumnDef="situacao">
           <th mat-header-cell *matHeaderCellDef>Situação</th>
@@ -113,7 +152,7 @@ export class CursosListComponent implements OnInit {
   private readonly snackBar = inject(MatSnackBar);
 
   readonly busca = new FormControl("", { nonNullable: true });
-  colunas = ["codigo", "nome", "situacao", "acoes"];
+  colunas = ["codigo", "nome", "nivel", "valor", "situacao", "acoes"];
   cursos: Curso[] = [];
   total = 0;
   page = 1;
@@ -140,6 +179,25 @@ export class CursosListComponent implements OnInit {
         },
         error: () => (this.carregando = false),
       });
+  }
+
+  semConfiguracao(): number {
+    return this.cursos.filter((c) => c.situacao && (c.valorPadrao == null || !c.grauEnsino)).length;
+  }
+
+  /** Grava um campo direto da tabela (valor padrão / nível de ensino). */
+  salvarCampo(curso: Curso, campo: "grauEnsino" | "valorPadrao", bruto: string): void {
+    const texto = bruto.trim();
+    if (!texto) return; // limpar não é suportado aqui — edite o curso.
+    const payload = campo === "valorPadrao" ? { valorPadrao: Number(texto) } : { grauEnsino: texto };
+    if (campo === "valorPadrao" && !(Number(texto) > 0)) return;
+    this.service.atualizar(curso.id, payload).subscribe({
+      next: (atualizado) => {
+        Object.assign(curso, atualizado);
+        this.snackBar.open("Curso atualizado", "Fechar", { duration: 2000 });
+      },
+      error: () => this.snackBar.open("Não foi possível salvar", "Fechar", { duration: 4000 }),
+    });
   }
 
   mudarPagina(evento: PageEvent): void {

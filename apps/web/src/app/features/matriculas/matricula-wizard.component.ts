@@ -1,5 +1,6 @@
 import { CurrencyPipe } from "@angular/common";
 import { Component, inject, OnInit } from "@angular/core";
+import { forkJoin } from "rxjs";
 import { FormsModule, ReactiveFormsModule, Validators, FormBuilder } from "@angular/forms";
 import { Router, RouterLink } from "@angular/router";
 import { MatButtonModule } from "@angular/material/button";
@@ -15,7 +16,13 @@ import { AuthService } from "../../core/auth/auth.service";
 import { AlunoPayload } from "../../core/models/aluno.model";
 import { Curso } from "../../core/models/curso.model";
 import { AgenteEducacional } from "../../core/models/matricula.model";
-import { TipoCobranca } from "../../core/models/tipo-cobranca.model";
+import { CupomValidado } from "../../core/models/cupom.model";
+import {
+  FormaPagamento,
+  ROTULO_FORMA_PAGAMENTO,
+  TipoCobranca,
+} from "../../core/models/tipo-cobranca.model";
+import { CuponsService } from "../../core/services/cupons.service";
 import { AlunosService } from "../../core/services/alunos.service";
 import { CursosService } from "../../core/services/cursos.service";
 import { MatriculasService } from "../../core/services/matriculas.service";
@@ -32,6 +39,7 @@ const GENEROS = ["Feminino", "Masculino", "Outro", "Prefiro não informar"];
 interface LinhaCobranca {
   tipo: TipoCobranca;
   gerar: boolean;
+  formaPagamento: FormaPagamento | null;
   numeroParcelas: number;
   primeiroVencimento: string;
   valorEditado: number | null;
@@ -267,7 +275,7 @@ function hojeIso(): string {
               <p class="text-sm text-gray-500">Selecione o curso para ver as cobranças.</p>
             }
             @for (linha of linhas; track linha.tipo.id) {
-              <div class="grid grid-cols-2 md:grid-cols-6 gap-3 items-center bg-gray-50 rounded p-3 mb-2">
+              <div class="grid grid-cols-2 md:grid-cols-7 gap-3 items-center bg-gray-50 rounded p-3 mb-2">
                 <div>
                   <p class="text-xs text-gray-500 m-0">Gerar</p>
                   <mat-checkbox
@@ -280,6 +288,18 @@ function hojeIso(): string {
                   <p class="text-xs text-gray-500 m-0">Título</p>
                   <span>{{ linha.tipo.nome }} ({{ linha.tipo.obrigatorio ? "Obrigatório" : "Opcional" }})</span>
                 </div>
+                <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                  <mat-label>Forma</mat-label>
+                  <mat-select
+                    [(ngModel)]="linha.formaPagamento"
+                    [ngModelOptions]="{ standalone: true }"
+                    [disabled]="!linha.gerar"
+                  >
+                    @for (f of formas; track f) {
+                      <mat-option [value]="f">{{ rotuloForma(f) }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
                 <mat-form-field appearance="outline" subscriptSizing="dynamic">
                   <mat-label>Pagamento</mat-label>
                   <mat-select
@@ -317,8 +337,16 @@ function hojeIso(): string {
                     </mat-form-field>
                   } @else {
                     <p class="text-xs text-gray-500 m-0">Valor</p>
+                    @if (descontoAplicado(linha)) {
+                      <span class="text-xs text-gray-400 line-through block">
+                        {{ valorEfetivo(linha) | currency: "BRL" }}
+                      </span>
+                    }
                     <span>
-                      {{ valorEfetivo(linha) !== null ? (valorEfetivo(linha) | currency: "BRL") : "—" }}
+                      {{ valorFinal(linha) !== null ? (valorFinal(linha) | currency: "BRL") : "—" }}
+                    </span>
+                    <span class="text-xs text-green-700 block">
+                      {{ descontoAplicado(linha) ? "Cupom " + cupom?.codigo : "" }}
                     </span>
                     <button
                       mat-icon-button
@@ -333,6 +361,31 @@ function hojeIso(): string {
                 </div>
               </div>
             }
+            <p class="text-xs font-medium text-gray-600 border-b pb-1 mb-3 mt-4">CUPOM DE DESCONTO</p>
+            <div class="flex flex-wrap items-center gap-3">
+              @if (cupom) {
+                <span class="text-sm">
+                  Cupom <strong>{{ cupom.codigo }}</strong>
+                  ({{ cupom.tipoDesconto === "PERCENTUAL" ? cupom.valor + "%" : (cupom.valor | currency: "BRL") }}
+                  de desconto) aplicado
+                </span>
+                <button mat-stroked-button type="button" (click)="removerCupom()">Remover cupom</button>
+              } @else {
+                <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                  <mat-label>Digite aqui o seu cupom</mat-label>
+                  <input
+                    matInput
+                    [(ngModel)]="cupomDigitado"
+                    [ngModelOptions]="{ standalone: true }"
+                    (keydown.enter)="$event.preventDefault(); aplicarCupom()"
+                  />
+                </mat-form-field>
+                <button mat-raised-button color="primary" type="button" (click)="aplicarCupom()">
+                  Usar cupom de desconto
+                </button>
+              }
+            </div>
+
             @if (linhas.length > 0) {
               <p class="text-sm text-right m-0 mt-2">
                 Total a gerar: <strong>{{ totalGeral() | currency: "BRL" }}</strong>
@@ -366,6 +419,11 @@ export class MatriculaWizardComponent implements OnInit {
   private readonly cursosService = inject(CursosService);
   private readonly matriculasService = inject(MatriculasService);
   private readonly tiposService = inject(TiposCobrancaService);
+  private readonly cuponsService = inject(CuponsService);
+
+  formas: FormaPagamento[] = [];
+  cupom: CupomValidado | null = null;
+  cupomDigitado = "";
 
   readonly ufs = UFS;
   readonly generos = GENEROS;
@@ -414,11 +472,18 @@ export class MatriculaWizardComponent implements OnInit {
       this.cursos = res.data;
       this.niveis = [...new Set(res.data.map((c) => c.grauEnsino).filter((g): g is string => !!g))].sort();
     });
-    this.tiposService.listar().subscribe((tipos) => {
+    forkJoin([this.tiposService.listar(), this.tiposService.formasPagamento()]).subscribe(([todos, formas]) => {
+      this.formas = formas;
+      // Renegociação etc. nascem de outro fluxo — não aparecem no cadastro.
+      const tipos = todos.filter((t) => t.disponivelNoCadastro);
       this.tipos = tipos;
       this.linhas = tipos.map((tipo) => ({
         tipo,
         gerar: tipo.obrigatorio,
+        formaPagamento:
+          tipo.formaPagamentoPadrao && formas.includes(tipo.formaPagamentoPadrao)
+            ? tipo.formaPagamentoPadrao
+            : (formas[0] ?? null),
         numeroParcelas: tipo.opcoesParcelas[0] ?? 1,
         primeiroVencimento: hojeIso(),
         valorEditado: null,
@@ -450,8 +515,43 @@ export class MatriculaWizardComponent implements OnInit {
     return linha.valorEditado ?? this.valorBase(linha);
   }
 
-  rotuloParcelamento(linha: LinhaCobranca, n: number): string {
+  rotuloForma(f: FormaPagamento): string {
+    return ROTULO_FORMA_PAGAMENTO[f];
+  }
+
+  /** Valor depois do cupom (só nos tipos que aceitam) — mesma conta da API. */
+  valorFinal(linha: LinhaCobranca): number | null {
     const valor = this.valorEfetivo(linha);
+    if (valor === null || !this.cupom || !linha.tipo.aceitaCupom) return valor;
+    const c = this.cupom;
+    const final = c.tipoDesconto === "PERCENTUAL" ? valor * (1 - Number(c.valor) / 100) : valor - Number(c.valor);
+    return Math.round(final * 100) / 100;
+  }
+
+  descontoAplicado(linha: LinhaCobranca): boolean {
+    return !!this.cupom && linha.tipo.aceitaCupom && linha.gerar;
+  }
+
+  aplicarCupom(): void {
+    const codigo = this.cupomDigitado.trim();
+    if (!codigo) return;
+    this.cuponsService.validar(codigo).subscribe({
+      next: (cupom) => {
+        this.cupom = cupom;
+        this.cupomDigitado = "";
+        this.snackBar.open("Cupom aplicado", "Fechar", { duration: 3000 });
+      },
+      error: (erro) =>
+        this.snackBar.open(erro?.error?.mensagem ?? "Cupom inválido", "Fechar", { duration: 5000 }),
+    });
+  }
+
+  removerCupom(): void {
+    this.cupom = null;
+  }
+
+  rotuloParcelamento(linha: LinhaCobranca, n: number): string {
+    const valor = this.valorFinal(linha);
     if (valor === null) return `${n}x`;
     const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
     return `${n} x ${fmt(valor / n)} = ${fmt(valor)}`;
@@ -460,7 +560,7 @@ export class MatriculaWizardComponent implements OnInit {
   totalGeral(): number {
     return this.linhas
       .filter((l) => l.gerar)
-      .reduce((soma, l) => soma + (this.valorEfetivo(l) ?? 0), 0);
+      .reduce((soma, l) => soma + (this.valorFinal(l) ?? 0), 0);
   }
 
   /** Ao sair do CPF: se o aluno já existe, carrega os dados dele. */
@@ -563,7 +663,9 @@ export class MatriculaWizardComponent implements OnInit {
               ...(l.valorEditado !== null ? { valor: l.valorEditado } : {}),
               numeroParcelas: l.numeroParcelas,
               primeiroVencimento: l.primeiroVencimento,
+              ...(l.formaPagamento ? { formaPagamento: l.formaPagamento } : {}),
             })),
+            ...(this.cupom ? { cupomCodigo: this.cupom.codigo } : {}),
           })
           .subscribe({
             next: (matricula) => {

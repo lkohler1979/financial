@@ -44,10 +44,13 @@ const cobrancaSchema = z.object({
   valor: z.coerce.number().positive("Valor deve ser maior que zero").optional(),
   numeroParcelas: z.coerce.number().int().positive().max(360),
   primeiroVencimento: dataLocal,
+  formaPagamento: z.enum(["BOLETO", "PIX", "CREDIT_CARD"]).optional(),
 });
 
 export const criarMatriculaSchema = z.object({
   cobrancas: z.array(cobrancaSchema).optional(),
+  // Só cupons já cadastrados (e válidos) são aceitos — ver cupons.service.ts.
+  cupomCodigo: z.string().trim().min(1).optional(),
   alunoId: z.string().uuid("alunoId inválido"),
   cursoId: z.string().uuid("cursoId inválido"),
   ...dadosMatricula,

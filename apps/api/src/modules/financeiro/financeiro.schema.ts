@@ -16,6 +16,7 @@ const dadosParcela = {
   vencimento: z.coerce.date(),
   valor: z.coerce.number().positive("Valor deve ser maior que zero"),
   tipoTitulo: z.string().trim().max(50).optional(),
+  formaPagamento: z.enum(["BOLETO", "PIX", "CREDIT_CARD"]).optional(),
   observacoes: z.string().trim().max(1000).optional(),
 };
 

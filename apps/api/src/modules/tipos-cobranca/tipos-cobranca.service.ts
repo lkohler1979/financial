@@ -1,5 +1,6 @@
 import { ConflictError, NotFoundError } from "../../shared/errors/app-error";
 import { registrarAuditoria } from "../auditoria/auditoria.service";
+import { configuracoesRepository } from "../configuracoes/configuracoes.repository";
 import { tiposCobrancaRepository } from "./tipos-cobranca.repository";
 import type {
   AtualizarTipoCobrancaInput,
@@ -14,6 +15,16 @@ function serializar<T extends { valorPadrao: unknown }>(tipo: T) {
 }
 
 export const tiposCobrancaService = {
+  /** Formas de pagamento habilitadas em Configurações (provedor definido). */
+  async formasPagamentoHabilitadas() {
+    const config = await configuracoesRepository.obterOuCriar();
+    const formas: ("BOLETO" | "PIX" | "CREDIT_CARD")[] = [];
+    if (config.provedorBoleto) formas.push("BOLETO");
+    if (config.provedorPix) formas.push("PIX");
+    if (config.provedorCartao) formas.push("CREDIT_CARD");
+    return formas;
+  },
+
   async listar(incluirInativos: boolean) {
     const tipos = await tiposCobrancaRepository.list(incluirInativos);
     return tipos.map(serializar);

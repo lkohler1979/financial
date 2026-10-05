@@ -51,6 +51,7 @@ export const financeiroService = {
       vencimento: input.vencimento,
       valor: input.valor,
       tipoTitulo: input.tipoTitulo,
+      formaPagamento: input.formaPagamento,
       observacoes: input.observacoes,
     });
 

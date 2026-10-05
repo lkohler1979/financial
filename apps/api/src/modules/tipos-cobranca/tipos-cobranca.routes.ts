@@ -6,5 +6,6 @@ import { tiposCobrancaController } from "./tipos-cobranca.controller";
 export const tiposCobrancaRouter = Router();
 
 tiposCobrancaRouter.get("/", tiposCobrancaController.listar);
+tiposCobrancaRouter.get("/formas-pagamento", tiposCobrancaController.formasPagamento);
 tiposCobrancaRouter.post("/", requireRole("ADMINISTRADOR"), tiposCobrancaController.criar);
 tiposCobrancaRouter.put("/:id", requireRole("ADMINISTRADOR"), tiposCobrancaController.atualizar);

@@ -37,12 +37,36 @@ const FORMAS_TIPO_TITULO: Record<"MENSALIDADE" | "RENEGOCIACAO", string[]> = {
   RENEGOCIACAO: ["Renegociação", "Renegociacao", "RENEGOCIACAO"],
 };
 
-/** AMBOS (padrão) não restringe — inclui qualquer tipoTitulo, mesmo nulo/outro valor.
- * Exportado só para teste unitário direto (relatorios.repository.ts não tem
- * dependência de banco nesta função, mas o resto do módulo tem). */
-export function filtroTipoTitulo(tipoTituloProtesto: TipoTituloProtesto): Prisma.StringFilter | undefined {
-  if (tipoTituloProtesto === "AMBOS") return undefined;
-  return { in: FORMAS_TIPO_TITULO[tipoTituloProtesto], mode: "insensitive" };
+/** Nomes dos tipos de cobrança que nunca entram no protesto (ex.: Taxa de
+ * matrícula) — configurável em TipoCobranca.entraNoProtesto. */
+async function nomesTiposForaDoProtesto(): Promise<string[]> {
+  const tipos = await prisma.tipoCobranca.findMany({
+    where: { entraNoProtesto: false },
+    select: { nome: true },
+  });
+  return tipos.map((t) => t.nome);
+}
+
+/**
+ * Filtro de Parcela.tipoTitulo do protesto. AMBOS = Mensalidade + Renegociação
+ * (tipos que entram no protesto): só tira os tipos marcados como fora do
+ * protesto, e mantém parcelas sem tipo (importações antigas). Exportado só
+ * para teste unitário direto.
+ */
+export function filtroTipoTitulo(
+  tipoTituloProtesto: TipoTituloProtesto,
+  tiposExcluidos: string[] = [],
+): Prisma.ParcelaWhereInput | undefined {
+  if (tipoTituloProtesto === "AMBOS") {
+    if (tiposExcluidos.length === 0) return undefined;
+    return {
+      OR: [
+        { tipoTitulo: null },
+        { NOT: { tipoTitulo: { in: tiposExcluidos, mode: "insensitive" } } },
+      ],
+    };
+  }
+  return { tipoTitulo: { in: FORMAS_TIPO_TITULO[tipoTituloProtesto], mode: "insensitive" } };
 }
 
 export interface MatriculaElegivel {
@@ -92,7 +116,7 @@ export const relatoriosRepository = {
   ): Promise<MatriculaElegivel[]> {
     const hoje = inicioHoje();
     const limiteVencimento = dataLimiteAtraso(hoje, diasAtrasoMinimo);
-    const tipoTitulo = filtroTipoTitulo(tipoTituloProtesto);
+    const filtroTipo = filtroTipoTitulo(tipoTituloProtesto, await nomesTiposForaDoProtesto());
 
     const matriculas = await prisma.matricula.findMany({
       where: {
@@ -121,7 +145,7 @@ export const relatoriosRepository = {
           some: {
             status: "EM_ABERTO",
             vencimento: { lt: limiteVencimento },
-            ...(tipoTitulo ? { tipoTitulo } : {}),
+            ...(filtroTipo ?? {}),
           },
         },
       },
@@ -132,7 +156,7 @@ export const relatoriosRepository = {
           where: {
             status: "EM_ABERTO",
             vencimento: { lt: limiteVencimento },
-            ...(tipoTitulo ? { tipoTitulo } : {}),
+            ...(filtroTipo ?? {}),
           },
         },
         situacaoCobranca: { select: { id: true, nome: true } },
@@ -227,20 +251,20 @@ export const relatoriosRepository = {
    * protesto — só as vencidas há mais de `diasAtrasoMinimo` dias
    * (Configuracao.diasAtraso), mesmo critério usado para levantar os elegíveis.
    */
-  buscarParcelasVencidasDaMatricula(
+  async buscarParcelasVencidasDaMatricula(
     matriculaId: string,
     diasAtrasoMinimo = 0,
     tipoTituloProtesto: TipoTituloProtesto = "AMBOS",
   ) {
     const hoje = inicioHoje();
     const limiteVencimento = dataLimiteAtraso(hoje, diasAtrasoMinimo);
-    const tipoTitulo = filtroTipoTitulo(tipoTituloProtesto);
+    const filtroTipo = filtroTipoTitulo(tipoTituloProtesto, await nomesTiposForaDoProtesto());
     return prisma.parcela.findMany({
       where: {
         matriculaId,
         status: "EM_ABERTO",
         vencimento: { lt: limiteVencimento },
-        ...(tipoTitulo ? { tipoTitulo } : {}),
+        ...(filtroTipo ?? {}),
       },
       orderBy: { vencimento: "asc" },
     });

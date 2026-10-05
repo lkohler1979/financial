@@ -44,6 +44,7 @@ interface LinhaCobranca {
   primeiroVencimento: string;
   valorEditado: number | null;
   editandoValor: boolean;
+  observacoes: string;
 }
 
 function hojeIso(): string {
@@ -359,6 +360,18 @@ function hojeIso(): string {
                     </button>
                   }
                 </div>
+                <div class="col-span-2 md:col-span-7">
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="w-full">
+                    <mat-label>Obs. do título (opcional)</mat-label>
+                    <input
+                      matInput
+                      maxlength="1000"
+                      [(ngModel)]="linha.observacoes"
+                      [ngModelOptions]="{ standalone: true }"
+                      [disabled]="!linha.gerar"
+                    />
+                  </mat-form-field>
+                </div>
               </div>
             }
             <p class="text-xs font-medium text-gray-600 border-b pb-1 mb-3 mt-4">CUPOM DE DESCONTO</p>
@@ -488,6 +501,7 @@ export class MatriculaWizardComponent implements OnInit {
         primeiroVencimento: hojeIso(),
         valorEditado: null,
         editandoValor: false,
+        observacoes: "",
       }));
     });
   }
@@ -664,15 +678,22 @@ export class MatriculaWizardComponent implements OnInit {
               numeroParcelas: l.numeroParcelas,
               primeiroVencimento: l.primeiroVencimento,
               ...(l.formaPagamento ? { formaPagamento: l.formaPagamento } : {}),
+              ...(l.observacoes.trim() ? { observacoes: l.observacoes.trim() } : {}),
             })),
             ...(this.cupom ? { cupomCodigo: this.cupom.codigo } : {}),
           })
           .subscribe({
             next: (matricula) => {
+              const emissao = matricula.emissaoCobrancas;
+              const aviso = emissao?.falhas.length
+                ? ` Atenção: ${emissao.falhas.length} cobrança(s) não puderam ser emitidas (${emissao.falhas[0].erro}) — emita pela Ficha de Cobrança.`
+                : emissao?.emitidas
+                  ? ` ${emissao.emitidas} cobrança(s) emitida(s); as demais saem perto do vencimento ou a pedido do aluno.`
+                  : "";
               this.snackBar.open(
-                `Matrícula ${matricula.numeroMatricula} criada — anexe os documentos`,
+                `Matrícula ${matricula.numeroMatricula} criada — anexe os documentos.${aviso}`,
                 "Fechar",
-                { duration: 6000 },
+                { duration: aviso ? 12000 : 6000 },
               );
               this.router.navigate(["/matriculas", matricula.id]);
             },

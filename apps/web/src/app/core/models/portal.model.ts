@@ -41,6 +41,8 @@ export type StatusParcelaPortal =
 export interface PortalParcela {
   id: string;
   matriculaId: string;
+  codTitulo: string;
+  matricula: { curso: { nome: string } };
   parcela: string;
   tipoTitulo: string | null;
   vencimento: string;

@@ -45,6 +45,15 @@ const cobrancaSchema = z.object({
   numeroParcelas: z.coerce.number().int().positive().max(360),
   primeiroVencimento: dataLocal,
   formaPagamento: z.enum(["BOLETO", "PIX", "CREDIT_CARD"]).optional(),
+  // Observação do título (balão "Obs." do cadastro) — vai para cada parcela gerada.
+  observacoes: z.string().trim().max(1000).optional(),
+});
+
+export const alterarSituacaoSchema = z.object({
+  situacao: z.string().trim().min(1, "Informe a nova situação"),
+  periodoLetivo: z.string().trim().max(50).nullable().optional(),
+  motivo: z.string().trim().max(500).nullable().optional(),
+  observacoes: z.string().trim().max(1000).nullable().optional(),
 });
 
 export const criarMatriculaSchema = z.object({

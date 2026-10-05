@@ -58,6 +58,7 @@ export const atualizarConfiguracaoSchema = z
     asaasJurosMensalPercentual: z.coerce.number().min(0).max(100).nullable().optional(),
     asaasDescontoPercentual: z.coerce.number().min(0).max(100).nullable().optional(),
     asaasDescontoDiasAntesVencimento: z.coerce.number().int().min(0).max(30).nullable().optional(),
+    emissaoAntecipadaDias: z.coerce.number().int().min(0).max(60).optional(),
   })
   .refine((obj) => Object.keys(obj).length > 0, "Informe ao menos um campo para atualizar");
 

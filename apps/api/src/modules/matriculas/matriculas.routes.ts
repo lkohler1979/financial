@@ -5,7 +5,10 @@ export const matriculasRouter = Router();
 
 matriculasRouter.get("/", matriculasController.listar);
 matriculasRouter.get("/agentes", matriculasController.listarAgentes);
-matriculasRouter.get("/:id",matriculasController.buscarPorId);
+matriculasRouter.get("/situacoes", matriculasController.listarSituacoes);
+matriculasRouter.get("/:id", matriculasController.buscarPorId);
+matriculasRouter.get("/:id/situacao/historico", matriculasController.historicoSituacao);
+matriculasRouter.post("/:id/situacao", matriculasController.alterarSituacao);
 matriculasRouter.post("/", matriculasController.criar);
 matriculasRouter.put("/:id", matriculasController.atualizar);
 matriculasRouter.delete("/:id", matriculasController.remover);

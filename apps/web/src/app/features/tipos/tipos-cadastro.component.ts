@@ -6,7 +6,7 @@ import { MatIconModule } from "@angular/material/icon";
 import { MatSnackBar } from "@angular/material/snack-bar";
 import { TipoDescontoCupom } from "../../core/models/cupom.model";
 import { EscopoDocumento, TipoDocumento } from "../../core/models/documento.model";
-import { FormaPagamento, TipoCobranca } from "../../core/models/tipo-cobranca.model";
+import { EmissaoCobranca, FormaPagamento, TipoCobranca } from "../../core/models/tipo-cobranca.model";
 import { CuponsService } from "../../core/services/cupons.service";
 import { DocumentosService } from "../../core/services/documentos.service";
 import { SolicitacoesService } from "../../core/services/solicitacoes.service";
@@ -27,6 +27,7 @@ interface LinhaCobranca {
   aceitaCupom: boolean;
   entraNoProtesto: boolean;
   disponivelNoCadastro: boolean;
+  emissaoNaMatricula: EmissaoCobranca;
 }
 
 interface LinhaDocumento {
@@ -74,7 +75,7 @@ interface LinhaSolicitacao {
         Mensalidade, Taxa de matrícula e Renegociação são tipos de cobrança. "Valor do curso" usa o
         valor padrão do curso; senão vale o valor padrão do tipo. "No protesto" desmarcado = as
         parcelas desse tipo nunca entram no relatório/documento de protesto. "No cadastro"
-        desmarcado = não aparece ao cadastrar a matrícula. Opções de parcelas separadas por vírgula.
+        desmarcado = não aparece ao cadastrar a matrícula. Opções de parcelas separadas por vírgula. "Emissão na matrícula" define quais parcelas já saem com boleto/Pix no cadastro (taxas: todas; mensalidade: só a 1ª — as demais saem aos poucos, antes do vencimento, ou a pedido do aluno).
       </p>
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
@@ -86,6 +87,7 @@ interface LinhaSolicitacao {
               <th class="pr-2">Valor padrão</th>
               <th class="pr-2">Parcelas</th>
               <th class="pr-2">Forma padrão</th>
+              <th class="pr-2">Emissão na matrícula</th>
               <th class="pr-2">Aceita cupom</th>
               <th class="pr-2">No protesto</th>
               <th class="pr-2">No cadastro</th>
@@ -118,6 +120,13 @@ interface LinhaSolicitacao {
                     <option value="BOLETO">Boleto</option>
                     <option value="PIX">Pix</option>
                     <option value="CREDIT_CARD">Cartão</option>
+                  </select>
+                </td>
+                <td class="pr-2">
+                  <select class="border rounded px-2 py-1" [(ngModel)]="l.emissaoNaMatricula">
+                    <option value="TODAS">Todas as parcelas</option>
+                    <option value="PRIMEIRA">Só a 1ª parcela</option>
+                    <option value="SOB_DEMANDA">Nenhuma (sob demanda)</option>
                   </select>
                 </td>
                 <td class="pr-2"><mat-checkbox [(ngModel)]="l.aceitaCupom"></mat-checkbox></td>
@@ -312,6 +321,7 @@ export class TiposCadastroComponent implements OnInit {
         aceitaCupom: t.aceitaCupom,
         entraNoProtesto: t.entraNoProtesto,
         disponivelNoCadastro: t.disponivelNoCadastro,
+        emissaoNaMatricula: t.emissaoNaMatricula,
       }));
     });
     this.cuponsService.listar().subscribe((cupons) => {
@@ -362,6 +372,7 @@ export class TiposCadastroComponent implements OnInit {
         aceitaCupom: false,
         entraNoProtesto: true,
         disponivelNoCadastro: true,
+        emissaoNaMatricula: "PRIMEIRA",
       },
     ];
   }
@@ -424,6 +435,7 @@ export class TiposCadastroComponent implements OnInit {
       aceitaCupom: l.aceitaCupom,
       entraNoProtesto: l.entraNoProtesto,
       disponivelNoCadastro: l.disponivelNoCadastro,
+      emissaoNaMatricula: l.emissaoNaMatricula,
     };
     const req = l.id ? this.cobrancaService.atualizar(l.id, payload) : this.cobrancaService.criar(payload);
     req.subscribe({

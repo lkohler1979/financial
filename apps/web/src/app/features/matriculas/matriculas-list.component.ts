@@ -14,7 +14,13 @@ import { MatDialog, MatDialogModule } from "@angular/material/dialog";
 import { MatSnackBar } from "@angular/material/snack-bar";
 import { debounceTime, distinctUntilChanged } from "rxjs";
 import { MatriculasService } from "../../core/services/matriculas.service";
-import { Matricula } from "../../core/models/matricula.model";
+import {
+  classeSituacaoMatricula,
+  Matricula,
+  rotuloSituacaoMatricula,
+  SituacaoMatriculaOpcao,
+} from "../../core/models/matricula.model";
+import { formatarCpf } from "../../shared/utils/cpf.util";
 import { CobrancaService } from "../../core/services/cobranca.service";
 import { SituacaoCobranca, Tag } from "../../core/models/cobranca.model";
 import {
@@ -62,7 +68,12 @@ import {
       </mat-form-field>
       <mat-form-field appearance="outline" subscriptSizing="dynamic">
         <mat-label>Situação</mat-label>
-        <input matInput formControlName="situacao" />
+        <mat-select formControlName="situacao">
+          <mat-option [value]="undefined">Todas</mat-option>
+          @for (s of situacoesMatricula; track s.codigo) {
+            <mat-option [value]="s.codigo">{{ s.nome }}</mat-option>
+          }
+        </mat-select>
       </mat-form-field>
       <mat-form-field appearance="outline" subscriptSizing="dynamic">
         <mat-label>Situação de cobrança</mat-label>
@@ -123,6 +134,18 @@ import {
             }
           </td>
         </ng-container>
+        <ng-container matColumnDef="cpf">
+          <th mat-header-cell *matHeaderCellDef>CPF</th>
+          <td mat-cell *matCellDef="let m" class="whitespace-nowrap">{{ m.aluno?.cpf ? formatarCpf(m.aluno.cpf) : "—" }}</td>
+        </ng-container>
+        <ng-container matColumnDef="celular">
+          <th mat-header-cell *matHeaderCellDef>Celular</th>
+          <td mat-cell *matCellDef="let m" class="whitespace-nowrap">{{ m.aluno?.telefone1 || m.aluno?.telefone2 || "—" }}</td>
+        </ng-container>
+        <ng-container matColumnDef="email">
+          <th mat-header-cell *matHeaderCellDef>E-mail</th>
+          <td mat-cell *matCellDef="let m">{{ m.aluno?.email || "—" }}</td>
+        </ng-container>
         <ng-container matColumnDef="curso">
           <th mat-header-cell *matHeaderCellDef>Curso</th>
           <td mat-cell *matCellDef="let m">{{ m.curso?.nome || m.cursoId }}</td>
@@ -140,9 +163,11 @@ import {
         <ng-container matColumnDef="situacao">
           <th mat-header-cell *matHeaderCellDef>Situação</th>
           <td mat-cell *matCellDef="let m">
-            <span class="px-2 py-0.5 rounded text-xs bg-gray-100 whitespace-nowrap">{{
-              m.situacao
-            }}</span>
+            <span
+              class="px-2 py-0.5 rounded text-xs whitespace-nowrap"
+              [class]="classeSituacao(m.situacao)"
+              >{{ rotuloSituacao(m.situacao) }}</span
+            >
           </td>
         </ng-container>
         <ng-container matColumnDef="parcelas">
@@ -216,7 +241,11 @@ export class MatriculasListComponent implements OnInit {
     dataMatriculaFim: this.fb.control<string | undefined>(undefined),
   });
 
-  colunas = ["aluno", "curso", "numero", "data", "situacao", "parcelas", "acoes"];
+  colunas = ["aluno", "cpf", "celular", "email", "curso", "numero", "data", "situacao", "parcelas", "acoes"];
+  situacoesMatricula: SituacaoMatriculaOpcao[] = [];
+  protected readonly formatarCpf = formatarCpf;
+  protected readonly rotuloSituacao = rotuloSituacaoMatricula;
+  protected readonly classeSituacao = classeSituacaoMatricula;
   matriculas: Matricula[] = [];
   situacoesCobranca: SituacaoCobranca[] = [];
   tags: Tag[] = [];
@@ -226,6 +255,7 @@ export class MatriculasListComponent implements OnInit {
   carregando = false;
 
   ngOnInit(): void {
+    this.service.situacoes().subscribe((res) => (this.situacoesMatricula = res));
     this.cobrancaService.listarSituacoes(true).subscribe((res) => (this.situacoesCobranca = res));
     this.cobrancaService.listarTags().subscribe((res) => (this.tags = res));
     this.carregar();

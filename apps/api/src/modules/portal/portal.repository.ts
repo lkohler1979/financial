@@ -36,6 +36,8 @@ export const portalRepository = {
       select: {
         id: true,
         matriculaId: true,
+        codTitulo: true,
+        matricula: { select: { curso: { select: { nome: true } } } },
         parcela: true,
         tipoTitulo: true,
         vencimento: true,

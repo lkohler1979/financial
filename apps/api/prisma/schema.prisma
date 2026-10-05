@@ -116,10 +116,11 @@ model Usuario {
   /// ADMINISTRADOR sempre pode, independente deste campo.
   podeDeferirDocumentos Boolean       @default(false) @map("pode_deferir_documentos")
 
-  alunosComoAgente        Aluno[]                  @relation("AlunoAgenteEducacional")
-  matriculasComoAgente    Matricula[]              @relation("MatriculaAgenteEducacional")
+  alunosComoAgente        Aluno[]                      @relation("AlunoAgenteEducacional")
+  matriculasComoAgente    Matricula[]                  @relation("MatriculaAgenteEducacional")
   documentosValidados     Documento[]
   solicitacoesAtendidas   SolicitacaoDocumento[]
+  historicoSituacoes      HistoricoSituacaoMatricula[]
   importacoes             Importacao[]
   auditorias              Auditoria[]
   historicosCobranca      HistoricoCobranca[]
@@ -228,15 +229,16 @@ model Matricula {
   curso Curso @relation(fields: [cursoId], references: [id])
 
   documentos          Documento[]
+  historicoSituacoes  HistoricoSituacaoMatricula[]
   solicitacoes        SolicitacaoDocumento[]
-  cupomId             String?                @map("cupom_id")
-  cupom               Cupom?                 @relation(fields: [cupomId], references: [id])
+  cupomId             String?                      @map("cupom_id")
+  cupom               Cupom?                       @relation(fields: [cupomId], references: [id])
   parcelas            Parcela[]
   tags                MatriculaTag[]
   historicoCobranca   HistoricoCobranca[]
   observacoesCobranca ObservacaoCobranca[]
-  situacaoCobrancaId  String?                @map("situacao_cobranca_id")
-  situacaoCobranca    SituacaoCobranca?      @relation(fields: [situacaoCobrancaId], references: [id])
+  situacaoCobrancaId  String?                      @map("situacao_cobranca_id")
+  situacaoCobranca    SituacaoCobranca?            @relation(fields: [situacaoCobrancaId], references: [id])
 
   @@unique([alunoId, cursoId, numeroMatricula])
   @@map("matriculas")
@@ -426,6 +428,9 @@ model Configuracao {
   /// `discount.dueDateLimitDays` do Asaas. Só tem efeito se o percentual
   /// acima também estiver preenchido.
   asaasDescontoDiasAntesVencimento Int?          @map("asaas_desconto_dias_antes_vencimento")
+  /// Emissão automática diária das cobranças das demais parcelas: quantos dias
+  /// antes do vencimento. 0 = desligada (só a pedido, na Ficha ou pelo aluno).
+  emissaoAntecipadaDias            Int           @default(10) @map("emissao_antecipada_dias")
 
   // --- Qual provedor atende cada tipo de cobrança ---
   // Null = tipo desabilitado (não aparece no menu "Gerar cobrança"). Nunca os
@@ -653,10 +658,10 @@ model Documento {
   situacaoEntrega     SituacaoEntregaDocumento     @default(NAO_ENVIADO) @map("situacao_entrega")
   situacaoDeferimento SituacaoDeferimentoDocumento @default(PENDENTE) @map("situacao_deferimento")
   vencimento          DateTime?
-  anexadoEm           DateTime? @map("anexado_em")
+  anexadoEm           DateTime?                    @map("anexado_em")
   /// IP de origem do último envio e se foi o próprio aluno (área do aluno) ou a equipe.
-  anexadoIp           String?   @map("anexado_ip")
-  anexadoPorAluno     Boolean   @default(false) @map("anexado_por_aluno")
+  anexadoIp           String?                      @map("anexado_ip")
+  anexadoPorAluno     Boolean                      @default(false) @map("anexado_por_aluno")
   deferidoEm          DateTime?                    @map("deferido_em")
   validadoPorId       String?                      @map("validado_por_id")
   observacaoInterna   String?                      @map("observacao_interna")
@@ -707,8 +712,18 @@ model TipoCobranca {
   /// false = tipo que não aparece no cadastro da matrícula (ex.: Renegociação,
   /// que nasce de uma renegociação e não da matrícula).
   disponivelNoCadastro Boolean           @default(true) @map("disponivel_no_cadastro")
+  /// Quais parcelas já têm a cobrança (boleto/Pix) emitida ao cadastrar a matrícula:
+  /// TODAS (ex.: taxas), PRIMEIRA (ex.: mensalidade — as demais saem aos poucos,
+  /// antes do vencimento ou a pedido do aluno) ou SOB_DEMANDA (nenhuma).
+  emissaoNaMatricula   EmissaoCobranca   @default(PRIMEIRA) @map("emissao_na_matricula")
 
   @@map("tipos_cobranca")
+}
+
+enum EmissaoCobranca {
+  TODAS
+  PRIMEIRA
+  SOB_DEMANDA
 }
 
 enum TipoDescontoCupom {
@@ -783,4 +798,25 @@ model SolicitacaoDocumento {
   @@index([alunoId])
   @@index([status])
   @@map("solicitacoes_documento")
+}
+
+// Histórico de trocas de situação da matrícula (Aguardando Pagamento, Ativa,
+// Trancada...). `usuarioId` nulo = mudança automática do sistema (ex.: ativação
+// ao confirmar o primeiro pagamento).
+model HistoricoSituacaoMatricula {
+  id               String   @id @default(uuid())
+  matriculaId      String   @map("matricula_id")
+  situacaoAnterior String?  @map("situacao_anterior")
+  situacaoNova     String   @map("situacao_nova")
+  periodoLetivo    String?  @map("periodo_letivo")
+  motivo           String?
+  observacoes      String?
+  usuarioId        String?  @map("usuario_id")
+  criadoEm         DateTime @default(now()) @map("criado_em")
+
+  matricula Matricula @relation(fields: [matriculaId], references: [id], onDelete: Cascade)
+  usuario   Usuario?  @relation(fields: [usuarioId], references: [id])
+
+  @@index([matriculaId])
+  @@map("historico_situacao_matricula")
 }

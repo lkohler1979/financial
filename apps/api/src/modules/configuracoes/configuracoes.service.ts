@@ -32,6 +32,7 @@ function serializarConfiguracao(configuracao: {
   asaasJurosMensalPercentual: Prisma.Decimal | number | null;
   asaasDescontoPercentual: Prisma.Decimal | number | null;
   asaasDescontoDiasAntesVencimento: number | null;
+  emissaoAntecipadaDias: number;
   provedorBoleto: PagamentoProvedor | null;
   provedorPix: PagamentoProvedor | null;
   provedorCartao: PagamentoProvedor | null;
@@ -141,6 +142,9 @@ export const configuracoesService = {
         : {}),
       ...(input.asaasDescontoPercentual !== undefined
         ? { asaasDescontoPercentual: input.asaasDescontoPercentual }
+        : {}),
+      ...(input.emissaoAntecipadaDias !== undefined
+        ? { emissaoAntecipadaDias: input.emissaoAntecipadaDias }
         : {}),
       ...(input.asaasDescontoDiasAntesVencimento !== undefined
         ? { asaasDescontoDiasAntesVencimento: input.asaasDescontoDiasAntesVencimento }

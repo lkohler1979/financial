@@ -2,11 +2,13 @@ import { Request, Response } from "express";
 import { asyncHandler } from "../../shared/utils/async-handler";
 import { paramString, usuarioAtual } from "../../shared/utils/http";
 import {
+  alterarSituacaoSchema,
   atualizarMatriculaSchema,
   criarMatriculaSchema,
   listarMatriculasSchema,
 } from "./matriculas.schema";
 import { matriculasService } from "./matriculas.service";
+import { situacaoService } from "./situacao.service";
 
 export const matriculasController = {
   listar: asyncHandler(async (req: Request, res: Response) => {
@@ -17,6 +19,19 @@ export const matriculasController = {
 
   listarAgentes: asyncHandler(async (_req: Request, res: Response) => {
     res.json(await matriculasService.listarAgentes());
+  }),
+
+  listarSituacoes: asyncHandler(async (_req: Request, res: Response) => {
+    res.json(situacaoService.listarSituacoes());
+  }),
+
+  historicoSituacao: asyncHandler(async (req: Request, res: Response) => {
+    res.json(await situacaoService.listarHistorico(paramString(req, "id")));
+  }),
+
+  alterarSituacao: asyncHandler(async (req: Request, res: Response) => {
+    const input = alterarSituacaoSchema.parse(req.body);
+    res.json(await situacaoService.alterar(paramString(req, "id"), input, usuarioAtual(req)));
   }),
 
   buscarPorId: asyncHandler(async (req: Request, res: Response) => {

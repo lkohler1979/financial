@@ -6,6 +6,8 @@ export const ROTULO_FORMA_PAGAMENTO: Record<FormaPagamento, string> = {
   CREDIT_CARD: "Cartão de crédito",
 };
 
+export type EmissaoCobranca = "TODAS" | "PRIMEIRA" | "SOB_DEMANDA";
+
 export interface TipoCobranca {
   id: string;
   nome: string;
@@ -28,6 +30,8 @@ export interface TipoCobranca {
   entraNoProtesto: boolean;
   /** false = não aparece no cadastro da matrícula (ex.: Renegociação). */
   disponivelNoCadastro: boolean;
+  /** Quais parcelas já têm cobrança emitida ao cadastrar a matrícula. */
+  emissaoNaMatricula: EmissaoCobranca;
 }
 
 export type TipoCobrancaPayload = Partial<Omit<TipoCobranca, "id">>;
@@ -39,4 +43,5 @@ export interface CobrancaMatriculaPayload {
   numeroParcelas: number;
   primeiroVencimento: string;
   formaPagamento?: FormaPagamento;
+  observacoes?: string;
 }

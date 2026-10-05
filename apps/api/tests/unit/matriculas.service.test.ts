@@ -1,3 +1,4 @@
+import { emissaoCobrancaService } from "../../src/modules/asaas/emissao-cobranca.service";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { matriculasService } from "../../src/modules/matriculas/matriculas.service";
 import { matriculasRepository } from "../../src/modules/matriculas/matriculas.repository";
@@ -29,6 +30,14 @@ vi.mock("../../src/modules/cursos/cursos.repository", () => ({
 vi.mock("../../src/modules/financeiro/financeiro.service", () => ({
   financeiroService: { criar: vi.fn() },
 }));
+vi.mock("../../src/modules/asaas/emissao-cobranca.service", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../src/modules/asaas/emissao-cobranca.service")>()),
+  emissaoCobrancaService: { emitir: vi.fn().mockResolvedValue({ emitidas: 0, falhas: [] }) },
+}));
+vi.mock("../../src/modules/matriculas/situacao.service", () => ({
+  situacaoService: { registrarInicial: vi.fn() },
+}));
+vi.mock("../../src/modules/asaas/asaas.service", () => ({ asaasService: {} }));
 vi.mock("../../src/modules/tipos-cobranca/tipos-cobranca.service", () => ({
   tiposCobrancaService: { formasPagamentoHabilitadas: vi.fn().mockResolvedValue(["BOLETO", "PIX"]) },
 }));
@@ -46,6 +55,7 @@ const repo = vi.mocked(matriculasRepository);
 const alunos = vi.mocked(alunosRepository);
 const cursos = vi.mocked(cursosRepository);
 const financeiro = vi.mocked(financeiroService);
+const emissao = vi.mocked(emissaoCobrancaService);
 const auditoria = vi.mocked(registrarAuditoria);
 const tiposRepo = vi.mocked(tiposCobrancaRepository);
 
@@ -263,6 +273,7 @@ describe("matriculasService.criar — cobranças por tipo", () => {
     prefixoTitulo: null,
     aceitaCupom: true,
     formaPagamentoPadrao: "BOLETO",
+    emissaoNaMatricula: "PRIMEIRA",
   };
   const TAXA = {
     id: "22222222-bbbb-bbbb-bbbb-222222222222",
@@ -275,6 +286,7 @@ describe("matriculasService.criar — cobranças por tipo", () => {
     prefixoTitulo: "TM",
     aceitaCupom: false,
     formaPagamentoPadrao: null,
+    emissaoNaMatricula: "TODAS",
   };
 
   beforeEach(() => {
@@ -283,6 +295,47 @@ describe("matriculasService.criar — cobranças por tipo", () => {
     repo.findByChaveNatural.mockResolvedValue(null);
     repo.create.mockResolvedValue(matriculaFake as never);
     tiposRepo.listObrigatoriosAtivos.mockResolvedValue([MENSALIDADE] as never);
+    let n = 0;
+    financeiro.criar.mockImplementation((async () => ({ id: `p${++n}` })) as never);
+  });
+
+  it("emite cobrança só da 1ª mensalidade e das taxas (demais ficam para depois)", async () => {
+    tiposRepo.findManyByIds.mockResolvedValue([MENSALIDADE, TAXA] as never);
+    emissao.emitir.mockResolvedValueOnce({ emitidas: 2, falhas: [] });
+
+    const r = await matriculasService.criar(
+      {
+        alunoId: ALUNO,
+        cursoId: CURSO,
+        cobrancas: [
+          { tipoCobrancaId: MENSALIDADE.id, numeroParcelas: 6, primeiroVencimento: new Date(2026, 10, 10) },
+          { tipoCobrancaId: TAXA.id, numeroParcelas: 1, primeiroVencimento: new Date(2026, 10, 10) },
+        ],
+      },
+      USUARIO,
+    );
+
+    // p1 = 1ª mensalidade; p2..p6 = demais mensalidades (sem cobrança); p7 = taxa.
+    const [parcelas, , usuario] = emissao.emitir.mock.calls[0];
+    expect(parcelas.map((p) => p.id)).toEqual(["p1", "p7"]);
+    expect(usuario).toBe(USUARIO);
+    expect(r.emissaoCobrancas).toEqual({ emitidas: 2, falhas: [] });
+  });
+
+  it("política SOB_DEMANDA não emite nada; TODAS emite todas as parcelas", async () => {
+    tiposRepo.findManyByIds.mockResolvedValue([{ ...MENSALIDADE, emissaoNaMatricula: "SOB_DEMANDA" }] as never);
+    await matriculasService.criar(
+      { alunoId: ALUNO, cursoId: CURSO, cobrancas: [{ tipoCobrancaId: MENSALIDADE.id, numeroParcelas: 6, primeiroVencimento: new Date(2026, 10, 10) }] },
+      USUARIO,
+    );
+    expect(emissao.emitir.mock.calls.at(-1)?.[0]).toEqual([]);
+
+    tiposRepo.findManyByIds.mockResolvedValue([{ ...MENSALIDADE, emissaoNaMatricula: "TODAS" }] as never);
+    await matriculasService.criar(
+      { alunoId: ALUNO, cursoId: CURSO, cobrancas: [{ tipoCobrancaId: MENSALIDADE.id, numeroParcelas: 6, primeiroVencimento: new Date(2026, 10, 10) }] },
+      USUARIO,
+    );
+    expect(emissao.emitir.mock.calls.at(-1)?.[0]).toHaveLength(6);
   });
 
   it("gera mensalidade (valor do curso) e taxa (valor do tipo) com tipoTitulo e prefixo", async () => {
@@ -309,6 +362,22 @@ describe("matriculasService.criar — cobranças por tipo", () => {
     expect(repo.create).toHaveBeenCalledWith(
       expect.objectContaining({ valorCurso: 1200, numeroParcelas: 6, diaVencimento: 28 }),
     );
+  });
+
+  it("matrícula com cobranças nasce Aguardando pagamento; observação do título vai para as parcelas", async () => {
+    tiposRepo.findManyByIds.mockResolvedValue([MENSALIDADE] as never);
+    await matriculasService.criar(
+      {
+        alunoId: ALUNO,
+        cursoId: CURSO,
+        cobrancas: [
+          { tipoCobrancaId: MENSALIDADE.id, numeroParcelas: 6, primeiroVencimento: new Date(2026, 10, 10), observacoes: "Bolsa parcial" },
+        ],
+      },
+      USUARIO,
+    );
+    expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ situacao: "AGUARDANDO_PAGAMENTO" }));
+    expect(financeiro.criar.mock.calls.every(([i]) => i.observacoes === "Bolsa parcial")).toBe(true);
   });
 
   it("exige as cobranças obrigatórias", async () => {

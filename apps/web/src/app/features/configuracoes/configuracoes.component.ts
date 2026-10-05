@@ -289,6 +289,14 @@ import {
               />
               <mat-hint>Ex.: 5 = paga com desconto até 5 dias antes de vencer.</mat-hint>
             </mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Emitir cobrança automaticamente (dias antes do vencimento)</mat-label>
+              <input matInput type="number" min="0" max="60" formControlName="emissaoAntecipadaDias" />
+              <mat-hint>
+                Todo dia, emite boleto/Pix das parcelas que vencem em até X dias e ainda não têm
+                cobrança. 0 = desligado (só a pedido).
+              </mat-hint>
+            </mat-form-field>
           </div>
         </div>
 
@@ -578,6 +586,7 @@ export class ConfiguracoesComponent implements OnInit {
     asaasJurosMensalPercentual: this.fb.control<number | null>(null),
     asaasDescontoPercentual: this.fb.control<number | null>(null),
     asaasDescontoDiasAntesVencimento: this.fb.control<number | null>(null),
+    emissaoAntecipadaDias: this.fb.nonNullable.control(10, [Validators.min(0), Validators.max(60)]),
     provedorBoleto: this.fb.control<PagamentoProvedor | null>("ASAAS"),
     provedorPix: this.fb.control<PagamentoProvedor | null>("ASAAS"),
     provedorCartao: this.fb.control<PagamentoProvedor | null>("ASAAS"),

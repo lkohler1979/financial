@@ -15,6 +15,7 @@ import { debounceTime, switchMap } from "rxjs";
 import { MatriculasService } from "../../core/services/matriculas.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { DocumentosMatriculaComponent } from "./documentos-matricula.component";
+import { SituacaoMatriculaComponent } from "./situacao-matricula.component";
 import { AlunosService } from "../../core/services/alunos.service";
 import { CursosService } from "../../core/services/cursos.service";
 import { CobrancaService } from "../../core/services/cobranca.service";
@@ -23,8 +24,6 @@ import { Aluno } from "../../core/models/aluno.model";
 import { Curso } from "../../core/models/curso.model";
 import { SituacaoCobranca, Tag } from "../../core/models/cobranca.model";
 import { formatarCpf } from "../../shared/utils/cpf.util";
-
-const SITUACOES = ["ATIVA", "TRANCADA", "CANCELADA", "CONCLUIDA"];
 
 @Component({
   selector: "app-matricula-form",
@@ -42,6 +41,7 @@ const SITUACOES = ["ATIVA", "TRANCADA", "CANCELADA", "CONCLUIDA"];
     MatSlideToggleModule,
     MatProgressBarModule,
     DocumentosMatriculaComponent,
+    SituacaoMatriculaComponent,
   ],
   template: `
     <div class="flex items-center gap-2 mb-4">
@@ -114,15 +114,6 @@ const SITUACOES = ["ATIVA", "TRANCADA", "CANCELADA", "CONCLUIDA"];
         <mat-form-field appearance="outline">
           <mat-label>Data da matrícula</mat-label>
           <input matInput type="date" formControlName="dataMatricula" />
-        </mat-form-field>
-
-        <mat-form-field appearance="outline">
-          <mat-label>Situação</mat-label>
-          <mat-select formControlName="situacao">
-            @for (s of situacoes; track s) {
-              <mat-option [value]="s">{{ s }}</mat-option>
-            }
-          </mat-select>
         </mat-form-field>
 
         <div class="flex items-center">
@@ -229,6 +220,10 @@ const SITUACOES = ["ATIVA", "TRANCADA", "CANCELADA", "CONCLUIDA"];
         </div>
       }
 
+      @if (editando && id && situacaoAtual) {
+        <app-situacao-matricula [matriculaId]="id" [situacaoInicial]="situacaoAtual"></app-situacao-matricula>
+      }
+
       @if (editando && id) {
         <app-documentos-matricula [matriculaId]="id"></app-documentos-matricula>
       }
@@ -253,7 +248,8 @@ export class MatriculaFormComponent implements OnInit {
   private readonly snackBar = inject(MatSnackBar);
 
   protected readonly formatarCpf = formatarCpf;
-  readonly situacoes = SITUACOES;
+  /** Situação carregada da matrícula (a troca é feita pelo componente próprio). */
+  situacaoAtual = "";
 
   editando = false;
   carregando = false;
@@ -278,7 +274,6 @@ export class MatriculaFormComponent implements OnInit {
     curso: this.fb.control<Curso | string | null>(null, [Validators.required, objetoValidator]),
     numeroMatricula: [""],
     dataMatricula: [""],
-    situacao: ["ATIVA"],
     contratoAssinado: [false],
     tcdAssinado: [false],
     observacoes: [""],
@@ -336,6 +331,7 @@ export class MatriculaFormComponent implements OnInit {
       this.carregando = true;
       this.service.buscarPorId(this.id).subscribe({
         next: (m) => {
+          this.situacaoAtual = m.situacao;
           this.form.patchValue({
             aluno: m.aluno
               ? ({ id: m.alunoId, cpf: m.aluno.cpf, nome: m.aluno.nome } as Aluno)
@@ -345,7 +341,6 @@ export class MatriculaFormComponent implements OnInit {
               : null,
             numeroMatricula: m.numeroMatricula ?? "",
             dataMatricula: m.dataMatricula ? m.dataMatricula.substring(0, 10) : "",
-            situacao: m.situacao,
             contratoAssinado: m.contratoAssinado,
             tcdAssinado: m.tcdAssinado,
             observacoes: m.observacoes ?? "",
@@ -455,7 +450,6 @@ export class MatriculaFormComponent implements OnInit {
       cursoId: curso.id,
       numeroMatricula: bruto.numeroMatricula || undefined,
       dataMatricula: bruto.dataMatricula || undefined,
-      situacao: bruto.situacao || undefined,
       contratoAssinado: bruto.contratoAssinado ?? false,
       tcdAssinado: bruto.tcdAssinado ?? false,
       observacoes: bruto.observacoes || undefined,

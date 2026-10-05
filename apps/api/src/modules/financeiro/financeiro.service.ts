@@ -1,3 +1,4 @@
+import { situacaoService } from "../matriculas/situacao.service";
 import { Prisma } from "@prisma/client";
 import { ConflictError, NotFoundError } from "../../shared/errors/app-error";
 import { registrarAuditoria } from "../auditoria/auditoria.service";
@@ -87,6 +88,9 @@ export const financeiroService = {
       acao: "ATUALIZACAO",
       detalhes: { camposAlterados: Object.keys(input) },
     });
+
+    // Primeiro pagamento confirmado ativa a matrícula que aguardava pagamento.
+    if (input.status === "PAGO") await situacaoService.ativarPorPagamento(parcela.matriculaId);
 
     return parcela;
   },

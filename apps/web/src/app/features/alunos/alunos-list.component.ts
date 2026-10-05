@@ -60,6 +60,14 @@ import { ImportarLegadoDialogComponent } from "./importar-legado-dialog.componen
 
     <div class="bg-white rounded shadow-sm overflow-x-auto mt-2 w-full">
       <table mat-table [dataSource]="alunos" class="w-full table-compact">
+        <ng-container matColumnDef="codigo">
+          <th mat-header-cell *matHeaderCellDef>Código</th>
+          <td mat-cell *matCellDef="let a" class="whitespace-nowrap">{{ a.codigo || "—" }}</td>
+        </ng-container>
+        <ng-container matColumnDef="celular">
+          <th mat-header-cell *matHeaderCellDef>Celular</th>
+          <td mat-cell *matCellDef="let a" class="whitespace-nowrap">{{ a.telefone1 || a.telefone2 || "—" }}</td>
+        </ng-container>
         <ng-container matColumnDef="nome">
           <th mat-header-cell *matHeaderCellDef>Nome</th>
           <td mat-cell *matCellDef="let a">{{ a.nome }}</td>
@@ -115,7 +123,7 @@ export class AlunosListComponent implements OnInit {
   protected readonly formatarCpf = formatarCpf;
 
   readonly busca = new FormControl("", { nonNullable: true });
-  colunas = ["nome", "cpf", "email", "cidade", "acoes"];
+  colunas = ["codigo", "nome", "cpf", "celular", "email", "cidade", "acoes"];
   alunos: Aluno[] = [];
   total = 0;
   page = 1;

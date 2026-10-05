@@ -2,7 +2,14 @@ import { HttpClient, HttpParams } from "@angular/common/http";
 import { inject, Injectable } from "@angular/core";
 import { Observable } from "rxjs";
 import { environment } from "../../../environments/environment";
-import { AgenteEducacional, Matricula, MatriculaPayload } from "../models/matricula.model";
+import {
+  AgenteEducacional,
+  AlterarSituacaoPayload,
+  HistoricoSituacaoMatricula,
+  Matricula,
+  MatriculaPayload,
+  SituacaoMatriculaOpcao,
+} from "../models/matricula.model";
 import { Paginado } from "../models/paginado.model";
 
 @Injectable({ providedIn: "root" })
@@ -52,6 +59,18 @@ export class MatriculasService {
 
   buscarPorId(id: string): Observable<Matricula> {
     return this.http.get<Matricula>(`${this.baseUrl}/${id}`);
+  }
+
+  situacoes(): Observable<SituacaoMatriculaOpcao[]> {
+    return this.http.get<SituacaoMatriculaOpcao[]>(`${this.baseUrl}/situacoes`);
+  }
+
+  historicoSituacao(id: string): Observable<HistoricoSituacaoMatricula[]> {
+    return this.http.get<HistoricoSituacaoMatricula[]>(`${this.baseUrl}/${id}/situacao/historico`);
+  }
+
+  alterarSituacao(id: string, payload: AlterarSituacaoPayload): Observable<{ situacao: string }> {
+    return this.http.post<{ situacao: string }>(`${this.baseUrl}/${id}/situacao`, payload);
   }
 
   criar(payload: MatriculaPayload): Observable<Matricula> {

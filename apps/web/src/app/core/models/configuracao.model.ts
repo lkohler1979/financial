@@ -56,6 +56,7 @@ export interface Configuracao {
   /** Dias ANTES do vencimento em que o desconto acima ainda vale (0 = só até
    * o dia do vencimento). Só tem efeito com asaasDescontoPercentual preenchido. */
   asaasDescontoDiasAntesVencimento: number | null;
+  emissaoAntecipadaDias: number;
 }
 
 export type AtualizarConfiguracaoPayload = Omit<

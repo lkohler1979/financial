@@ -1,9 +1,11 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, type AsaasBillingType, type EmissaoCobranca } from "@prisma/client";
 import { ConflictError, NotFoundError, ValidationError } from "../../shared/errors/app-error";
 import { registrarAuditoria } from "../auditoria/auditoria.service";
 import { alunosRepository } from "../alunos/alunos.repository";
 import { cursosRepository } from "../cursos/cursos.repository";
 import { financeiroService } from "../financeiro/financeiro.service";
+import { situacaoService } from "./situacao.service";
+import { emissaoCobrancaService, emiteNaMatricula } from "../asaas/emissao-cobranca.service";
 import { tiposCobrancaRepository } from "../tipos-cobranca/tipos-cobranca.repository";
 import { tiposCobrancaService } from "../tipos-cobranca/tipos-cobranca.service";
 import { aplicarDesconto, cuponsService } from "../cupons/cupons.service";
@@ -83,11 +85,18 @@ async function gerarParcelasAutomaticas(
 }
 
 interface CobrancaResolvida {
-  tipo: { id: string; nome: string; usaValorDoCurso: boolean; prefixoTitulo: string | null };
+  tipo: {
+    id: string;
+    nome: string;
+    usaValorDoCurso: boolean;
+    prefixoTitulo: string | null;
+    emissaoNaMatricula: EmissaoCobranca;
+  };
   valor: number;
   numeroParcelas: number;
   primeiroVencimento: Date;
   formaPagamento: "BOLETO" | "PIX" | "CREDIT_CARD" | null;
+  observacoes?: string;
 }
 
 /** Vencimento da parcela `indice`: mesmo dia do primeiro vencimento nos meses
@@ -143,6 +152,7 @@ async function resolverCobrancas(
       numeroParcelas: c.numeroParcelas,
       primeiroVencimento: c.primeiroVencimento,
       formaPagamento,
+      observacoes: c.observacoes,
     };
   });
 
@@ -164,10 +174,11 @@ async function gerarParcelasDaCobranca(
   matriculaId: string,
   cobranca: CobrancaResolvida,
   usuarioId: string,
-): Promise<void> {
+): Promise<{ id: string; formaPagamento: AsaasBillingType | null }[]> {
   const valores = dividirValorEmParcelas(cobranca.valor, cobranca.numeroParcelas);
+  const criadas: { id: string; formaPagamento: AsaasBillingType | null }[] = [];
   for (let indice = 0; indice < cobranca.numeroParcelas; indice++) {
-    await financeiroService.criar(
+    const parcela = await financeiroService.criar(
       {
         matriculaId,
         codTitulo: `${cobranca.tipo.prefixoTitulo ?? ""}${indice + 1}`,
@@ -176,10 +187,13 @@ async function gerarParcelasDaCobranca(
         valor: valores[indice],
         tipoTitulo: cobranca.tipo.nome,
         ...(cobranca.formaPagamento ? { formaPagamento: cobranca.formaPagamento } : {}),
+        ...(cobranca.observacoes ? { observacoes: cobranca.observacoes } : {}),
       },
       usuarioId,
     );
+    criadas.push({ id: parcela.id, formaPagamento: cobranca.formaPagamento });
   }
+  return criadas;
 }
 
 interface ParcelaResumida {
@@ -341,7 +355,8 @@ export const matriculasService = {
       dataMatricula: input.dataMatricula,
       contratoAssinado: input.contratoAssinado,
       tcdAssinado: input.tcdAssinado,
-      situacao: input.situacao,
+      // Matrícula com cobranças nasce "Aguardando pagamento" (ativa no 1º pagamento).
+      situacao: input.situacao ?? (cobrancas.length > 0 ? "AGUARDANDO_PAGAMENTO" : "ATIVA"),
       observacoes: input.observacoes,
       ...(input.agenteEducacionalId
         ? { agenteEducacional: { connect: { id: input.agenteEducacionalId } } }
@@ -355,9 +370,17 @@ export const matriculasService = {
     };
 
     const matricula = await matriculasRepository.create(data);
+    await situacaoService.registrarInicial(matricula.id, matricula.situacao, usuarioId);
 
+    // Só as parcelas que "precisam" já nascem com boleto/Pix emitido (taxas e a
+    // 1ª mensalidade, conforme a política do tipo) — as demais são emitidas aos
+    // poucos (job diário) ou a pedido, para não pagar tarifa à toa.
+    const paraEmitir: { id: string; formaPagamento: AsaasBillingType | null }[] = [];
     for (const cobranca of cobrancas) {
-      await gerarParcelasDaCobranca(matricula.id, cobranca, usuarioId);
+      const criadas = await gerarParcelasDaCobranca(matricula.id, cobranca, usuarioId);
+      criadas.forEach((parcela, indice) => {
+        if (emiteNaMatricula(cobranca.tipo.emissaoNaMatricula, indice)) paraEmitir.push(parcela);
+      });
     }
 
     if (gerarParcelas) {
@@ -381,7 +404,11 @@ export const matriculasService = {
       detalhes: { alunoId: input.alunoId, cursoId: input.cursoId },
     });
 
-    return serializarMatricula(matricula);
+    // Melhor esforço: matrícula e parcelas já estão salvas; se a emissão falhar
+    // (ex.: Asaas não configurado) o cadastro segue e o aviso vai na resposta.
+    const emissao = await emissaoCobrancaService.emitir(paraEmitir, null, usuarioId);
+
+    return { ...serializarMatricula(matricula), emissaoCobrancas: emissao };
   },
 
   /**
@@ -437,6 +464,11 @@ export const matriculasService = {
   async atualizar(id: string, input: AtualizarMatriculaInput, usuarioId: string) {
     const atual = await this.buscarPorId(id);
 
+    // A situação só muda pelo fluxo próprio (motivo + histórico) — ver situacao.service.ts.
+    if (input.situacao !== undefined && input.situacao !== atual.situacao) {
+      throw new ValidationError('Use "Alterar situação" para mudar a situação da matrícula');
+    }
+
     const alunoId = input.alunoId ?? atual.alunoId;
     const cursoId = input.cursoId ?? atual.cursoId;
     const numeroMatricula = input.numeroMatricula ?? atual.numeroMatricula;
@@ -460,7 +492,6 @@ export const matriculasService = {
       ...(input.dataMatricula !== undefined ? { dataMatricula: input.dataMatricula } : {}),
       ...(input.contratoAssinado !== undefined ? { contratoAssinado: input.contratoAssinado } : {}),
       ...(input.tcdAssinado !== undefined ? { tcdAssinado: input.tcdAssinado } : {}),
-      ...(input.situacao !== undefined ? { situacao: input.situacao } : {}),
       ...(input.observacoes !== undefined ? { observacoes: input.observacoes } : {}),
       ...(input.agenteEducacionalId
         ? { agenteEducacional: { connect: { id: input.agenteEducacionalId } } }

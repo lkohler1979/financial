@@ -27,28 +27,27 @@ const ROTULO_STATUS: Record<string, string> = {
         <thead>
           <tr class="text-left text-xs text-gray-400">
             <th class="p-2">Título</th>
-            <th class="p-2">Parcela</th>
+            <th class="p-2">Descrição</th>
+            <th class="p-2">Curso</th>
             <th class="p-2">Vencimento</th>
-            <th class="p-2 text-right">Valor</th>
-            <th class="p-2">Situação</th>
+            <th class="p-2">Pagamento</th>
+            <th class="p-2 text-right">Valor final</th>
+            <th class="p-2">Estado</th>
             <th class="p-2"></th>
           </tr>
         </thead>
         <tbody>
           @for (p of parcelas(); track p.id) {
-            <tr class="border-t align-top">
-              <td class="p-2">{{ p.tipoTitulo ?? "Parcela" }}</td>
-              <td class="p-2">{{ p.parcela }}</td>
-              <td class="p-2">{{ p.vencimento | date: "dd/MM/yyyy" : "UTC" }}</td>
-              <td class="p-2 text-right">{{ p.valor | currency: "BRL" }}</td>
-              <td class="p-2">
-                <span [class]="p.status === 'PAGO' ? 'text-green-700' : vencida(p) ? 'text-red-700' : ''">
-                  {{ rotulo(p) }}
-                </span>
-                @if (p.status === "PAGO" && p.dataPagamento) {
-                  <span class="block text-xs text-gray-400">em {{ p.dataPagamento | date: "dd/MM/yyyy" : "UTC" }}</span>
-                }
+            <tr class="border-t align-top" [class]="classeLinha(p)">
+              <td class="p-2 whitespace-nowrap">{{ p.codTitulo }}</td>
+              <td class="p-2">{{ p.tipoTitulo ?? "Parcela" }} - {{ p.parcela.replace("/", " / ") }}</td>
+              <td class="p-2">{{ p.matricula.curso.nome }}</td>
+              <td class="p-2 whitespace-nowrap">{{ p.vencimento | date: "dd/MM/yyyy" : "UTC" }}</td>
+              <td class="p-2 whitespace-nowrap">
+                {{ p.dataPagamento ? (p.dataPagamento | date: "dd/MM/yyyy" : "UTC") : "—" }}
               </td>
+              <td class="p-2 text-right whitespace-nowrap">{{ p.valor | currency: "BRL" }}</td>
+              <td class="p-2">{{ rotulo(p) }}</td>
               <td class="p-2">
                 @if (p.status === "EM_ABERTO") {
                   @if (p.asaasBillingType) {
@@ -89,11 +88,16 @@ const ROTULO_STATUS: Record<string, string> = {
               </td>
             </tr>
           } @empty {
-            <tr><td class="p-4 text-gray-500" colspan="6">Nenhum pagamento encontrado.</td></tr>
+            <tr><td class="p-4 text-gray-500" colspan="8">Nenhum pagamento encontrado.</td></tr>
           }
         </tbody>
       </table>
     </div>
+    <p class="text-xs mt-2 text-gray-600">
+      <span class="text-blue-700 font-medium">Azul:</span> em aberto, ainda não vencido ·
+      <span class="text-red-700 font-medium">Vermelho:</span> em aberto e vencido ·
+      <span class="text-green-700 font-medium">Verde:</span> pago.
+    </p>
   `,
 })
 export class PortalPagamentosComponent implements OnInit {
@@ -118,6 +122,14 @@ export class PortalPagamentosComponent implements OnInit {
   rotulo(p: PortalParcela): string {
     if (p.status === "EM_ABERTO" && this.vencida(p)) return "Vencida";
     return ROTULO_STATUS[p.status] ?? p.status;
+  }
+
+  /** Azul = em aberto a vencer; vermelho = vencida; verde = paga (legenda do Universa). */
+  classeLinha(p: PortalParcela): string {
+    if (p.status === "PAGO") return "text-green-700";
+    if (this.vencida(p)) return "text-red-700";
+    if (p.status === "EM_ABERTO") return "text-blue-700";
+    return "text-gray-500";
   }
 
   vencida(p: PortalParcela): boolean {

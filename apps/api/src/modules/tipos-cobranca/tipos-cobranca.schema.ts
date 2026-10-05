@@ -19,6 +19,7 @@ const dadosTipo = {
   aceitaCupom: z.boolean(),
   entraNoProtesto: z.boolean(),
   disponivelNoCadastro: z.boolean(),
+  emissaoNaMatricula: z.enum(["TODAS", "PRIMEIRA", "SOB_DEMANDA"]),
 };
 
 export const criarTipoCobrancaSchema = z.object({
@@ -33,6 +34,7 @@ export const criarTipoCobrancaSchema = z.object({
   aceitaCupom: dadosTipo.aceitaCupom.default(false),
   entraNoProtesto: dadosTipo.entraNoProtesto.default(true),
   disponivelNoCadastro: dadosTipo.disponivelNoCadastro.default(true),
+  emissaoNaMatricula: dadosTipo.emissaoNaMatricula.default("PRIMEIRA"),
 });
 
 export const atualizarTipoCobrancaSchema = z

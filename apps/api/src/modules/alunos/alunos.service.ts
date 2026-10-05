@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { ConflictError, NotFoundError } from "../../shared/errors/app-error";
 import { registrarAuditoria } from "../auditoria/auditoria.service";
 import { alunosRepository } from "./alunos.repository";
@@ -14,6 +15,16 @@ function limparVazios<T extends Record<string, unknown>>(obj: T): T {
     }
   }
   return resultado;
+}
+
+// O agente educacional chega como id (string) e vira relação do Prisma —
+// vazio na edição desvincula.
+function montarDados<T extends { agenteEducacionalId?: string }>(input: T) {
+  const { agenteEducacionalId, ...resto } = input;
+  const dados = limparVazios(resto) as Record<string, unknown>;
+  if (agenteEducacionalId) dados.agenteEducacional = { connect: { id: agenteEducacionalId } };
+  else if (agenteEducacionalId === "") dados.agenteEducacional = { disconnect: true };
+  return dados;
 }
 
 export const alunosService = {
@@ -39,7 +50,7 @@ export const alunosService = {
       throw new ConflictError("Já existe um aluno com este CPF", { cpf: input.cpf });
     }
 
-    const aluno = await alunosRepository.create(limparVazios(input));
+    const aluno = await alunosRepository.create(montarDados(input) as Prisma.AlunoCreateInput);
 
     await registrarAuditoria({
       usuarioId,
@@ -55,7 +66,7 @@ export const alunosService = {
   async atualizar(id: string, input: AtualizarAlunoInput, usuarioId: string) {
     await this.buscarPorId(id);
 
-    const aluno = await alunosRepository.update(id, limparVazios(input));
+    const aluno = await alunosRepository.update(id, montarDados(input) as Prisma.AlunoUpdateInput);
 
     await registrarAuditoria({
       usuarioId,

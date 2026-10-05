@@ -2,7 +2,7 @@ import { HttpClient, HttpParams } from "@angular/common/http";
 import { inject, Injectable } from "@angular/core";
 import { Observable } from "rxjs";
 import { environment } from "../../../environments/environment";
-import { Matricula, MatriculaPayload } from "../models/matricula.model";
+import { AgenteEducacional, Matricula, MatriculaPayload } from "../models/matricula.model";
 import { Paginado } from "../models/paginado.model";
 
 @Injectable({ providedIn: "root" })
@@ -64,6 +64,10 @@ export class MatriculasService {
 
   remover(id: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  }
+
+  listarAgentes(): Observable<AgenteEducacional[]> {
+    return this.http.get<AgenteEducacional[]>(`${this.baseUrl}/agentes`);
   }
 
   /** Gera as parcelas mensais a partir de valorCurso/numeroParcelas/

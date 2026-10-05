@@ -116,7 +116,12 @@ import {
       <table mat-table [dataSource]="matriculas" class="w-full table-compact">
         <ng-container matColumnDef="aluno">
           <th mat-header-cell *matHeaderCellDef>Aluno</th>
-          <td mat-cell *matCellDef="let m">{{ m.aluno?.nome || m.alunoId }}</td>
+          <td mat-cell *matCellDef="let m">
+            {{ m.aluno?.nome || m.alunoId }}
+            @if (m.aluno?.codigo) {
+              <span class="text-xs text-gray-400 block">Cód. {{ m.aluno?.codigo }}</span>
+            }
+          </td>
         </ng-container>
         <ng-container matColumnDef="curso">
           <th mat-header-cell *matHeaderCellDef>Curso</th>

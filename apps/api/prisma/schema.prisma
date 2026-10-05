@@ -112,7 +112,13 @@ model Usuario {
   perfil    PerfilUsuario @default(USUARIO)
   ativo     Boolean       @default(true)
   criadoEm  DateTime      @default(now())
+  /// Permissão para deferir (aprovar/reprovar) documentos de alunos/matrículas.
+  /// ADMINISTRADOR sempre pode, independente deste campo.
+  podeDeferirDocumentos Boolean @default(false) @map("pode_deferir_documentos")
 
+  alunosComoAgente        Aluno[]     @relation("AlunoAgenteEducacional")
+  matriculasComoAgente    Matricula[] @relation("MatriculaAgenteEducacional")
+  documentosValidados     Documento[]
   importacoes             Importacao[]
   auditorias              Auditoria[]
   historicosCobranca      HistoricoCobranca[]
@@ -143,7 +149,27 @@ model Aluno {
   /// não recriar um cliente novo a cada boleto gerado para o mesmo aluno.
   asaasCustomerId String? @unique @map("asaas_customer_id")
 
+  /// Código visível do aluno: ano do cadastro + sequencial de 5 dígitos
+  /// (ex.: 202600001), gerado automaticamente — ver shared/utils/sequencial.ts.
+  codigo                   String?   @unique
+  genero                   String?
+  dataNascimento           DateTime? @map("data_nascimento")
+  estadoNascimento         String?   @map("estado_nascimento")
+  cidadeNascimento         String?   @map("cidade_nascimento")
+  nomeMae                  String?   @map("nome_mae")
+  nomePai                  String?   @map("nome_pai")
+  tipoDocumentoIdentificacao String? @map("tipo_documento_identificacao")
+  numeroDocumentoIdentificacao String? @map("numero_documento_identificacao")
+  profissao                String?
+  empresa                  String?
+  necessidadesEspeciais    String?   @map("necessidades_especiais")
+  origemCadastro           String?   @map("origem_cadastro")
+  mediador                 String?
+  agenteEducacionalId      String?   @map("agente_educacional_id")
+  agenteEducacional        Usuario?  @relation("AlunoAgenteEducacional", fields: [agenteEducacionalId], references: [id])
+
   matriculas Matricula[]
+  documentos Documento[]
 
   @@map("alunos")
 }
@@ -190,9 +216,13 @@ model Matricula {
   /// independente do dia da dataMatricula (pedido do usuário).
   diaVencimento  Int?     @map("dia_vencimento")
 
+  agenteEducacionalId String?  @map("agente_educacional_id")
+  agenteEducacional   Usuario? @relation("MatriculaAgenteEducacional", fields: [agenteEducacionalId], references: [id])
+
   aluno Aluno @relation(fields: [alunoId], references: [id])
   curso Curso @relation(fields: [cursoId], references: [id])
 
+  documentos         Documento[]
   parcelas           Parcela[]
   tags               MatriculaTag[]
   historicoCobranca  HistoricoCobranca[]
@@ -556,4 +586,83 @@ model Auditoria {
   usuario Usuario @relation(fields: [usuarioId], references: [id])
 
   @@map("auditoria")
+}
+
+
+// Contador atômico para códigos sequenciais por ano (aluno e matrícula) —
+// chave "ALUNO-2026" / "MATRICULA-2026".
+model Sequencial {
+  chave String @id
+  valor Int    @default(0)
+
+  @@map("sequenciais")
+}
+
+enum EscopoDocumento {
+  ALUNO
+  MATRICULA
+}
+
+/// Situação de ENTREGA: o documento foi enviado ou não.
+enum SituacaoEntregaDocumento {
+  NAO_ENVIADO
+  ENVIADO
+}
+
+/// Situação de DEFERIMENTO: conferência do documento enviado.
+enum SituacaoDeferimentoDocumento {
+  PENDENTE
+  DEFERIDO
+  INDEFERIDO
+}
+
+// Tipos de documento exigidos (CPF, RG, Contrato...). ALUNO = um por aluno;
+// MATRICULA = um por matrícula.
+model TipoDocumento {
+  id          String          @id @default(uuid())
+  nome        String          @unique
+  escopo      EscopoDocumento
+  obrigatorio Boolean         @default(true)
+  ordem       Int             @default(0)
+  ativo       Boolean         @default(true)
+
+  documentos Documento[]
+
+  @@map("tipos_documento")
+}
+
+// Documento de um aluno (matriculaId nulo) ou de uma matrícula. A linha só
+// existe depois da primeira ação (upload/edição); antes disso o tipo aparece
+// como "não enviado/pendente" na listagem.
+model Documento {
+  id              String   @id @default(uuid())
+  tipoDocumentoId String   @map("tipo_documento_id")
+  alunoId         String   @map("aluno_id")
+  matriculaId     String?  @map("matricula_id")
+
+  situacaoEntrega     SituacaoEntregaDocumento     @default(NAO_ENVIADO) @map("situacao_entrega")
+  situacaoDeferimento SituacaoDeferimentoDocumento @default(PENDENTE) @map("situacao_deferimento")
+  vencimento          DateTime?
+  anexadoEm           DateTime? @map("anexado_em")
+  deferidoEm          DateTime? @map("deferido_em")
+  validadoPorId       String?   @map("validado_por_id")
+  observacaoInterna   String?   @map("observacao_interna")
+  observacaoAluno     String?   @map("observacao_aluno")
+
+  arquivoNome    String? @map("arquivo_nome")
+  arquivoChave   String? @map("arquivo_chave")
+  arquivoMime    String? @map("arquivo_mime")
+  arquivoTamanho Int?    @map("arquivo_tamanho")
+
+  atualizadoEm DateTime @updatedAt @map("atualizado_em")
+  criadoEm     DateTime @default(now()) @map("criado_em")
+
+  tipo       TipoDocumento @relation(fields: [tipoDocumentoId], references: [id])
+  aluno      Aluno         @relation(fields: [alunoId], references: [id])
+  matricula  Matricula?    @relation(fields: [matriculaId], references: [id])
+  validadoPor Usuario?     @relation(fields: [validadoPorId], references: [id])
+
+  @@index([alunoId])
+  @@index([matriculaId])
+  @@map("documentos")
 }

@@ -11,16 +11,36 @@ import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatInputModule } from "@angular/material/input";
+import { MatSelectModule } from "@angular/material/select";
 import { MatProgressBarModule } from "@angular/material/progress-bar";
 import { MatSnackBar } from "@angular/material/snack-bar";
 import { AlunosService } from "../../core/services/alunos.service";
+import { MatriculasService } from "../../core/services/matriculas.service";
 import { AlunoPayload } from "../../core/models/aluno.model";
+import { AgenteEducacional } from "../../core/models/matricula.model";
 import { validarCpf } from "../../shared/utils/cpf.util";
 
 function cpfValidator(control: AbstractControl): ValidationErrors | null {
   if (!control.value) return null;
   return validarCpf(control.value) ? null : { cpf: true };
 }
+
+const UFS = [
+  "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR",
+  "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO",
+];
+const GENEROS = ["Feminino", "Masculino", "Outro", "Prefiro não informar"];
+const TIPOS_DOCUMENTO_IDENTIFICACAO = ["RG", "CNH", "Passaporte", "RNE", "Outro"];
+const ORIGENS_CADASTRO = [
+  "Instagram",
+  "Facebook",
+  "Google",
+  "WhatsApp",
+  "Site",
+  "Indicação",
+  "E-mail marketing",
+  "Outro",
+];
 
 @Component({
   selector: "app-aluno-form",
@@ -32,6 +52,7 @@ function cpfValidator(control: AbstractControl): ValidationErrors | null {
     MatIconModule,
     MatFormFieldModule,
     MatInputModule,
+    MatSelectModule,
     MatProgressBarModule,
   ],
   template: `
@@ -40,14 +61,20 @@ function cpfValidator(control: AbstractControl): ValidationErrors | null {
         ><mat-icon>arrow_back</mat-icon></a
       >
       <h1 class="text-2xl font-medium m-0">{{ editando ? "Editar aluno" : "Novo aluno" }}</h1>
+      @if (codigo) {
+        <span class="ml-2 px-2 py-0.5 rounded bg-gray-100 text-gray-600 text-sm">
+          Código {{ codigo }}
+        </span>
+      }
     </div>
 
     @if (carregando) {
       <mat-progress-bar mode="indeterminate"></mat-progress-bar>
     }
 
-    <form [formGroup]="form" (ngSubmit)="salvar()" class="bg-white rounded shadow-sm p-6 max-w-3xl">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4">
+    <form [formGroup]="form" (ngSubmit)="salvar()" class="bg-white rounded shadow-sm p-6 max-w-4xl">
+      <p class="text-xs font-medium text-gray-600 border-b pb-1 mb-3">DADOS PESSOAIS</p>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-x-4">
         <mat-form-field appearance="outline">
           <mat-label>CPF</mat-label>
           <input matInput formControlName="cpf" maxlength="14" />
@@ -59,8 +86,8 @@ function cpfValidator(control: AbstractControl): ValidationErrors | null {
           }
         </mat-form-field>
 
-        <mat-form-field appearance="outline">
-          <mat-label>Nome</mat-label>
+        <mat-form-field appearance="outline" class="md:col-span-2">
+          <mat-label>Nome do aluno</mat-label>
           <input matInput formControlName="nome" />
           @if (form.controls.nome.hasError("required")) {
             <mat-error>Nome é obrigatório</mat-error>
@@ -68,8 +95,61 @@ function cpfValidator(control: AbstractControl): ValidationErrors | null {
         </mat-form-field>
 
         <mat-form-field appearance="outline">
+          <mat-label>Gênero</mat-label>
+          <mat-select formControlName="genero">
+            <mat-option value="">—</mat-option>
+            @for (g of generos; track g) {
+              <mat-option [value]="g">{{ g }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Data de nascimento</mat-label>
+          <input matInput type="date" formControlName="dataNascimento" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
           <mat-label>Tipo de pessoa</mat-label>
           <input matInput formControlName="tipoPessoa" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Estado de nascimento</mat-label>
+          <mat-select formControlName="estadoNascimento">
+            <mat-option value="">—</mat-option>
+            @for (uf of ufs; track uf) {
+              <mat-option [value]="uf">{{ uf }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Cidade de nascimento</mat-label>
+          <input matInput formControlName="cidadeNascimento" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Nome da mãe</mat-label>
+          <input matInput formControlName="nomeMae" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Nome do pai</mat-label>
+          <input matInput formControlName="nomePai" />
+        </mat-form-field>
+      </div>
+
+      <p class="text-xs font-medium text-gray-600 border-b pb-1 mb-3 mt-2">CONTATO</p>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-x-4">
+        <mat-form-field appearance="outline">
+          <mat-label>Telefone</mat-label>
+          <input matInput formControlName="telefone2" placeholder="(00) 0000-0000" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Celular</mat-label>
+          <input matInput formControlName="telefone1" placeholder="(00) 00000-0000" />
         </mat-form-field>
 
         <mat-form-field appearance="outline">
@@ -79,23 +159,16 @@ function cpfValidator(control: AbstractControl): ValidationErrors | null {
             <mat-error>E-mail inválido</mat-error>
           }
         </mat-form-field>
+      </div>
 
-        <mat-form-field appearance="outline">
-          <mat-label>Telefone 1</mat-label>
-          <input matInput formControlName="telefone1" />
-        </mat-form-field>
-
-        <mat-form-field appearance="outline">
-          <mat-label>Telefone 2</mat-label>
-          <input matInput formControlName="telefone2" />
-        </mat-form-field>
-
+      <p class="text-xs font-medium text-gray-600 border-b pb-1 mb-3 mt-2">ENDEREÇO</p>
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-x-4">
         <mat-form-field appearance="outline">
           <mat-label>CEP</mat-label>
-          <input matInput formControlName="cep" />
+          <input matInput formControlName="cep" placeholder="00000-000" />
         </mat-form-field>
 
-        <mat-form-field appearance="outline">
+        <mat-form-field appearance="outline" class="md:col-span-3">
           <mat-label>Endereço</mat-label>
           <input matInput formControlName="endereco" />
         </mat-form-field>
@@ -110,19 +183,87 @@ function cpfValidator(control: AbstractControl): ValidationErrors | null {
           <input matInput formControlName="complemento" />
         </mat-form-field>
 
-        <mat-form-field appearance="outline">
+        <mat-form-field appearance="outline" class="md:col-span-2">
           <mat-label>Bairro</mat-label>
           <input matInput formControlName="bairro" />
         </mat-form-field>
 
-        <mat-form-field appearance="outline">
+        <mat-form-field appearance="outline" class="md:col-span-3">
           <mat-label>Cidade</mat-label>
           <input matInput formControlName="cidade" />
         </mat-form-field>
 
         <mat-form-field appearance="outline">
           <mat-label>Estado (UF)</mat-label>
-          <input matInput formControlName="estado" maxlength="2" />
+          <mat-select formControlName="estado">
+            <mat-option value="">—</mat-option>
+            @for (uf of ufs; track uf) {
+              <mat-option [value]="uf">{{ uf }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </div>
+
+      <p class="text-xs font-medium text-gray-600 border-b pb-1 mb-3 mt-2">
+        OUTRO DOCUMENTO PARA IDENTIFICAÇÃO
+      </p>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-x-4">
+        <mat-form-field appearance="outline">
+          <mat-label>Tipo do documento</mat-label>
+          <mat-select formControlName="tipoDocumentoIdentificacao">
+            <mat-option value="">—</mat-option>
+            @for (t of tiposDocumentoIdentificacao; track t) {
+              <mat-option [value]="t">{{ t }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Identificador</mat-label>
+          <input matInput formControlName="numeroDocumentoIdentificacao" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Profissão</mat-label>
+          <input matInput formControlName="profissao" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="md:col-span-2">
+          <mat-label>Empresa</mat-label>
+          <input matInput formControlName="empresa" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Necessidades especiais</mat-label>
+          <input matInput formControlName="necessidadesEspeciais" />
+        </mat-form-field>
+      </div>
+
+      <p class="text-xs font-medium text-gray-600 border-b pb-1 mb-3 mt-2">CAPTAÇÃO</p>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-x-4">
+        <mat-form-field appearance="outline">
+          <mat-label>Origem do cadastro</mat-label>
+          <mat-select formControlName="origemCadastro">
+            <mat-option value="">—</mat-option>
+            @for (o of origensCadastro; track o) {
+              <mat-option [value]="o">{{ o }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Agente educacional</mat-label>
+          <mat-select formControlName="agenteEducacionalId">
+            <mat-option value="">—</mat-option>
+            @for (a of agentes; track a.id) {
+              <mat-option [value]="a.id">{{ a.nome }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Mediador</mat-label>
+          <input matInput formControlName="mediador" />
         </mat-form-field>
       </div>
 
@@ -138,13 +279,21 @@ function cpfValidator(control: AbstractControl): ValidationErrors | null {
 export class AlunoFormComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly service = inject(AlunosService);
+  private readonly matriculasService = inject(MatriculasService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly snackBar = inject(MatSnackBar);
 
+  readonly ufs = UFS;
+  readonly generos = GENEROS;
+  readonly tiposDocumentoIdentificacao = TIPOS_DOCUMENTO_IDENTIFICACAO;
+  readonly origensCadastro = ORIGENS_CADASTRO;
+
   editando = false;
   carregando = false;
   salvando = false;
+  codigo: string | null = null;
+  agentes: AgenteEducacional[] = [];
   private id: string | null = null;
 
   readonly form = this.fb.group({
@@ -161,11 +310,26 @@ export class AlunoFormComponent implements OnInit {
     bairro: [""],
     cidade: [""],
     estado: [""],
+    genero: [""],
+    dataNascimento: [""],
+    estadoNascimento: [""],
+    cidadeNascimento: [""],
+    nomeMae: [""],
+    nomePai: [""],
+    tipoDocumentoIdentificacao: [""],
+    numeroDocumentoIdentificacao: [""],
+    profissao: [""],
+    empresa: [""],
+    necessidadesEspeciais: [""],
+    origemCadastro: [""],
+    mediador: [""],
+    agenteEducacionalId: [""],
   });
 
   ngOnInit(): void {
     this.id = this.route.snapshot.paramMap.get("id");
     this.editando = !!this.id;
+    this.matriculasService.listarAgentes().subscribe((agentes) => (this.agentes = agentes));
 
     if (this.editando && this.id) {
       // CPF é a identidade do aluno: não editável após a criação.
@@ -173,6 +337,7 @@ export class AlunoFormComponent implements OnInit {
       this.carregando = true;
       this.service.buscarPorId(this.id).subscribe({
         next: (aluno) => {
+          this.codigo = aluno.codigo ?? null;
           this.form.patchValue({
             cpf: aluno.cpf,
             nome: aluno.nome,
@@ -187,6 +352,20 @@ export class AlunoFormComponent implements OnInit {
             bairro: aluno.bairro ?? "",
             cidade: aluno.cidade ?? "",
             estado: aluno.estado ?? "",
+            genero: aluno.genero ?? "",
+            dataNascimento: aluno.dataNascimento ? aluno.dataNascimento.substring(0, 10) : "",
+            estadoNascimento: aluno.estadoNascimento ?? "",
+            cidadeNascimento: aluno.cidadeNascimento ?? "",
+            nomeMae: aluno.nomeMae ?? "",
+            nomePai: aluno.nomePai ?? "",
+            tipoDocumentoIdentificacao: aluno.tipoDocumentoIdentificacao ?? "",
+            numeroDocumentoIdentificacao: aluno.numeroDocumentoIdentificacao ?? "",
+            profissao: aluno.profissao ?? "",
+            empresa: aluno.empresa ?? "",
+            necessidadesEspeciais: aluno.necessidadesEspeciais ?? "",
+            origemCadastro: aluno.origemCadastro ?? "",
+            mediador: aluno.mediador ?? "",
+            agenteEducacionalId: aluno.agenteEducacionalId ?? "",
           });
           this.carregando = false;
         },
@@ -203,11 +382,13 @@ export class AlunoFormComponent implements OnInit {
 
     this.salvando = true;
     const bruto = this.form.getRawValue();
-    // Remove campos vazios do payload.
+    // Remove campos vazios do payload — exceto o agente educacional na edição,
+    // onde "" significa "desvincular".
     const payload: AlunoPayload = {};
     for (const [chave, valor] of Object.entries(bruto)) {
       if (valor !== "" && valor !== null) (payload as Record<string, unknown>)[chave] = valor;
     }
+    if (this.editando && bruto.agenteEducacionalId === "") payload.agenteEducacionalId = "";
 
     const requisicao =
       this.editando && this.id

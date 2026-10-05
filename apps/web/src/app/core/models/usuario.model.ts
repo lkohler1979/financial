@@ -6,6 +6,8 @@ export interface Usuario {
   email: string;
   perfil: Perfil;
   ativo: boolean;
+  /** Pode deferir (aprovar/reprovar) documentos — administrador sempre pode. */
+  podeDeferirDocumentos?: boolean;
   criadoEm: string;
 }
 
@@ -14,10 +16,12 @@ export interface CriarUsuarioPayload {
   email: string;
   senha: string;
   perfil: Perfil;
+  podeDeferirDocumentos?: boolean;
 }
 
 export interface AtualizarUsuarioPayload {
   nome?: string;
   perfil?: Perfil;
   ativo?: boolean;
+  podeDeferirDocumentos?: boolean;
 }

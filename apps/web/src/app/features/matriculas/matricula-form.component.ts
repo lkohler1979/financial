@@ -13,10 +13,12 @@ import { MatProgressBarModule } from "@angular/material/progress-bar";
 import { MatSnackBar } from "@angular/material/snack-bar";
 import { debounceTime, switchMap } from "rxjs";
 import { MatriculasService } from "../../core/services/matriculas.service";
+import { AuthService } from "../../core/auth/auth.service";
+import { DocumentosMatriculaComponent } from "./documentos-matricula.component";
 import { AlunosService } from "../../core/services/alunos.service";
 import { CursosService } from "../../core/services/cursos.service";
 import { CobrancaService } from "../../core/services/cobranca.service";
-import { MatriculaPayload } from "../../core/models/matricula.model";
+import { AgenteEducacional, MatriculaPayload } from "../../core/models/matricula.model";
 import { Aluno } from "../../core/models/aluno.model";
 import { Curso } from "../../core/models/curso.model";
 import { SituacaoCobranca, Tag } from "../../core/models/cobranca.model";
@@ -39,6 +41,7 @@ const SITUACOES = ["ATIVA", "TRANCADA", "CANCELADA", "CONCLUIDA"];
     MatSelectModule,
     MatSlideToggleModule,
     MatProgressBarModule,
+    DocumentosMatriculaComponent,
   ],
   template: `
     <div class="flex items-center gap-2 mb-4">
@@ -94,7 +97,18 @@ const SITUACOES = ["ATIVA", "TRANCADA", "CANCELADA", "CONCLUIDA"];
 
         <mat-form-field appearance="outline">
           <mat-label>Número da matrícula</mat-label>
-          <input matInput formControlName="numeroMatricula" />
+          <input matInput formControlName="numeroMatricula" placeholder="Gerado automaticamente" />
+          <mat-hint>Em branco = gerado automaticamente (ano + 5 dígitos)</mat-hint>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Agente educacional</mat-label>
+          <mat-select formControlName="agenteEducacionalId">
+            <mat-option value="">—</mat-option>
+            @for (a of agentes; track a.id) {
+              <mat-option [value]="a.id">{{ a.nome }}</mat-option>
+            }
+          </mat-select>
         </mat-form-field>
 
         <mat-form-field appearance="outline">
@@ -215,6 +229,10 @@ const SITUACOES = ["ATIVA", "TRANCADA", "CANCELADA", "CONCLUIDA"];
         </div>
       }
 
+      @if (editando && id) {
+        <app-documentos-matricula [matriculaId]="id"></app-documentos-matricula>
+      }
+
       <div class="flex justify-end gap-2 mt-2">
         <a mat-button routerLink="/matriculas">Cancelar</a>
         <button mat-raised-button color="primary" type="submit" [disabled]="salvando">
@@ -242,7 +260,9 @@ export class MatriculaFormComponent implements OnInit {
   salvando = false;
   gerandoParcelas = false;
   quantidadeParcelas = 0;
-  private id: string | null = null;
+  id: string | null = null;
+  agentes: AgenteEducacional[] = [];
+  private readonly auth = inject(AuthService);
 
   alunos: Aluno[] = [];
   cursos: Curso[] = [];
@@ -262,6 +282,7 @@ export class MatriculaFormComponent implements OnInit {
     contratoAssinado: [false],
     tcdAssinado: [false],
     observacoes: [""],
+    agenteEducacionalId: [""],
     valorCurso: this.fb.control<number | undefined>(undefined),
     numeroParcelas: this.fb.control<number | undefined>(undefined),
     diaVencimento: this.fb.control<number | undefined>(undefined),
@@ -305,6 +326,11 @@ export class MatriculaFormComponent implements OnInit {
 
     this.id = this.route.snapshot.paramMap.get("id");
     this.editando = !!this.id;
+    this.service.listarAgentes().subscribe((agentes) => (this.agentes = agentes));
+    // Matrícula nova: quem está cadastrando é o agente educacional por padrão.
+    if (!this.editando) {
+      this.form.controls.agenteEducacionalId.setValue(this.auth.usuario()?.id ?? "");
+    }
 
     if (this.editando && this.id) {
       this.carregando = true;
@@ -323,6 +349,7 @@ export class MatriculaFormComponent implements OnInit {
             contratoAssinado: m.contratoAssinado,
             tcdAssinado: m.tcdAssinado,
             observacoes: m.observacoes ?? "",
+            agenteEducacionalId: m.agenteEducacionalId ?? "",
             valorCurso: m.valorCurso ?? undefined,
             numeroParcelas: m.numeroParcelas ?? undefined,
             diaVencimento: m.diaVencimento ?? undefined,
@@ -432,6 +459,7 @@ export class MatriculaFormComponent implements OnInit {
       contratoAssinado: bruto.contratoAssinado ?? false,
       tcdAssinado: bruto.tcdAssinado ?? false,
       observacoes: bruto.observacoes || undefined,
+      agenteEducacionalId: bruto.agenteEducacionalId || undefined,
       // Salvo em criação e edição — mas só dispara geração automática na
       // criação (ver matriculas.service.ts). Na edição, fica guardado para
       // o botão "Gerar parcelas" usar depois.

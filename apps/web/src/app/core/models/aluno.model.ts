@@ -13,9 +13,25 @@ export interface Aluno {
   bairro?: string | null;
   cidade?: string | null;
   estado?: string | null;
+  /** Código visível do aluno (ano + 5 dígitos), gerado automaticamente. */
+  codigo?: string | null;
+  genero?: string | null;
+  dataNascimento?: string | null;
+  estadoNascimento?: string | null;
+  cidadeNascimento?: string | null;
+  nomeMae?: string | null;
+  nomePai?: string | null;
+  tipoDocumentoIdentificacao?: string | null;
+  numeroDocumentoIdentificacao?: string | null;
+  profissao?: string | null;
+  empresa?: string | null;
+  necessidadesEspeciais?: string | null;
+  origemCadastro?: string | null;
+  mediador?: string | null;
+  agenteEducacionalId?: string | null;
   criadoEm?: string;
   atualizadoEm?: string;
 }
 
 // Campos aceitos na criação/atualização (o CPF só é enviado na criação).
-export type AlunoPayload = Partial<Omit<Aluno, "id" | "criadoEm" | "atualizadoEm">>;
+export type AlunoPayload = Partial<Omit<Aluno, "id" | "criadoEm" | "atualizadoEm" | "codigo">>;

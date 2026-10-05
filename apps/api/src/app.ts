@@ -20,6 +20,7 @@ import { asaasRouter, asaasWebhookRouter } from "./modules/asaas/asaas.routes";
 import { redeWebhookRouter } from "./modules/rede/rede.routes";
 import { configuracoesRouter } from "./modules/configuracoes/configuracoes.routes";
 import { auditoriaRouter } from "./modules/auditoria/auditoria.routes";
+import { documentosRouter } from "./modules/documentos/documentos.routes";
 import { dashboardRouter } from "./modules/dashboard/dashboard.routes";
 
 export const app = express();
@@ -66,6 +67,7 @@ app.use("/api/dashboard", requireRole("ADMINISTRADOR"), dashboardRouter);
 app.use("/api/alunos", requireRole("ADMINISTRADOR", "FINANCEIRO", "USUARIO"), alunosRouter);
 app.use("/api/cursos", requireRole("ADMINISTRADOR", "FINANCEIRO"), cursosRouter);
 app.use("/api/matriculas", requireRole("ADMINISTRADOR", "FINANCEIRO", "USUARIO"), matriculasRouter);
+app.use("/api/documentos", requireRole("ADMINISTRADOR", "FINANCEIRO", "USUARIO"), documentosRouter);
 app.use("/api/financeiro", requireRole("ADMINISTRADOR", "FINANCEIRO"), financeiroRouter);
 app.use("/api/importacao", requireRole("ADMINISTRADOR", "FINANCEIRO"), importacaoRouter);
 app.use(

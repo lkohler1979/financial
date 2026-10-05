@@ -16,6 +16,20 @@ const dadosAluno = {
   bairro: z.string().trim().max(100).optional(),
   cidade: z.string().trim().max(100).optional(),
   estado: z.string().trim().max(50).optional(),
+  genero: z.string().trim().max(30).optional(),
+  dataNascimento: z.union([z.coerce.date(), z.literal("")]).optional(),
+  estadoNascimento: z.string().trim().max(50).optional(),
+  cidadeNascimento: z.string().trim().max(100).optional(),
+  nomeMae: z.string().trim().max(200).optional(),
+  nomePai: z.string().trim().max(200).optional(),
+  tipoDocumentoIdentificacao: z.string().trim().max(50).optional(),
+  numeroDocumentoIdentificacao: z.string().trim().max(50).optional(),
+  profissao: z.string().trim().max(100).optional(),
+  empresa: z.string().trim().max(150).optional(),
+  necessidadesEspeciais: z.string().trim().max(500).optional(),
+  origemCadastro: z.string().trim().max(100).optional(),
+  mediador: z.string().trim().max(150).optional(),
+  agenteEducacionalId: z.string().uuid().optional().or(z.literal("")),
 };
 
 export const criarAlunoSchema = z.object({

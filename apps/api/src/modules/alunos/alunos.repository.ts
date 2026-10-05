@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../database/prisma";
+import { proximoCodigoSequencial } from "../../shared/utils/sequencial";
 
 export interface ListarAlunosParams {
   busca?: string;
@@ -23,6 +24,7 @@ export const alunosRepository = {
           OR: [
             { nome: { contains: busca, mode: "insensitive" } },
             { email: { contains: busca, mode: "insensitive" } },
+            { codigo: { contains: busca } },
             ...(cpfBusca ? [{ cpf: { contains: cpfBusca } }] : []),
           ],
         }
@@ -36,8 +38,11 @@ export const alunosRepository = {
     return { data, total };
   },
 
-  create(data: Prisma.AlunoCreateInput) {
-    return prisma.aluno.create({ data });
+  // Todo aluno nasce com código (AAAA+5 dígitos), inclusive os criados pelas
+  // importações — por isso a geração fica aqui e não no service.
+  async create(data: Prisma.AlunoCreateInput) {
+    const codigo = data.codigo ?? (await proximoCodigoSequencial("ALUNO"));
+    return prisma.aluno.create({ data: { ...data, codigo } });
   },
 
   update(id: string, data: Prisma.AlunoUpdateInput) {

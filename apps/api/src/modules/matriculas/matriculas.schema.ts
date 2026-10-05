@@ -7,6 +7,7 @@ const dadosMatricula = {
   tcdAssinado: z.boolean().optional(),
   situacao: z.string().trim().min(1).max(50).optional(),
   observacoes: z.string().trim().max(1000).optional(),
+  agenteEducacionalId: z.string().uuid().optional().or(z.literal("")),
   // Integração com Asaas (pedido do usuário): informando valorCurso +
   // numeroParcelas (+ diaVencimento) na criação, o sistema gera as parcelas
   // mensais automaticamente (ver matriculas.service.ts). Nenhum dos três é

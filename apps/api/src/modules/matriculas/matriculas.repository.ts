@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../database/prisma";
+import { proximoCodigoSequencial } from "../../shared/utils/sequencial";
 
 export interface ListarMatriculasParams {
   alunoId?: string;
@@ -18,7 +19,8 @@ export interface ListarMatriculasParams {
 }
 
 const incluiAlunoCurso = {
-  aluno: { select: { id: true, cpf: true, nome: true } },
+  aluno: { select: { id: true, codigo: true, cpf: true, nome: true } },
+  agenteEducacional: { select: { id: true, nome: true } },
   curso: { select: { id: true, codigo: true, nome: true } },
   situacaoCobranca: { select: { id: true, nome: true, cor: true } },
   // Usado por matriculasService.gerarParcelas para saber se a matrícula já
@@ -101,8 +103,14 @@ export const matriculasRepository = {
     return { data, total };
   },
 
-  create(data: Prisma.MatriculaCreateInput) {
-    return prisma.matricula.create({ data, include: incluiAlunoCurso });
+  // Número da matrícula = AAAA + 5 dígitos, gerado aqui (e não no service)
+  // para valer também nas matrículas criadas pelas importações; um número
+  // já informado (ex.: vindo do legado) é respeitado.
+  async create(data: Prisma.MatriculaCreateInput) {
+    const numeroMatricula =
+      data.numeroMatricula ??
+      (await proximoCodigoSequencial("MATRICULA", (data.dataMatricula as Date | undefined) ?? new Date()));
+    return prisma.matricula.create({ data: { ...data, numeroMatricula }, include: incluiAlunoCurso });
   },
 
   update(id: string, data: Prisma.MatriculaUpdateInput) {
@@ -111,6 +119,15 @@ export const matriculasRepository = {
 
   delete(id: string) {
     return prisma.matricula.delete({ where: { id } });
+  },
+
+  /** Usuários ativos que podem ser agente educacional — só id/nome. */
+  listarAgentes() {
+    return prisma.usuario.findMany({
+      where: { ativo: true },
+      select: { id: true, nome: true },
+      orderBy: { nome: "asc" },
+    });
   },
 
   countParcelas(matriculaId: string) {

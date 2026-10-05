@@ -8,6 +8,7 @@ export const criarUsuarioSchema = z.object({
   email: z.string().trim().toLowerCase().email("E-mail inválido").max(200),
   senha: z.string().regex(SENHA_REGEX, SENHA_MENSAGEM),
   perfil: z.enum(PERFIS),
+  podeDeferirDocumentos: z.boolean().optional(),
 });
 
 export const atualizarUsuarioSchema = z
@@ -15,6 +16,7 @@ export const atualizarUsuarioSchema = z
     nome: z.string().trim().min(1).max(200).optional(),
     perfil: z.enum(PERFIS).optional(),
     ativo: z.boolean().optional(),
+    podeDeferirDocumentos: z.boolean().optional(),
   })
   .refine((obj) => Object.keys(obj).length > 0, "Informe ao menos um campo para atualizar");
 

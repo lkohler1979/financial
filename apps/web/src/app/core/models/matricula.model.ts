@@ -1,6 +1,12 @@
 export interface MatriculaResumoAluno {
   id: string;
+  codigo?: string | null;
   cpf: string;
+  nome: string;
+}
+
+export interface AgenteEducacional {
+  id: string;
   nome: string;
 }
 
@@ -36,6 +42,8 @@ export interface Matricula {
   situacao: string;
   observacoes?: string | null;
   situacaoCobrancaId?: string | null;
+  agenteEducacionalId?: string | null;
+  agenteEducacional?: AgenteEducacional | null;
   aluno?: MatriculaResumoAluno;
   curso?: MatriculaResumoCurso;
   situacaoCobranca?: MatriculaResumoSituacaoCobranca | null;
@@ -54,6 +62,7 @@ export interface Matricula {
 }
 
 export interface MatriculaPayload {
+  agenteEducacionalId?: string;
   alunoId?: string;
   cursoId?: string;
   numeroMatricula?: string;

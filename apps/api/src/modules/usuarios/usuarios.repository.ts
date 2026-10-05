@@ -14,6 +14,7 @@ const SELECAO_SEGURA = {
   email: true,
   perfil: true,
   ativo: true,
+  podeDeferirDocumentos: true,
   criadoEm: true,
 } satisfies Prisma.UsuarioSelect;
 

@@ -15,6 +15,10 @@ export const matriculasController = {
     res.json(resultado);
   }),
 
+  listarAgentes: asyncHandler(async (_req: Request, res: Response) => {
+    res.json(await matriculasService.listarAgentes());
+  }),
+
   buscarPorId: asyncHandler(async (req: Request, res: Response) => {
     const matricula = await matriculasService.buscarPorId(paramString(req, "id"));
     res.json(matricula);

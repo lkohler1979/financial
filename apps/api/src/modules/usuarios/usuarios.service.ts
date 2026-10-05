@@ -35,6 +35,7 @@ export const usuariosService = {
       email: input.email,
       senhaHash,
       perfil: input.perfil,
+      podeDeferirDocumentos: input.podeDeferirDocumentos ?? false,
     });
 
     await registrarAuditoria({

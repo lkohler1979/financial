@@ -183,6 +183,10 @@ export const matriculasService = {
     return { data: dataComResumo, total, page, pageSize };
   },
 
+  listarAgentes() {
+    return matriculasRepository.listarAgentes();
+  },
+
   async buscarPorId(id: string) {
     const matricula = await matriculasRepository.findById(id);
     if (!matricula) throw new NotFoundError("Matrícula não encontrada");
@@ -217,6 +221,9 @@ export const matriculasService = {
       tcdAssinado: input.tcdAssinado,
       situacao: input.situacao,
       observacoes: input.observacoes,
+      ...(input.agenteEducacionalId
+        ? { agenteEducacional: { connect: { id: input.agenteEducacionalId } } }
+        : {}),
       valorCurso: input.valorCurso,
       numeroParcelas: input.numeroParcelas,
       diaVencimento: input.diaVencimento,
@@ -326,6 +333,11 @@ export const matriculasService = {
       ...(input.tcdAssinado !== undefined ? { tcdAssinado: input.tcdAssinado } : {}),
       ...(input.situacao !== undefined ? { situacao: input.situacao } : {}),
       ...(input.observacoes !== undefined ? { observacoes: input.observacoes } : {}),
+      ...(input.agenteEducacionalId
+        ? { agenteEducacional: { connect: { id: input.agenteEducacionalId } } }
+        : input.agenteEducacionalId === ""
+          ? { agenteEducacional: { disconnect: true } }
+          : {}),
       // Só grava o valor — editar aqui nunca regenera/apaga parcelas já
       // existentes (a geração automática só roda na criação, ver criar()).
       ...(input.valorCurso !== undefined ? { valorCurso: input.valorCurso } : {}),

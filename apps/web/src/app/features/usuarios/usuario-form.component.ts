@@ -89,6 +89,9 @@ const PERFIS: { valor: Perfil; rotulo: string }[] = [
       @if (editando) {
         <div class="my-2">
           <mat-slide-toggle formControlName="ativo">Usuário ativo</mat-slide-toggle>
+          <mat-slide-toggle formControlName="podeDeferirDocumentos">
+            Pode deferir documentos
+          </mat-slide-toggle>
         </div>
       }
 
@@ -120,6 +123,7 @@ export class UsuarioFormComponent implements OnInit {
     perfil: ["USUARIO" as Perfil, [Validators.required]],
     senha: ["", [Validators.pattern(SENHA_REGEX)]],
     ativo: [true],
+    podeDeferirDocumentos: [false],
   });
 
   ngOnInit(): void {
@@ -144,6 +148,7 @@ export class UsuarioFormComponent implements OnInit {
             email: usuario.email,
             perfil: usuario.perfil,
             ativo: usuario.ativo,
+            podeDeferirDocumentos: usuario.podeDeferirDocumentos ?? false,
           });
           this.carregando = false;
         },
@@ -163,7 +168,12 @@ export class UsuarioFormComponent implements OnInit {
 
     if (this.editando && this.id) {
       this.service
-        .atualizar(this.id, { nome: bruto.nome, perfil: bruto.perfil, ativo: bruto.ativo })
+        .atualizar(this.id, {
+          nome: bruto.nome,
+          perfil: bruto.perfil,
+          ativo: bruto.ativo,
+          podeDeferirDocumentos: bruto.podeDeferirDocumentos ?? false,
+        })
         .subscribe({
           next: () => this.finalizarComSenhaOpcional(this.id as string, bruto.senha),
           error: () => (this.salvando = false),
@@ -172,7 +182,13 @@ export class UsuarioFormComponent implements OnInit {
     }
 
     this.service
-      .criar({ nome: bruto.nome, email: bruto.email, senha: bruto.senha, perfil: bruto.perfil })
+      .criar({
+        nome: bruto.nome,
+        email: bruto.email,
+        senha: bruto.senha,
+        perfil: bruto.perfil,
+        podeDeferirDocumentos: bruto.podeDeferirDocumentos ?? false,
+      })
       .subscribe({
         next: () => {
           this.snackBar.open("Usuário criado", "Fechar", { duration: 3000 });

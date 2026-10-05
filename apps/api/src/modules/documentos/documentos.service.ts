@@ -3,7 +3,12 @@ import { AppError, NotFoundError, ValidationError } from "../../shared/errors/ap
 import { armazenamento } from "../../shared/armazenamento/armazenamento";
 import { registrarAuditoria } from "../auditoria/auditoria.service";
 import { documentosRepository } from "./documentos.repository";
-import type { AtualizarDocumentoInput } from "./documentos.schema";
+import { ConflictError } from "../../shared/errors/app-error";
+import type {
+  AtualizarDocumentoInput,
+  AtualizarTipoDocumentoInput,
+  CriarTipoDocumentoInput,
+} from "./documentos.schema";
 
 const ENTIDADE = "Documento";
 const EXTENSOES_PERMITIDAS = [".pdf", ".jpg", ".jpeg", ".png"];
@@ -46,8 +51,48 @@ async function obterOuCriar(matriculaId: string, tipoDocumentoId: string) {
 }
 
 export const documentosService = {
-  async listarTipos() {
-    return documentosRepository.listarTiposAtivos();
+  async listarTipos(incluirInativos = false) {
+    return incluirInativos
+      ? documentosRepository.listarTodosTipos()
+      : documentosRepository.listarTiposAtivos();
+  },
+
+  async criarTipo(input: CriarTipoDocumentoInput, usuarioId: string) {
+    if (await documentosRepository.findTipoPorNome(input.nome)) {
+      throw new ConflictError("Já existe um tipo de documento com este nome", { nome: input.nome });
+    }
+    const tipo = await documentosRepository.criarTipo(input);
+    await registrarAuditoria({
+      usuarioId,
+      entidade: "TipoDocumento",
+      entidadeId: tipo.id,
+      acao: "CRIACAO",
+      detalhes: { nome: tipo.nome },
+    });
+    return tipo;
+  },
+
+  // O escopo (aluno x matrícula) não muda depois de criado: documentos já
+  // anexados dependem dele.
+  async atualizarTipo(id: string, input: AtualizarTipoDocumentoInput, usuarioId: string) {
+    const atual = await documentosRepository.findTipo(id);
+    if (!atual) throw new NotFoundError("Tipo de documento não encontrado");
+    if (input.nome && input.nome !== atual.nome && (await documentosRepository.findTipoPorNome(input.nome))) {
+      throw new ConflictError("Já existe um tipo de documento com este nome", { nome: input.nome });
+    }
+    const tipo = await documentosRepository.atualizarTipo(id, input);
+    await registrarAuditoria({
+      usuarioId,
+      entidade: "TipoDocumento",
+      entidadeId: id,
+      acao: "ATUALIZACAO",
+      detalhes: { camposAlterados: Object.keys(input) },
+    });
+    return tipo;
+  },
+
+  listarAguardandoConferencia() {
+    return documentosRepository.listarAguardandoConferencia();
   },
 
   /** Um item por tipo de documento (com o documento já criado, ou null). */

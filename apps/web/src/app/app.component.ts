@@ -28,6 +28,9 @@ import { AuthService } from "./core/auth/auth.service";
       <mat-toolbar color="primary" class="!sticky top-0 z-10">
         <span class="font-medium">EthosFinancial</span>
         <span class="flex-1"></span>
+        <a mat-flat-button routerLink="/matriculas/cadastro" class="mr-3">
+          <mat-icon>add</mat-icon> Nova matrícula
+        </a>
         <span class="text-sm mr-3">{{ authService.usuario()?.nome }}</span>
         <button mat-icon-button aria-label="Sair" (click)="sair()">
           <mat-icon>logout</mat-icon>
@@ -83,6 +86,14 @@ import { AuthService } from "./core/auth/auth.service";
         }
         <a
           mat-tab-link
+          routerLink="/documentos"
+          routerLinkActive
+          #documentos="routerLinkActive"
+          [active]="documentos.isActive"
+          >Documentos</a
+        >
+        <a
+          mat-tab-link
           routerLink="/relatorios"
           routerLinkActive
           #relatorios="routerLinkActive"
@@ -90,6 +101,14 @@ import { AuthService } from "./core/auth/auth.service";
           >Relatórios</a
         >
         @if (authService.temPerfil("ADMINISTRADOR")) {
+          <a
+            mat-tab-link
+            routerLink="/tipos"
+            routerLinkActive
+            #tipos="routerLinkActive"
+            [active]="tipos.isActive"
+            >Tipos</a
+          >
           <a
             mat-tab-link
             routerLink="/configuracoes"

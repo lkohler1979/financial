@@ -7,6 +7,23 @@ export interface TipoDocumento {
   nome: string;
   escopo: EscopoDocumento;
   obrigatorio: boolean;
+  ordem?: number;
+  ativo?: boolean;
+}
+
+export interface DocumentoAguardandoConferencia {
+  id: string;
+  anexadoEm: string | null;
+  arquivoNome: string | null;
+  tipo: { id: string; nome: string; escopo: EscopoDocumento };
+  aluno: {
+    id: string;
+    codigo: string | null;
+    nome: string;
+    cpf: string;
+    matriculas: { id: string; numeroMatricula: string | null }[];
+  };
+  matricula: { id: string; numeroMatricula: string | null } | null;
 }
 
 export interface Documento {

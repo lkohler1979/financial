@@ -11,6 +11,43 @@ export const documentosRepository = {
     return prisma.tipoDocumento.findMany({ where: { ativo: true }, orderBy: { ordem: "asc" } });
   },
 
+  listarTodosTipos() {
+    return prisma.tipoDocumento.findMany({ orderBy: [{ ordem: "asc" }, { nome: "asc" }] });
+  },
+
+  findTipoPorNome(nome: string) {
+    return prisma.tipoDocumento.findUnique({ where: { nome } });
+  },
+
+  criarTipo(data: Prisma.TipoDocumentoCreateInput) {
+    return prisma.tipoDocumento.create({ data });
+  },
+
+  atualizarTipo(id: string, data: Prisma.TipoDocumentoUpdateInput) {
+    return prisma.tipoDocumento.update({ where: { id }, data });
+  },
+
+  /** Fila de conferência: enviados e ainda não deferidos/indeferidos. */
+  listarAguardandoConferencia() {
+    return prisma.documento.findMany({
+      where: { situacaoEntrega: "ENVIADO", situacaoDeferimento: "PENDENTE", tipo: { ativo: true } },
+      orderBy: { anexadoEm: "asc" },
+      include: {
+        tipo: { select: { id: true, nome: true, escopo: true } },
+        aluno: {
+          select: {
+            id: true,
+            codigo: true,
+            nome: true,
+            cpf: true,
+            matriculas: { select: { id: true, numeroMatricula: true }, orderBy: { dataMatricula: "desc" } },
+          },
+        },
+        matricula: { select: { id: true, numeroMatricula: true } },
+      },
+    });
+  },
+
   findTipo(id: string) {
     return prisma.tipoDocumento.findUnique({ where: { id } });
   },

@@ -62,6 +62,7 @@ export interface Matricula {
 }
 
 export interface MatriculaPayload {
+  cobrancas?: import("./tipo-cobranca.model").CobrancaMatriculaPayload[];
   agenteEducacionalId?: string;
   alunoId?: string;
   cursoId?: string;

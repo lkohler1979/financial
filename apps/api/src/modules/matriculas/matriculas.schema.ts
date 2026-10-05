@@ -27,7 +27,27 @@ const dadosMatricula = {
     .optional(),
 };
 
+// Cobranças escolhidas no cadastro (uma por tipo: Mensalidade, Taxa de
+// matrícula...). O valor é opcional — cai no padrão do curso/tipo.
+// Data "AAAA-MM-DD" (input type=date) vira meia-noite no fuso local (Brasil) —
+// z.coerce.date() a leria como UTC e o dia recuaria ao calcular o vencimento.
+const dataLocal = z.preprocess((v) => {
+  if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
+    const [ano, mes, dia] = v.split("-").map(Number);
+    return new Date(ano, mes - 1, dia);
+  }
+  return v;
+}, z.coerce.date());
+
+const cobrancaSchema = z.object({
+  tipoCobrancaId: z.string().uuid("tipoCobrancaId inválido"),
+  valor: z.coerce.number().positive("Valor deve ser maior que zero").optional(),
+  numeroParcelas: z.coerce.number().int().positive().max(360),
+  primeiroVencimento: dataLocal,
+});
+
 export const criarMatriculaSchema = z.object({
+  cobrancas: z.array(cobrancaSchema).optional(),
   alunoId: z.string().uuid("alunoId inválido"),
   cursoId: z.string().uuid("cursoId inválido"),
   ...dadosMatricula,

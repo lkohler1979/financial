@@ -184,6 +184,9 @@ model Curso {
   /// formulário, o valor final fica gravado em Matricula.valorCurso (pode
   /// ser ajustado por desconto/negociação por aluno).
   valorPadrao Decimal? @db.Decimal(12, 2) @map("valor_padrao")
+  /// Nível de ensino (Aperfeiçoamento, Lato Sensu, Livre/Profissionalizante...)
+  /// — usado para filtrar cursos no cadastro de matrícula.
+  grauEnsino  String?  @map("grau_ensino")
 
   matriculas              Matricula[]
   relatoriosInadimplencia RelatorioInadimplencia[]
@@ -665,4 +668,26 @@ model Documento {
   @@index([alunoId])
   @@index([matriculaId])
   @@map("documentos")
+}
+
+
+// Tipos de cobrança gerados na matrícula (Mensalidade, Taxa de matrícula...).
+// Obrigatório = sempre gerado no cadastro; opcional = o usuário escolhe.
+model TipoCobranca {
+  id              String   @id @default(uuid())
+  nome            String   @unique
+  obrigatorio     Boolean  @default(false)
+  /// true = o valor vem do valor padrão do curso (ex.: Mensalidade);
+  /// false = usa `valorPadrao` deste tipo (ex.: Taxa de matrícula).
+  usaValorDoCurso Boolean  @default(false) @map("usa_valor_do_curso")
+  valorPadrao     Decimal? @db.Decimal(12, 2) @map("valor_padrao")
+  /// Opções de parcelamento oferecidas (ex.: 1, 6, 9, 12).
+  opcoesParcelas  Int[]    @map("opcoes_parcelas")
+  /// Prefixo do código do título das parcelas geradas (ex.: "TM" -> TM1, TM2).
+  /// Null = só o número (1, 2...) — mantém o padrão da Mensalidade.
+  prefixoTitulo   String?  @map("prefixo_titulo")
+  ordem           Int      @default(0)
+  ativo           Boolean  @default(true)
+
+  @@map("tipos_cobranca")
 }

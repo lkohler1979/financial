@@ -5,13 +5,42 @@ import { environment } from "../../../environments/environment";
 import {
   AtualizarDocumentoPayload,
   Documento,
+  DocumentoAguardandoConferencia,
   DocumentosDaMatricula,
+  EscopoDocumento,
+  TipoDocumento,
 } from "../models/documento.model";
 
 @Injectable({ providedIn: "root" })
 export class DocumentosService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiUrl}/documentos`;
+
+  listarTipos(incluirInativos = false): Observable<TipoDocumento[]> {
+    return this.http.get<TipoDocumento[]>(`${this.baseUrl}/tipos`, {
+      params: { incluirInativos },
+    });
+  }
+
+  criarTipo(payload: {
+    nome: string;
+    escopo: EscopoDocumento;
+    obrigatorio: boolean;
+    ordem: number;
+  }): Observable<TipoDocumento> {
+    return this.http.post<TipoDocumento>(`${this.baseUrl}/tipos`, payload);
+  }
+
+  atualizarTipo(
+    id: string,
+    payload: { nome?: string; obrigatorio?: boolean; ordem?: number; ativo?: boolean },
+  ): Observable<TipoDocumento> {
+    return this.http.put<TipoDocumento>(`${this.baseUrl}/tipos/${id}`, payload);
+  }
+
+  aguardandoConferencia(): Observable<DocumentoAguardandoConferencia[]> {
+    return this.http.get<DocumentoAguardandoConferencia[]>(`${this.baseUrl}/aguardando-conferencia`);
+  }
 
   listarDaMatricula(matriculaId: string): Observable<DocumentosDaMatricula> {
     return this.http.get<DocumentosDaMatricula>(`${this.baseUrl}/matriculas/${matriculaId}`);

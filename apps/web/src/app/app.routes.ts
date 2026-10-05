@@ -74,6 +74,31 @@ export const routes: Routes = [
       ),
   },
   {
+    path: "matriculas/cadastro",
+    canActivate: [authGuard, perfilGuard],
+    data: { perfis: TODOS_PERFIS },
+    loadComponent: () =>
+      import("./features/matriculas/matricula-wizard.component").then(
+        (m) => m.MatriculaWizardComponent,
+      ),
+  },
+  {
+    path: "documentos",
+    canActivate: [authGuard, perfilGuard],
+    data: { perfis: TODOS_PERFIS },
+    loadComponent: () =>
+      import("./features/documentos/documentos-pendentes.component").then(
+        (m) => m.DocumentosPendentesComponent,
+      ),
+  },
+  {
+    path: "tipos",
+    canActivate: [authGuard, perfilGuard],
+    data: { perfis: SO_ADMIN },
+    loadComponent: () =>
+      import("./features/tipos/tipos-cadastro.component").then((m) => m.TiposCadastroComponent),
+  },
+  {
     path: "matriculas/novo",
     canActivate: [authGuard, perfilGuard],
     data: { perfis: TODOS_PERFIS },

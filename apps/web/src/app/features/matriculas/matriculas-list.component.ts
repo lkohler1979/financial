@@ -43,7 +43,7 @@ import {
   template: `
     <div class="flex items-center justify-between mb-4">
       <h1 class="text-2xl font-medium m-0">Matrículas</h1>
-      <a mat-raised-button color="primary" routerLink="/matriculas/novo">
+      <a mat-raised-button color="primary" routerLink="/matriculas/cadastro">
         <mat-icon>add</mat-icon> Nova matrícula
       </a>
     </div>

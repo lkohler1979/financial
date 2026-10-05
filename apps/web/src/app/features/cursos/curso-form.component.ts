@@ -57,6 +57,11 @@ import { CursoPayload } from "../../core/models/curso.model";
         <mat-form-field appearance="outline">
           <mat-label>Valor padrão</mat-label>
           <input matInput type="number" min="0" step="0.01" formControlName="valorPadrao" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Nível de ensino</mat-label>
+          <input matInput formControlName="grauEnsino" placeholder="Lato Sensu, Aperfeiçoamento..." />
           <mat-hint>Sugestão ao criar uma matrícula — ajustável por aluno</mat-hint>
         </mat-form-field>
       </div>
@@ -95,6 +100,7 @@ export class CursoFormComponent implements OnInit {
     codigo: ["", [Validators.required]],
     nome: ["", [Validators.required]],
     valorPadrao: this.fb.control<number | undefined>(undefined),
+    grauEnsino: [""],
     observacoes: [""],
     situacao: [true],
   });
@@ -111,6 +117,7 @@ export class CursoFormComponent implements OnInit {
             codigo: curso.codigo,
             nome: curso.nome,
             valorPadrao: curso.valorPadrao ?? undefined,
+            grauEnsino: curso.grauEnsino ?? "",
             observacoes: curso.observacoes ?? "",
             situacao: curso.situacao,
           });
@@ -133,6 +140,7 @@ export class CursoFormComponent implements OnInit {
       codigo: bruto.codigo,
       nome: bruto.nome,
       valorPadrao: bruto.valorPadrao ?? undefined,
+      grauEnsino: bruto.grauEnsino || undefined,
       situacao: bruto.situacao,
       observacoes: bruto.observacoes || undefined,
     };

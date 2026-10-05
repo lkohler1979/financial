@@ -7,6 +7,7 @@ const dadosCurso = {
   observacoes: z.string().trim().max(1000).optional(),
   // Valor sugerido ao criar uma matrícula neste curso — editável por
   // matrícula, não obrigatório (curso sem preço continua válido).
+  grauEnsino: z.string().trim().max(100).optional(),
   valorPadrao: z.coerce.number().positive("Valor deve ser maior que zero").optional(),
 };
 

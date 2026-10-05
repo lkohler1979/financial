@@ -20,6 +20,7 @@ import { asaasRouter, asaasWebhookRouter } from "./modules/asaas/asaas.routes";
 import { redeWebhookRouter } from "./modules/rede/rede.routes";
 import { configuracoesRouter } from "./modules/configuracoes/configuracoes.routes";
 import { auditoriaRouter } from "./modules/auditoria/auditoria.routes";
+import { tiposCobrancaRouter } from "./modules/tipos-cobranca/tipos-cobranca.routes";
 import { documentosRouter } from "./modules/documentos/documentos.routes";
 import { dashboardRouter } from "./modules/dashboard/dashboard.routes";
 
@@ -67,6 +68,7 @@ app.use("/api/dashboard", requireRole("ADMINISTRADOR"), dashboardRouter);
 app.use("/api/alunos", requireRole("ADMINISTRADOR", "FINANCEIRO", "USUARIO"), alunosRouter);
 app.use("/api/cursos", requireRole("ADMINISTRADOR", "FINANCEIRO"), cursosRouter);
 app.use("/api/matriculas", requireRole("ADMINISTRADOR", "FINANCEIRO", "USUARIO"), matriculasRouter);
+app.use("/api/tipos-cobranca", requireRole("ADMINISTRADOR", "FINANCEIRO", "USUARIO"), tiposCobrancaRouter);
 app.use("/api/documentos", requireRole("ADMINISTRADOR", "FINANCEIRO", "USUARIO"), documentosRouter);
 app.use("/api/financeiro", requireRole("ADMINISTRADOR", "FINANCEIRO"), financeiroRouter);
 app.use("/api/importacao", requireRole("ADMINISTRADOR", "FINANCEIRO"), importacaoRouter);

@@ -10,4 +10,24 @@ export const atualizarDocumentoSchema = z
   })
   .refine((obj) => Object.keys(obj).length > 0, "Informe ao menos um campo para atualizar");
 
+export const criarTipoDocumentoSchema = z.object({
+  nome: z.string().trim().min(1, "Nome é obrigatório").max(100),
+  escopo: z.enum(["ALUNO", "MATRICULA"]),
+  obrigatorio: z.boolean().default(true),
+  ordem: z.coerce.number().int().min(0).max(999).default(0),
+  ativo: z.boolean().default(true),
+});
+
+export const atualizarTipoDocumentoSchema = z
+  .object({
+    nome: z.string().trim().min(1).max(100),
+    obrigatorio: z.boolean(),
+    ordem: z.coerce.number().int().min(0).max(999),
+    ativo: z.boolean(),
+  })
+  .partial()
+  .refine((obj) => Object.keys(obj).length > 0, "Informe ao menos um campo para atualizar");
+
+export type CriarTipoDocumentoInput = z.infer<typeof criarTipoDocumentoSchema>;
+export type AtualizarTipoDocumentoInput = z.infer<typeof atualizarTipoDocumentoSchema>;
 export type AtualizarDocumentoInput = z.infer<typeof atualizarDocumentoSchema>;

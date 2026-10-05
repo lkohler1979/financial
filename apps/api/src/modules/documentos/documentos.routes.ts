@@ -1,5 +1,6 @@
 import { Router } from "express";
 import multer from "multer";
+import { requireRole } from "../../middlewares/auth";
 import { documentosController } from "./documentos.controller";
 
 // Em memória (limite de 10MB) — o service decide onde gravar via
@@ -9,6 +10,9 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 
 export const documentosRouter = Router();
 
 documentosRouter.get("/tipos", documentosController.listarTipos);
+documentosRouter.post("/tipos", requireRole("ADMINISTRADOR"), documentosController.criarTipo);
+documentosRouter.put("/tipos/:id", requireRole("ADMINISTRADOR"), documentosController.atualizarTipo);
+documentosRouter.get("/aguardando-conferencia", documentosController.aguardandoConferencia);
 documentosRouter.get("/matriculas/:matriculaId", documentosController.listarDaMatricula);
 documentosRouter.post(
   "/matriculas/:matriculaId/tipos/:tipoId/arquivo",

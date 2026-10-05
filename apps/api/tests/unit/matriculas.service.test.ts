@@ -4,6 +4,7 @@ import { matriculasRepository } from "../../src/modules/matriculas/matriculas.re
 import { alunosRepository } from "../../src/modules/alunos/alunos.repository";
 import { cursosRepository } from "../../src/modules/cursos/cursos.repository";
 import { financeiroService } from "../../src/modules/financeiro/financeiro.service";
+import { tiposCobrancaRepository } from "../../src/modules/tipos-cobranca/tipos-cobranca.repository";
 import { registrarAuditoria } from "../../src/modules/auditoria/auditoria.service";
 import { ConflictError, NotFoundError, ValidationError } from "../../src/shared/errors/app-error";
 
@@ -27,6 +28,9 @@ vi.mock("../../src/modules/cursos/cursos.repository", () => ({
 vi.mock("../../src/modules/financeiro/financeiro.service", () => ({
   financeiroService: { criar: vi.fn() },
 }));
+vi.mock("../../src/modules/tipos-cobranca/tipos-cobranca.repository", () => ({
+  tiposCobrancaRepository: { findManyByIds: vi.fn(), listObrigatoriosAtivos: vi.fn() },
+}));
 vi.mock("../../src/modules/auditoria/auditoria.service", () => ({
   registrarAuditoria: vi.fn(),
 }));
@@ -36,6 +40,7 @@ const alunos = vi.mocked(alunosRepository);
 const cursos = vi.mocked(cursosRepository);
 const financeiro = vi.mocked(financeiroService);
 const auditoria = vi.mocked(registrarAuditoria);
+const tiposRepo = vi.mocked(tiposCobrancaRepository);
 
 const ALUNO = "11111111-1111-1111-1111-111111111111";
 const CURSO = "22222222-2222-2222-2222-222222222222";
@@ -236,5 +241,107 @@ describe("matriculasService.gerarParcelas", () => {
         detalhes: expect.objectContaining({ acao: "parcelas_geradas" }),
       }),
     );
+  });
+});
+
+describe("matriculasService.criar — cobranças por tipo", () => {
+  const MENSALIDADE = {
+    id: "11111111-aaaa-aaaa-aaaa-111111111111",
+    nome: "Mensalidade",
+    ativo: true,
+    obrigatorio: true,
+    usaValorDoCurso: true,
+    valorPadrao: null,
+    opcoesParcelas: [1, 6, 12],
+    prefixoTitulo: null,
+  };
+  const TAXA = {
+    id: "22222222-bbbb-bbbb-bbbb-222222222222",
+    nome: "Taxa de matrícula",
+    ativo: true,
+    obrigatorio: false,
+    usaValorDoCurso: false,
+    valorPadrao: 49.9,
+    opcoesParcelas: [1],
+    prefixoTitulo: "TM",
+  };
+
+  beforeEach(() => {
+    alunos.findById.mockResolvedValue({ id: ALUNO } as never);
+    cursos.findById.mockResolvedValue({ id: CURSO, valorPadrao: 1200 } as never);
+    repo.findByChaveNatural.mockResolvedValue(null);
+    repo.create.mockResolvedValue(matriculaFake as never);
+    tiposRepo.listObrigatoriosAtivos.mockResolvedValue([MENSALIDADE] as never);
+  });
+
+  it("gera mensalidade (valor do curso) e taxa (valor do tipo) com tipoTitulo e prefixo", async () => {
+    tiposRepo.findManyByIds.mockResolvedValue([MENSALIDADE, TAXA] as never);
+
+    await matriculasService.criar(
+      {
+        alunoId: ALUNO,
+        cursoId: CURSO,
+        cobrancas: [
+          { tipoCobrancaId: MENSALIDADE.id, numeroParcelas: 6, primeiroVencimento: new Date(2026, 9, 31) },
+          { tipoCobrancaId: TAXA.id, numeroParcelas: 1, primeiroVencimento: new Date(2026, 9, 31) },
+        ],
+      },
+      USUARIO,
+    );
+
+    const chamadas = financeiro.criar.mock.calls.map(([i]) => i);
+    expect(chamadas).toHaveLength(7);
+    expect(chamadas[0]).toMatchObject({ codTitulo: "1", tipoTitulo: "Mensalidade", valor: 200 });
+    // dia 31 em mês curto cai no último dia (novembro tem 30)
+    expect(chamadas[1].vencimento.getDate()).toBe(30);
+    expect(chamadas[6]).toMatchObject({ codTitulo: "TM1", tipoTitulo: "Taxa de matrícula", valor: 49.9 });
+    expect(repo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ valorCurso: 1200, numeroParcelas: 6, diaVencimento: 28 }),
+    );
+  });
+
+  it("exige as cobranças obrigatórias", async () => {
+    tiposRepo.findManyByIds.mockResolvedValue([TAXA] as never);
+    await expect(
+      matriculasService.criar(
+        {
+          alunoId: ALUNO,
+          cursoId: CURSO,
+          cobrancas: [{ tipoCobrancaId: TAXA.id, numeroParcelas: 1, primeiroVencimento: new Date() }],
+        },
+        USUARIO,
+      ),
+    ).rejects.toBeInstanceOf(ValidationError);
+    expect(repo.create).not.toHaveBeenCalled();
+  });
+
+  it("recusa parcelamento fora das opções do tipo", async () => {
+    tiposRepo.findManyByIds.mockResolvedValue([MENSALIDADE] as never);
+    await expect(
+      matriculasService.criar(
+        {
+          alunoId: ALUNO,
+          cursoId: CURSO,
+          cobrancas: [{ tipoCobrancaId: MENSALIDADE.id, numeroParcelas: 7, primeiroVencimento: new Date() }],
+        },
+        USUARIO,
+      ),
+    ).rejects.toBeInstanceOf(ValidationError);
+    expect(repo.create).not.toHaveBeenCalled();
+  });
+
+  it("recusa quando o curso não tem valor e nada foi informado", async () => {
+    cursos.findById.mockResolvedValue({ id: CURSO, valorPadrao: null } as never);
+    tiposRepo.findManyByIds.mockResolvedValue([MENSALIDADE] as never);
+    await expect(
+      matriculasService.criar(
+        {
+          alunoId: ALUNO,
+          cursoId: CURSO,
+          cobrancas: [{ tipoCobrancaId: MENSALIDADE.id, numeroParcelas: 1, primeiroVencimento: new Date() }],
+        },
+        USUARIO,
+      ),
+    ).rejects.toBeInstanceOf(ValidationError);
   });
 });

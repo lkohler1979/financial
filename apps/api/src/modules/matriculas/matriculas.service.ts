@@ -4,6 +4,7 @@ import { registrarAuditoria } from "../auditoria/auditoria.service";
 import { alunosRepository } from "../alunos/alunos.repository";
 import { cursosRepository } from "../cursos/cursos.repository";
 import { financeiroService } from "../financeiro/financeiro.service";
+import { tiposCobrancaRepository } from "../tipos-cobranca/tipos-cobranca.repository";
 import { matriculasRepository } from "./matriculas.repository";
 import type {
   AtualizarMatriculaInput,
@@ -73,6 +74,92 @@ async function gerarParcelasAutomaticas(
         parcela: `${indice + 1}/${dados.numeroParcelas}`,
         vencimento: new Date(ano, mes + indice, dados.diaVencimento),
         valor: valores[indice],
+      },
+      usuarioId,
+    );
+  }
+}
+
+interface CobrancaResolvida {
+  tipo: { id: string; nome: string; usaValorDoCurso: boolean; prefixoTitulo: string | null };
+  valor: number;
+  numeroParcelas: number;
+  primeiroVencimento: Date;
+}
+
+/** Vencimento da parcela `indice`: mesmo dia do primeiro vencimento nos meses
+ * seguintes — em mês mais curto (ex.: dia 31 em fevereiro) cai no último dia. */
+function vencimentoDaParcela(primeiro: Date, indice: number): Date {
+  const ano = primeiro.getFullYear();
+  const mes = primeiro.getMonth() + indice;
+  const ultimoDia = new Date(ano, mes + 1, 0).getDate();
+  return new Date(ano, mes, Math.min(primeiro.getDate(), ultimoDia));
+}
+
+/**
+ * Valida as cobranças escolhidas no cadastro (tipo existe e está ativo, número
+ * de parcelas é uma das opções do tipo, há valor, todos os tipos obrigatórios
+ * foram incluídos) ANTES de criar a matrícula, pra nunca deixar um registro
+ * pela metade.
+ */
+async function resolverCobrancas(
+  cobrancas: NonNullable<CriarMatriculaInput["cobrancas"]>,
+  valorPadraoCurso: number | null,
+): Promise<CobrancaResolvida[]> {
+  const tipos = await tiposCobrancaRepository.findManyByIds(cobrancas.map((c) => c.tipoCobrancaId));
+  const obrigatorios = await tiposCobrancaRepository.listObrigatoriosAtivos();
+
+  const resolvidas = cobrancas.map((c) => {
+    const tipo = tipos.find((t) => t.id === c.tipoCobrancaId);
+    if (!tipo || !tipo.ativo) throw new ValidationError("Tipo de cobrança inválido ou inativo");
+    if (!tipo.opcoesParcelas.includes(c.numeroParcelas)) {
+      throw new ValidationError(
+        `${tipo.nome}: parcelamento em ${c.numeroParcelas}x não é uma opção disponível`,
+      );
+    }
+    const valor =
+      c.valor ??
+      (tipo.usaValorDoCurso
+        ? valorPadraoCurso
+        : tipo.valorPadrao == null
+          ? null
+          : Number(tipo.valorPadrao));
+    if (valor == null) {
+      throw new ValidationError(`${tipo.nome}: informe o valor (o curso/tipo não tem valor padrão)`);
+    }
+    return {
+      tipo,
+      valor,
+      numeroParcelas: c.numeroParcelas,
+      primeiroVencimento: c.primeiroVencimento,
+    };
+  });
+
+  for (const obrigatorio of obrigatorios) {
+    if (!resolvidas.some((r) => r.tipo.id === obrigatorio.id)) {
+      throw new ValidationError(`A cobrança "${obrigatorio.nome}" é obrigatória`);
+    }
+  }
+  return resolvidas;
+}
+
+/** Gera as parcelas de uma cobrança escolhida — mesma validação/auditoria de
+ * uma parcela lançada manualmente (financeiroService.criar). */
+async function gerarParcelasDaCobranca(
+  matriculaId: string,
+  cobranca: CobrancaResolvida,
+  usuarioId: string,
+): Promise<void> {
+  const valores = dividirValorEmParcelas(cobranca.valor, cobranca.numeroParcelas);
+  for (let indice = 0; indice < cobranca.numeroParcelas; indice++) {
+    await financeiroService.criar(
+      {
+        matriculaId,
+        codTitulo: `${cobranca.tipo.prefixoTitulo ?? ""}${indice + 1}`,
+        parcela: `${indice + 1}/${cobranca.numeroParcelas}`,
+        vencimento: vencimentoDaParcela(cobranca.primeiroVencimento, indice),
+        valor: valores[indice],
+        tipoTitulo: cobranca.tipo.nome,
       },
       usuarioId,
     );
@@ -205,7 +292,21 @@ export const matriculasService = {
     // dispara quando valorCurso E numeroParcelas vêm preenchidos; nesse caso
     // diaVencimento passa a ser obrigatório. Validado antes de criar a
     // matrícula, para não deixar um registro "pela metade" se faltar o dia.
-    const gerarParcelas = input.valorCurso !== undefined && input.numeroParcelas !== undefined;
+    const curso = await cursosRepository.findById(input.cursoId);
+    const cobrancas = input.cobrancas?.length
+      ? await resolverCobrancas(
+          input.cobrancas,
+          curso?.valorPadrao == null ? null : Number(curso.valorPadrao),
+        )
+      : [];
+    // A mensalidade (valor vindo do curso) também fica gravada na matrícula,
+    // pra tela de edição mostrar valor/parcelas/dia como antes.
+    const mensalidade = cobrancas.find((c) => c.tipo.usaValorDoCurso);
+
+    const gerarParcelas =
+      cobrancas.length === 0 &&
+      input.valorCurso !== undefined &&
+      input.numeroParcelas !== undefined;
     if (gerarParcelas && input.diaVencimento === undefined) {
       throw new ValidationError(
         "Informe o dia de vencimento para gerar as parcelas automaticamente",
@@ -224,12 +325,18 @@ export const matriculasService = {
       ...(input.agenteEducacionalId
         ? { agenteEducacional: { connect: { id: input.agenteEducacionalId } } }
         : {}),
-      valorCurso: input.valorCurso,
-      numeroParcelas: input.numeroParcelas,
-      diaVencimento: input.diaVencimento,
+      valorCurso: mensalidade?.valor ?? input.valorCurso,
+      numeroParcelas: mensalidade?.numeroParcelas ?? input.numeroParcelas,
+      diaVencimento: mensalidade
+        ? Math.min(mensalidade.primeiroVencimento.getDate(), 28)
+        : input.diaVencimento,
     };
 
     const matricula = await matriculasRepository.create(data);
+
+    for (const cobranca of cobrancas) {
+      await gerarParcelasDaCobranca(matricula.id, cobranca, usuarioId);
+    }
 
     if (gerarParcelas) {
       await gerarParcelasAutomaticas(

@@ -131,7 +131,8 @@ export const documentosService = {
     matriculaId: string,
     tipoDocumentoId: string,
     arquivo: ArquivoEnviado | undefined,
-    usuarioId: string,
+    usuarioId: string | null,
+    ip?: string,
   ) {
     if (!arquivo) throw new ValidationError("Selecione um arquivo para enviar");
     if (!EXTENSOES_PERMITIDAS.includes(path.extname(arquivo.originalname).toLowerCase())) {
@@ -151,18 +152,24 @@ export const documentosService = {
       arquivoTamanho: arquivo.size,
       situacaoEntrega: "ENVIADO",
       anexadoEm: new Date(),
+      anexadoIp: ip ?? null,
+      anexadoPorAluno: usuarioId === null,
       situacaoDeferimento: "PENDENTE",
       deferidoEm: null,
       validadoPorId: null,
     });
 
-    await registrarAuditoria({
-      usuarioId,
-      entidade: ENTIDADE,
-      entidadeId: documento.id,
-      acao: "ATUALIZACAO",
-      detalhes: { acao: "arquivo_anexado", tipo: documento.tipo.nome, arquivo: arquivo.originalname },
-    });
+    // usuarioId nulo = enviado pelo próprio aluno na área do aluno (Auditoria
+    // só referencia usuários do sistema; o documento guarda `anexadoEm`).
+    if (usuarioId) {
+      await registrarAuditoria({
+        usuarioId,
+        entidade: ENTIDADE,
+        entidadeId: documento.id,
+        acao: "ATUALIZACAO",
+        detalhes: { acao: "arquivo_anexado", tipo: documento.tipo.nome, arquivo: arquivo.originalname },
+      });
+    }
     return atualizado;
   },
 
@@ -228,6 +235,8 @@ export const documentosService = {
       arquivoMime: null,
       arquivoTamanho: null,
       anexadoEm: null,
+      anexadoIp: null,
+      anexadoPorAluno: false,
       situacaoEntrega: "NAO_ENVIADO",
       situacaoDeferimento: "PENDENTE",
       deferidoEm: null,

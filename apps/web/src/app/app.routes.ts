@@ -1,6 +1,7 @@
 import { Routes } from "@angular/router";
 import { authGuard } from "./core/guards/auth.guard";
 import { perfilGuard } from "./core/guards/perfil.guard";
+import { alunoAuthGuard } from "./core/guards/aluno-auth.guard";
 import { homeRedirectGuard } from "./core/guards/home-redirect.guard";
 
 // Perfis por módulo (docs/PENDENCIAS.md tem a matriz completa e a decisão do
@@ -13,6 +14,26 @@ export const routes: Routes = [
   {
     path: "login",
     loadComponent: () => import("./features/auth/login.component").then((m) => m.LoginComponent),
+  },
+  {
+    path: "aluno/login",
+    loadComponent: () =>
+      import("./features/portal/portal-login.component").then((m) => m.PortalLoginComponent),
+  },
+  {
+    path: "aluno",
+    canActivate: [alunoAuthGuard],
+    loadComponent: () =>
+      import("./features/portal/portal-home.component").then((m) => m.PortalHomeComponent),
+  },
+  {
+    path: "solicitacoes",
+    canActivate: [authGuard, perfilGuard],
+    data: { perfis: TODOS_PERFIS },
+    loadComponent: () =>
+      import("./features/solicitacoes/solicitacoes-fila.component").then(
+        (m) => m.SolicitacoesFilaComponent,
+      ),
   },
   { path: "", pathMatch: "full", canActivate: [homeRedirectGuard], children: [] },
   {

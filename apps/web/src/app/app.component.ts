@@ -1,9 +1,11 @@
 import { Component, inject } from "@angular/core";
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from "@angular/router";
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from "@angular/router";
 import { MatToolbarModule } from "@angular/material/toolbar";
 import { MatIconModule } from "@angular/material/icon";
 import { MatTabsModule } from "@angular/material/tabs";
 import { MatButtonModule } from "@angular/material/button";
+import { toSignal } from "@angular/core/rxjs-interop";
+import { filter, map } from "rxjs";
 import { AuthService } from "./core/auth/auth.service";
 
 // Estrutura de navegação (topo + abas horizontais) baseada nos wireframes em
@@ -24,7 +26,7 @@ import { AuthService } from "./core/auth/auth.service";
     MatButtonModule,
   ],
   template: `
-    @if (authService.autenticado()) {
+    @if (authService.autenticado() && !naAreaDoAluno()) {
       <mat-toolbar color="primary" class="!sticky top-0 z-10">
         <span class="font-medium">EthosFinancial</span>
         <span class="flex-1"></span>
@@ -94,6 +96,14 @@ import { AuthService } from "./core/auth/auth.service";
         >
         <a
           mat-tab-link
+          routerLink="/solicitacoes"
+          routerLinkActive
+          #solicitacoes="routerLinkActive"
+          [active]="solicitacoes.isActive"
+          >Solicitações</a
+        >
+        <a
+          mat-tab-link
           routerLink="/relatorios"
           routerLinkActive
           #relatorios="routerLinkActive"
@@ -149,6 +159,16 @@ import { AuthService } from "./core/auth/auth.service";
 export class AppComponent {
   readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+
+  /** A área do aluno tem layout próprio: esconde a barra da equipe. */
+  private readonly url = toSignal(
+    this.router.events.pipe(
+      filter((e) => e instanceof NavigationEnd),
+      map(() => this.router.url),
+    ),
+    { initialValue: this.router.url },
+  );
+  readonly naAreaDoAluno = () => this.url().startsWith("/aluno");
 
   sair(): void {
     this.authService.logout();

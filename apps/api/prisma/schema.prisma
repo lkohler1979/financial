@@ -105,20 +105,21 @@ enum RedeAmbiente {
 }
 
 model Usuario {
-  id        String        @id @default(uuid())
-  nome      String
-  email     String        @unique
-  senhaHash String
-  perfil    PerfilUsuario @default(USUARIO)
-  ativo     Boolean       @default(true)
-  criadoEm  DateTime      @default(now())
+  id                    String        @id @default(uuid())
+  nome                  String
+  email                 String        @unique
+  senhaHash             String
+  perfil                PerfilUsuario @default(USUARIO)
+  ativo                 Boolean       @default(true)
+  criadoEm              DateTime      @default(now())
   /// Permissão para deferir (aprovar/reprovar) documentos de alunos/matrículas.
   /// ADMINISTRADOR sempre pode, independente deste campo.
-  podeDeferirDocumentos Boolean @default(false) @map("pode_deferir_documentos")
+  podeDeferirDocumentos Boolean       @default(false) @map("pode_deferir_documentos")
 
-  alunosComoAgente        Aluno[]     @relation("AlunoAgenteEducacional")
-  matriculasComoAgente    Matricula[] @relation("MatriculaAgenteEducacional")
+  alunosComoAgente        Aluno[]                  @relation("AlunoAgenteEducacional")
+  matriculasComoAgente    Matricula[]              @relation("MatriculaAgenteEducacional")
   documentosValidados     Documento[]
+  solicitacoesAtendidas   SolicitacaoDocumento[]
   importacoes             Importacao[]
   auditorias              Auditoria[]
   historicosCobranca      HistoricoCobranca[]
@@ -129,47 +130,48 @@ model Usuario {
 }
 
 model Aluno {
-  id         String   @id @default(uuid())
-  cpf        String   @unique
-  nome       String
-  tipoPessoa String?  @map("tipo_pessoa")
-  email      String?
-  telefone1  String?  @map("telefone_1")
-  telefone2  String?  @map("telefone_2")
-  cep        String?
-  endereco   String?
-  numero     String?
-  complemento String?
-  bairro     String?
-  cidade     String?
-  estado     String?
-  criadoEm   DateTime @default(now()) @map("criado_em")
-  atualizadoEm DateTime @updatedAt @map("atualizado_em")
+  id              String   @id @default(uuid())
+  cpf             String   @unique
+  nome            String
+  tipoPessoa      String?  @map("tipo_pessoa")
+  email           String?
+  telefone1       String?  @map("telefone_1")
+  telefone2       String?  @map("telefone_2")
+  cep             String?
+  endereco        String?
+  numero          String?
+  complemento     String?
+  bairro          String?
+  cidade          String?
+  estado          String?
+  criadoEm        DateTime @default(now()) @map("criado_em")
+  atualizadoEm    DateTime @updatedAt @map("atualizado_em")
   /// ID do cliente já criado no Asaas (POST /customers) — cacheado aqui pra
   /// não recriar um cliente novo a cada boleto gerado para o mesmo aluno.
-  asaasCustomerId String? @unique @map("asaas_customer_id")
+  asaasCustomerId String?  @unique @map("asaas_customer_id")
 
   /// Código visível do aluno: ano do cadastro + sequencial de 5 dígitos
   /// (ex.: 202600001), gerado automaticamente — ver shared/utils/sequencial.ts.
-  codigo                   String?   @unique
-  genero                   String?
-  dataNascimento           DateTime? @map("data_nascimento")
-  estadoNascimento         String?   @map("estado_nascimento")
-  cidadeNascimento         String?   @map("cidade_nascimento")
-  nomeMae                  String?   @map("nome_mae")
-  nomePai                  String?   @map("nome_pai")
-  tipoDocumentoIdentificacao String? @map("tipo_documento_identificacao")
-  numeroDocumentoIdentificacao String? @map("numero_documento_identificacao")
-  profissao                String?
-  empresa                  String?
-  necessidadesEspeciais    String?   @map("necessidades_especiais")
-  origemCadastro           String?   @map("origem_cadastro")
-  mediador                 String?
-  agenteEducacionalId      String?   @map("agente_educacional_id")
-  agenteEducacional        Usuario?  @relation("AlunoAgenteEducacional", fields: [agenteEducacionalId], references: [id])
+  codigo                       String?   @unique
+  genero                       String?
+  dataNascimento               DateTime? @map("data_nascimento")
+  estadoNascimento             String?   @map("estado_nascimento")
+  cidadeNascimento             String?   @map("cidade_nascimento")
+  nomeMae                      String?   @map("nome_mae")
+  nomePai                      String?   @map("nome_pai")
+  tipoDocumentoIdentificacao   String?   @map("tipo_documento_identificacao")
+  numeroDocumentoIdentificacao String?   @map("numero_documento_identificacao")
+  profissao                    String?
+  empresa                      String?
+  necessidadesEspeciais        String?   @map("necessidades_especiais")
+  origemCadastro               String?   @map("origem_cadastro")
+  mediador                     String?
+  agenteEducacionalId          String?   @map("agente_educacional_id")
+  agenteEducacional            Usuario?  @relation("AlunoAgenteEducacional", fields: [agenteEducacionalId], references: [id])
 
-  matriculas Matricula[]
-  documentos Documento[]
+  matriculas   Matricula[]
+  documentos   Documento[]
+  solicitacoes SolicitacaoDocumento[]
 
   @@map("alunos")
 }
@@ -183,7 +185,7 @@ model Curso {
   /// Valor sugerido ao criar uma matrícula neste curso — só um default pro
   /// formulário, o valor final fica gravado em Matricula.valorCurso (pode
   /// ser ajustado por desconto/negociação por aluno).
-  valorPadrao Decimal? @db.Decimal(12, 2) @map("valor_padrao")
+  valorPadrao Decimal? @map("valor_padrao") @db.Decimal(12, 2)
   /// Nível de ensino (Aperfeiçoamento, Lato Sensu, Livre/Profissionalizante...)
   /// — usado para filtrar cursos no cadastro de matrícula.
   grauEnsino  String?  @map("grau_ensino")
@@ -195,15 +197,15 @@ model Curso {
 }
 
 model Matricula {
-  id               String    @id @default(uuid())
-  alunoId          String    @map("aluno_id")
-  cursoId          String    @map("curso_id")
-  numeroMatricula  String?   @map("numero_matricula")
-  dataMatricula    DateTime? @map("data_matricula")
-  contratoAssinado Boolean   @default(false) @map("contrato_assinado")
-  tcdAssinado      Boolean   @default(false) @map("tcd_assinado")
-  situacao         String    @default("ATIVA")
-  observacoes      String?
+  id                        String                    @id @default(uuid())
+  alunoId                   String                    @map("aluno_id")
+  cursoId                   String                    @map("curso_id")
+  numeroMatricula           String?                   @map("numero_matricula")
+  dataMatricula             DateTime?                 @map("data_matricula")
+  contratoAssinado          Boolean                   @default(false) @map("contrato_assinado")
+  tcdAssinado               Boolean                   @default(false) @map("tcd_assinado")
+  situacao                  String                    @default("ATIVA")
+  observacoes               String?
   /// Ver StatusSincronizacaoLegado — marcado SINCRONIZADO quando a
   /// sincronização com o sistema legado roda com sucesso para esta matrícula
   /// (independente de ter encontrado alguma divergência para aplicar).
@@ -213,11 +215,11 @@ model Matricula {
   /// dispara a geração automática das parcelas mensais na criação da
   /// matrícula (ver matriculas.service.ts). Nulo = sem geração automática
   /// (matrícula sem cobrança associada, ou parcelas lançadas manualmente).
-  valorCurso     Decimal? @db.Decimal(12, 2) @map("valor_curso")
-  numeroParcelas Int?     @map("numero_parcelas")
+  valorCurso                Decimal?                  @map("valor_curso") @db.Decimal(12, 2)
+  numeroParcelas            Int?                      @map("numero_parcelas")
   /// Dia do mês (1-28) em que cada parcela gerada automaticamente vence —
   /// independente do dia da dataMatricula (pedido do usuário).
-  diaVencimento  Int?     @map("dia_vencimento")
+  diaVencimento             Int?                      @map("dia_vencimento")
 
   agenteEducacionalId String?  @map("agente_educacional_id")
   agenteEducacional   Usuario? @relation("MatriculaAgenteEducacional", fields: [agenteEducacionalId], references: [id])
@@ -225,38 +227,39 @@ model Matricula {
   aluno Aluno @relation(fields: [alunoId], references: [id])
   curso Curso @relation(fields: [cursoId], references: [id])
 
-  documentos         Documento[]
-  cupomId            String?   @map("cupom_id")
-  cupom              Cupom?    @relation(fields: [cupomId], references: [id])
-  parcelas           Parcela[]
-  tags               MatriculaTag[]
-  historicoCobranca  HistoricoCobranca[]
+  documentos          Documento[]
+  solicitacoes        SolicitacaoDocumento[]
+  cupomId             String?                @map("cupom_id")
+  cupom               Cupom?                 @relation(fields: [cupomId], references: [id])
+  parcelas            Parcela[]
+  tags                MatriculaTag[]
+  historicoCobranca   HistoricoCobranca[]
   observacoesCobranca ObservacaoCobranca[]
-  situacaoCobrancaId String? @map("situacao_cobranca_id")
-  situacaoCobranca   SituacaoCobranca? @relation(fields: [situacaoCobrancaId], references: [id])
+  situacaoCobrancaId  String?                @map("situacao_cobranca_id")
+  situacaoCobranca    SituacaoCobranca?      @relation(fields: [situacaoCobrancaId], references: [id])
 
   @@unique([alunoId, cursoId, numeroMatricula])
   @@map("matriculas")
 }
 
 model Parcela {
-  id            String        @id @default(uuid())
-  matriculaId   String        @map("matricula_id")
-  codTitulo     String        @map("cod_titulo")
-  parcela       String
-  vencimento    DateTime
-  valor         Decimal       @db.Decimal(12, 2)
-  tipoTitulo    String?       @map("tipo_titulo")
-  status        StatusParcela @default(EM_ABERTO)
-  dataPagamento DateTime?     @map("data_pagamento")
-  valorPago     Decimal?      @db.Decimal(12, 2) @map("valor_pago")
-  observacoes   String?
+  id                        String                    @id @default(uuid())
+  matriculaId               String                    @map("matricula_id")
+  codTitulo                 String                    @map("cod_titulo")
+  parcela                   String
+  vencimento                DateTime
+  valor                     Decimal                   @db.Decimal(12, 2)
+  tipoTitulo                String?                   @map("tipo_titulo")
+  status                    StatusParcela             @default(EM_ABERTO)
+  dataPagamento             DateTime?                 @map("data_pagamento")
+  valorPago                 Decimal?                  @map("valor_pago") @db.Decimal(12, 2)
+  observacoes               String?
   /// Valor com juros e multa já calculado pelo sistema de origem da planilha
   /// (coluna TITULO_VALOR_JUROS_E_MULTA) — só para referência/conferência.
   /// NÃO substitui o cálculo próprio do sistema (Configuracao.multaPercentual/
   /// jurosDiarioPercentual), decisão do usuário registrada em
   /// docs/PENDENCIAS.md (2026-07-09).
-  valorOrigemComJurosEMulta Decimal? @db.Decimal(12, 2) @map("valor_origem_com_juros_e_multa")
+  valorOrigemComJurosEMulta Decimal?                  @map("valor_origem_com_juros_e_multa") @db.Decimal(12, 2)
   /// Multa/juros/total efetivamente usados no documento de protesto gerado
   /// para esta parcela (mesmos valores calculados por
   /// calculo-financeiro.ts no momento da geração) — gravados quando a
@@ -264,9 +267,9 @@ model Parcela {
   /// Ficha de Cobrança recalcularia com a data de hoje, divergindo cada vez
   /// mais do documento já gerado (congelado) conforme os dias passam.
   /// Decisão do usuário, 2026-07-09: os dois precisam ser sempre iguais.
-  multaProtesto Decimal? @db.Decimal(12, 2) @map("multa_protesto")
-  jurosProtesto Decimal? @db.Decimal(12, 2) @map("juros_protesto")
-  totalProtesto Decimal? @db.Decimal(12, 2) @map("total_protesto")
+  multaProtesto             Decimal?                  @map("multa_protesto") @db.Decimal(12, 2)
+  jurosProtesto             Decimal?                  @map("juros_protesto") @db.Decimal(12, 2)
+  totalProtesto             Decimal?                  @map("total_protesto") @db.Decimal(12, 2)
   /// Ver StatusSincronizacaoLegado — marcado SINCRONIZADO quando esta
   /// Parcela é consultada com sucesso contra o sistema legado (mesmo que o
   /// legado não tenha trazido nenhuma mudança a aplicar).
@@ -279,9 +282,9 @@ model Parcela {
   /// legado), atualizados a cada sincronização/importação. Decisão do
   /// usuário, 2026-09-15 — diferente de `valorOrigemComJurosEMulta` (que é
   /// só referência da importação por planilha, nunca substitui o cálculo).
-  multaLegado Decimal? @db.Decimal(12, 2) @map("multa_legado")
-  jurosLegado Decimal? @db.Decimal(12, 2) @map("juros_legado")
-  totalLegado Decimal? @db.Decimal(12, 2) @map("total_legado")
+  multaLegado               Decimal?                  @map("multa_legado") @db.Decimal(12, 2)
+  jurosLegado               Decimal?                  @map("juros_legado") @db.Decimal(12, 2)
+  totalLegado               Decimal?                  @map("total_legado") @db.Decimal(12, 2)
   /// Código numérico literal do campo `tipoTituloId` trazido pelo endpoint
   /// `titulo-informacoes/{id}` do legado (33 = Renegociação, 2 = Mensalidade
   /// — decisão do usuário, 2026-09-17) — guardado só para exibição/
@@ -290,19 +293,19 @@ model Parcela {
   /// geração de protesto; quando este código está presente, ele passa a ser
   /// a fonte preferida para derivar `tipoTitulo` (mais confiável que a
   /// heurística sobre `tituloDescricao`, mantida como fallback).
-  tipoTituloIdLegado Int? @map("tipo_titulo_id_legado")
+  tipoTituloIdLegado        Int?                      @map("tipo_titulo_id_legado")
   /// `tituloObservacoes` do endpoint `titulo-informacoes/{id}` do legado —
   /// texto livre do próprio sistema de origem, nunca editado pelo Ethos.
   /// Diferente de `observacoes` (acima), que é campo de gestão interna do
   /// Ethos (decisão do usuário, 2026-09-17: nunca sobrescrever um pelo
   /// outro).
-  tituloObservacoesLegado String? @map("titulo_observacoes_legado")
+  tituloObservacoesLegado   String?                   @map("titulo_observacoes_legado")
 
   /// Qual provedor processou a cobrança desta parcela (Asaas ou Rede) — null
   /// até "Gerar cobrança" ser clicado. Os campos `asaas*` abaixo guardam o
   /// resultado independente do provedor (nome mantido por já estar em uso
   /// desde antes de existir mais de um provedor — ver asaas.service.ts).
-  provedorPagamento PagamentoProvedor? @map("provedor_pagamento")
+  provedorPagamento       PagamentoProvedor? @map("provedor_pagamento")
   /// Campos da integração com gateway de pagamento (boleto/Pix/cartão) —
   /// todos nulos até alguém clicar em "Gerar cobrança" pra esta parcela.
   /// `asaasPaymentId` é a chave usada tanto pra idempotência (não gerar 2
@@ -311,26 +314,26 @@ model Parcela {
   /// quando é o Asaas (nome mantido por legado).
   /// Forma de pagamento escolhida para este título no cadastro (o botão
   /// "Gerar cobrança" da Ficha usa direto, sem perguntar de novo).
-  formaPagamento      AsaasBillingType? @map("forma_pagamento")
-  asaasPaymentId      String?   @unique @map("asaas_payment_id")
+  formaPagamento          AsaasBillingType?  @map("forma_pagamento")
+  asaasPaymentId          String?            @unique @map("asaas_payment_id")
   /// Forma de cobrança usada nesta cobrança específica — BOLETO, PIX ou
   /// CREDIT_CARD (cartão só cria a cobrança; o cliente insere os dados na
   /// página segura do próprio Asaas via asaasInvoiceUrl — ver asaas.service.ts
   /// sobre por que não coletamos número de cartão no Ethos).
-  asaasBillingType    String?   @map("asaas_billing_type")
-  asaasBoletoUrl      String?   @map("asaas_boleto_url")
-  asaasLinhaDigitavel String?   @map("asaas_linha_digitavel")
+  asaasBillingType        String?            @map("asaas_billing_type")
+  asaasBoletoUrl          String?            @map("asaas_boleto_url")
+  asaasLinhaDigitavel     String?            @map("asaas_linha_digitavel")
   /// Fatura hospedada pelo Asaas — usada principalmente pra cobrança via
   /// cartão (o cliente insere os dados lá), mas disponível pra qualquer tipo.
-  asaasInvoiceUrl         String?   @map("asaas_invoice_url")
-  asaasPixQrCodeImagem   String?   @map("asaas_pix_qrcode_imagem")
-  asaasPixCopiaECola     String?   @map("asaas_pix_copia_e_cola")
-  asaasPixQrCodeExpiracao DateTime? @map("asaas_pix_qrcode_expiracao")
+  asaasInvoiceUrl         String?            @map("asaas_invoice_url")
+  asaasPixQrCodeImagem    String?            @map("asaas_pix_qrcode_imagem")
+  asaasPixCopiaECola      String?            @map("asaas_pix_copia_e_cola")
+  asaasPixQrCodeExpiracao DateTime?          @map("asaas_pix_qrcode_expiracao")
   /// Status cru devolvido pelo Asaas (ex.: "PENDING", "RECEIVED") — só
   /// referência/exibição; o StatusParcela interno continua sendo a fonte de
   /// verdade pro resto do sistema (protesto, relatórios etc.).
-  asaasStatus         String?   @map("asaas_status")
-  asaasDataGeracao    DateTime? @map("asaas_data_geracao")
+  asaasStatus             String?            @map("asaas_status")
+  asaasDataGeracao        DateTime?          @map("asaas_data_geracao")
 
   matricula Matricula @relation(fields: [matriculaId], references: [id])
 
@@ -356,25 +359,25 @@ model Importacao {
 }
 
 model Configuracao {
-  id                     String  @id @default(uuid())
+  id                   String               @id @default(uuid())
   /// Único critério de elegibilidade para o relatório de inadimplência —
   /// "parcelas mínimas vencidas" foi removido (decisão do usuário, 2026-07-06):
   /// dias de atraso já é suficiente para detectar parcela atrasada ou não.
-  diasAtraso             Int     @default(90) @map("dias_atraso")
-  pastaSaidaDocumentos   String  @map("pasta_saida_documentos")
-  modeloDocx             String  @map("modelo_docx")
-  padraoNomeArquivo      String  @default("{NOME}_{CPF}_{CURSO}.docx") @map("padrao_nome_arquivo")
-  frequenciaImportacao   FrequenciaImportacao @default(MANUAL) @map("frequencia_importacao")
+  diasAtraso           Int                  @default(90) @map("dias_atraso")
+  pastaSaidaDocumentos String               @map("pasta_saida_documentos")
+  modeloDocx           String               @map("modelo_docx")
+  padraoNomeArquivo    String               @default("{NOME}_{CPF}_{CURSO}.docx") @map("padrao_nome_arquivo")
+  frequenciaImportacao FrequenciaImportacao @default(MANUAL) @map("frequencia_importacao")
 
   // Multa/juros do relatório de inadimplência e documento de protesto
   // (seção 15/23 do PRD; fórmula confirmada pelo usuário em 2026-07-03).
   /// Percentual flat de multa sobre o valor bruto da parcela (ex.: 2 = 2%).
-  multaPercentual        Decimal @default(2) @db.Decimal(5, 2) @map("multa_percentual")
+  multaPercentual       Decimal @default(2) @map("multa_percentual") @db.Decimal(5, 2)
   /// Percentual de juros por dia de atraso (ex.: 0.033 = 0.033% ao dia).
-  jurosDiarioPercentual  Decimal @default(0.033) @db.Decimal(6, 3) @map("juros_diario_percentual")
+  jurosDiarioPercentual Decimal @default(0.033) @map("juros_diario_percentual") @db.Decimal(6, 3)
   /// true: conta os dias de atraso até o dia da geração do relatório (inclusive).
   /// false: conta só até o dia anterior à geração.
-  jurosContarDiaGeracao  Boolean @default(true) @map("juros_contar_dia_geracao")
+  jurosContarDiaGeracao Boolean @default(true) @map("juros_contar_dia_geracao")
 
   /// Padrão pré-selecionado nas telas de geração de protesto (/relatorios e
   /// ficha de cobrança) para qual tipo de título entra no documento — pode
@@ -400,29 +403,29 @@ model Configuracao {
   // --- Integração com o Asaas (boleto) ---
   // Mesmo padrão da integração com o legado acima: credenciais administráveis
   // só pela tela de Configurações, nunca hardcoded.
-  asaasAmbiente                  AsaasAmbiente @default(SANDBOX) @map("asaas_ambiente")
+  asaasAmbiente                    AsaasAmbiente @default(SANDBOX) @map("asaas_ambiente")
   /// API key do Asaas, sempre criptografada (AES-256-GCM, mesma função usada
   /// em legadoSenhaCriptografada) — nunca gravada nem retornada em texto puro.
-  asaasApiKeyCriptografada       String?       @map("asaas_api_key_criptografada")
+  asaasApiKeyCriptografada         String?       @map("asaas_api_key_criptografada")
   /// Token de autenticação configurado no painel de Webhooks do Asaas
   /// (enviado de volta no header `asaas-access-token` a cada chamada) — usado
   /// pra validar que o POST em /api/asaas/webhook realmente veio do Asaas.
-  asaasWebhookTokenCriptografado String?       @map("asaas_webhook_token_criptografado")
+  asaasWebhookTokenCriptografado   String?       @map("asaas_webhook_token_criptografado")
   /// Multa (%) cobrada pelo Asaas quando o cliente paga depois do vencimento
   /// — enviada no campo `fine` da cobrança. Null = não envia `fine` (deixa a
   /// configuração padrão da conta Asaas valer, se houver).
-  asaasMultaPercentual            Decimal?           @db.Decimal(5, 2) @map("asaas_multa_percentual")
+  asaasMultaPercentual             Decimal?      @map("asaas_multa_percentual") @db.Decimal(5, 2)
   /// Juros (% AO MÊS, não ao dia — assim que o Asaas trata) cobrado quando o
   /// cliente paga depois do vencimento — enviado no campo `interest`.
-  asaasJurosMensalPercentual      Decimal?           @db.Decimal(5, 2) @map("asaas_juros_mensal_percentual")
+  asaasJurosMensalPercentual       Decimal?      @map("asaas_juros_mensal_percentual") @db.Decimal(5, 2)
   /// Desconto (%) por antecipação — enviado no campo `discount` (sempre
   /// `type: PERCENTAGE`). Null = não envia `discount` nenhum.
-  asaasDescontoPercentual         Decimal?           @db.Decimal(5, 2) @map("asaas_desconto_percentual")
+  asaasDescontoPercentual          Decimal?      @map("asaas_desconto_percentual") @db.Decimal(5, 2)
   /// Quantos dias ANTES do vencimento o desconto acima continua valendo (ex.:
   /// 5 = paga com desconto se pagar até 5 dias antes de vencer) — campo
   /// `discount.dueDateLimitDays` do Asaas. Só tem efeito se o percentual
   /// acima também estiver preenchido.
-  asaasDescontoDiasAntesVencimento Int?              @map("asaas_desconto_dias_antes_vencimento")
+  asaasDescontoDiasAntesVencimento Int?          @map("asaas_desconto_dias_antes_vencimento")
 
   // --- Qual provedor atende cada tipo de cobrança ---
   // Null = tipo desabilitado (não aparece no menu "Gerar cobrança"). Nunca os
@@ -434,17 +437,17 @@ model Configuracao {
   provedorCartao PagamentoProvedor? @default(ASAAS) @map("provedor_cartao")
 
   // --- Integração com a Rede (e.Rede/Itaú) — só Pix, por enquanto ---
-  redeAmbiente                   RedeAmbiente @default(SANDBOX) @map("rede_ambiente")
+  redeAmbiente                     RedeAmbiente @default(SANDBOX) @map("rede_ambiente")
   /// PV (número de filiação) = clientId do OAuth2 — criptografado como as
   /// demais credenciais, embora não seja tão sensível quanto a chave abaixo.
-  redePvCriptografado            String?      @map("rede_pv_criptografado")
+  redePvCriptografado              String?      @map("rede_pv_criptografado")
   /// Chave de integração = clientSecret do OAuth2 — nunca gravada nem
   /// devolvida em texto puro.
-  redeChaveIntegracaoCriptografada String?    @map("rede_chave_integracao_criptografada")
+  redeChaveIntegracaoCriptografada String?      @map("rede_chave_integracao_criptografada")
   /// Token enviado como header `authorization` na notificação de webhook da
   /// Rede — cadastrado junto com a URL (sandbox: self-service; produção:
   /// precisa repassar pro suporte da Rede, ver tela de Configurações).
-  redeWebhookTokenCriptografado  String?      @map("rede_webhook_token_criptografado")
+  redeWebhookTokenCriptografado    String?      @map("rede_webhook_token_criptografado")
 
   @@map("configuracoes")
 }
@@ -453,14 +456,14 @@ model Configuracao {
 // por matrícula ou job agendado em lote) — mesmo padrão de log já usado em
 // Importacao/RelatorioInadimplencia.
 model SincronizacaoLegado {
-  id                  String                           @id @default(uuid())
+  id                  String                          @id @default(uuid())
   // Nulo quando a execução foi disparada pelo agendador (sem usuário associado).
-  usuarioId           String?                          @map("usuario_id")
+  usuarioId           String?                         @map("usuario_id")
   tipo                TipoExecucaoSincronizacaoLegado
-  data                DateTime                         @default(now())
-  totalConsultados     Int                              @default(0) @map("total_consultados")
-  parcelasAtualizadas Int                              @default(0) @map("parcelas_atualizadas")
-  naoEncontrados      Int                              @default(0) @map("nao_encontrados")
+  data                DateTime                        @default(now())
+  totalConsultados    Int                             @default(0) @map("total_consultados")
+  parcelasAtualizadas Int                             @default(0) @map("parcelas_atualizadas")
+  naoEncontrados      Int                             @default(0) @map("nao_encontrados")
   erros               Json?
 
   usuario Usuario? @relation(fields: [usuarioId], references: [id])
@@ -475,15 +478,15 @@ model SincronizacaoLegado {
 // Matrícula e Parcela depende deles — só os campos complementares (contato,
 // endereço, dados da matrícula/parcela) passam por este mapeamento.
 model MapeamentoImportacao {
-  id             String                   @id @default(uuid())
-  colunaPlanilha String                   @unique @map("coluna_planilha")
-  tabelaDestino  TabelaDestinoImportacao  @map("tabela_destino")
-  campoDestino   String                   @map("campo_destino")
-  acaoAusente    AcaoColunaAusente        @default(NAO_IMPORTAR) @map("acao_ausente")
-  valorPadrao    String?                  @map("valor_padrao")
-  ativo          Boolean                  @default(true)
-  criadoEm       DateTime                 @default(now()) @map("criado_em")
-  atualizadoEm   DateTime                 @updatedAt @map("atualizado_em")
+  id             String                  @id @default(uuid())
+  colunaPlanilha String                  @unique @map("coluna_planilha")
+  tabelaDestino  TabelaDestinoImportacao @map("tabela_destino")
+  campoDestino   String                  @map("campo_destino")
+  acaoAusente    AcaoColunaAusente       @default(NAO_IMPORTAR) @map("acao_ausente")
+  valorPadrao    String?                 @map("valor_padrao")
+  ativo          Boolean                 @default(true)
+  criadoEm       DateTime                @default(now()) @map("criado_em")
+  atualizadoEm   DateTime                @updatedAt @map("atualizado_em")
 
   @@unique([tabelaDestino, campoDestino])
   @@map("mapeamentos_importacao")
@@ -493,30 +496,30 @@ model MapeamentoImportacao {
 // Os itens elegíveis (aluno/matrícula/valores/documento gerado) ficam em JSON
 // em vez de uma tabela filha — mesmo padrão já usado em Importacao.erros.
 model RelatorioInadimplencia {
-  id                     String   @id @default(uuid())
-  usuarioId              String   @map("usuario_id")
-  data                   DateTime @default(now())
-  diasAtraso             Int?     @map("dias_atraso")
-  valorMinimo            Decimal? @db.Decimal(12, 2) @map("valor_minimo")
-  cursoId                String?  @map("curso_id")
+  id                              String             @id @default(uuid())
+  usuarioId                       String             @map("usuario_id")
+  data                            DateTime           @default(now())
+  diasAtraso                      Int?               @map("dias_atraso")
+  valorMinimo                     Decimal?           @map("valor_minimo") @db.Decimal(12, 2)
+  cursoId                         String?            @map("curso_id")
   /// Decisão do usuário, 2026-07-07: por padrão o documento de protesto só
   /// inclui parcelas vencidas há mais de `diasAtraso` dias (Configuracao);
   /// quando true, inclui também as parcelas só "vencidas" (menos que o
   /// mínimo) da mesma matrícula, no mesmo documento.
-  incluirParcelasVencidasRecentes Boolean @default(false) @map("incluir_parcelas_vencidas_recentes")
+  incluirParcelasVencidasRecentes Boolean            @default(false) @map("incluir_parcelas_vencidas_recentes")
   /// Filtro por Parcela.tipoTitulo usado nesta geração (persistido para o
   /// worker aplicar o mesmo filtro ao montar o documento, de forma
   /// assíncrona — ver geracao-word.worker.ts).
-  tipoTituloProtesto     TipoTituloProtesto @default(AMBOS) @map("tipo_titulo_protesto")
+  tipoTituloProtesto              TipoTituloProtesto @default(AMBOS) @map("tipo_titulo_protesto")
   /// Só tem efeito quando tipoTituloProtesto = AMBOS: gera um único
   /// documento combinando mensalidade+renegociação (false, padrão) ou um
   /// documento separado para cada tipo, com o nome do arquivo identificando
   /// qual é qual (pedido do usuário).
-  separarDocumentosPorTipo Boolean @default(false) @map("separar_documentos_por_tipo")
-  totalElegiveis         Int      @default(0) @map("total_elegiveis")
-  totalDocumentosGerados Int      @default(0) @map("total_documentos_gerados")
-  itens                  Json?
-  erros                  Json?
+  separarDocumentosPorTipo        Boolean            @default(false) @map("separar_documentos_por_tipo")
+  totalElegiveis                  Int                @default(0) @map("total_elegiveis")
+  totalDocumentosGerados          Int                @default(0) @map("total_documentos_gerados")
+  itens                           Json?
+  erros                           Json?
 
   usuario Usuario @relation(fields: [usuarioId], references: [id])
   curso   Curso?  @relation(fields: [cursoId], references: [id])
@@ -525,13 +528,13 @@ model RelatorioInadimplencia {
 }
 
 model SituacaoCobranca {
-  id                       String   @id @default(uuid())
-  nome                     String   @unique
+  id                       String  @id @default(uuid())
+  nome                     String  @unique
   cor                      String
-  ordem                    Int      @default(0)
-  ativa                    Boolean  @default(true)
+  ordem                    Int     @default(0)
+  ativa                    Boolean @default(true)
   descricao                String?
-  participaNovosRelatorios Boolean  @default(true) @map("participa_novos_relatorios")
+  participaNovosRelatorios Boolean @default(true) @map("participa_novos_relatorios")
 
   matriculas Matricula[]
 
@@ -596,7 +599,6 @@ model Auditoria {
   @@map("auditoria")
 }
 
-
 // Contador atômico para códigos sequenciais por ano (aluno e matrícula) —
 // chave "ALUNO-2026" / "MATRICULA-2026".
 model Sequencial {
@@ -643,19 +645,22 @@ model TipoDocumento {
 // existe depois da primeira ação (upload/edição); antes disso o tipo aparece
 // como "não enviado/pendente" na listagem.
 model Documento {
-  id              String   @id @default(uuid())
-  tipoDocumentoId String   @map("tipo_documento_id")
-  alunoId         String   @map("aluno_id")
-  matriculaId     String?  @map("matricula_id")
+  id              String  @id @default(uuid())
+  tipoDocumentoId String  @map("tipo_documento_id")
+  alunoId         String  @map("aluno_id")
+  matriculaId     String? @map("matricula_id")
 
   situacaoEntrega     SituacaoEntregaDocumento     @default(NAO_ENVIADO) @map("situacao_entrega")
   situacaoDeferimento SituacaoDeferimentoDocumento @default(PENDENTE) @map("situacao_deferimento")
   vencimento          DateTime?
   anexadoEm           DateTime? @map("anexado_em")
-  deferidoEm          DateTime? @map("deferido_em")
-  validadoPorId       String?   @map("validado_por_id")
-  observacaoInterna   String?   @map("observacao_interna")
-  observacaoAluno     String?   @map("observacao_aluno")
+  /// IP de origem do último envio e se foi o próprio aluno (área do aluno) ou a equipe.
+  anexadoIp           String?   @map("anexado_ip")
+  anexadoPorAluno     Boolean   @default(false) @map("anexado_por_aluno")
+  deferidoEm          DateTime?                    @map("deferido_em")
+  validadoPorId       String?                      @map("validado_por_id")
+  observacaoInterna   String?                      @map("observacao_interna")
+  observacaoAluno     String?                      @map("observacao_aluno")
 
   arquivoNome    String? @map("arquivo_nome")
   arquivoChave   String? @map("arquivo_chave")
@@ -665,48 +670,46 @@ model Documento {
   atualizadoEm DateTime @updatedAt @map("atualizado_em")
   criadoEm     DateTime @default(now()) @map("criado_em")
 
-  tipo       TipoDocumento @relation(fields: [tipoDocumentoId], references: [id])
-  aluno      Aluno         @relation(fields: [alunoId], references: [id])
-  matricula  Matricula?    @relation(fields: [matriculaId], references: [id])
-  validadoPor Usuario?     @relation(fields: [validadoPorId], references: [id])
+  tipo        TipoDocumento @relation(fields: [tipoDocumentoId], references: [id])
+  aluno       Aluno         @relation(fields: [alunoId], references: [id])
+  matricula   Matricula?    @relation(fields: [matriculaId], references: [id])
+  validadoPor Usuario?      @relation(fields: [validadoPorId], references: [id])
 
   @@index([alunoId])
   @@index([matriculaId])
   @@map("documentos")
 }
 
-
 // Tipos de cobrança gerados na matrícula (Mensalidade, Taxa de matrícula...).
 // Obrigatório = sempre gerado no cadastro; opcional = o usuário escolhe.
 model TipoCobranca {
-  id              String   @id @default(uuid())
-  nome            String   @unique
-  obrigatorio     Boolean  @default(false)
+  id                   String            @id @default(uuid())
+  nome                 String            @unique
+  obrigatorio          Boolean           @default(false)
   /// true = o valor vem do valor padrão do curso (ex.: Mensalidade);
   /// false = usa `valorPadrao` deste tipo (ex.: Taxa de matrícula).
-  usaValorDoCurso Boolean  @default(false) @map("usa_valor_do_curso")
-  valorPadrao     Decimal? @db.Decimal(12, 2) @map("valor_padrao")
+  usaValorDoCurso      Boolean           @default(false) @map("usa_valor_do_curso")
+  valorPadrao          Decimal?          @map("valor_padrao") @db.Decimal(12, 2)
   /// Opções de parcelamento oferecidas (ex.: 1, 6, 9, 12).
-  opcoesParcelas  Int[]    @map("opcoes_parcelas")
+  opcoesParcelas       Int[]             @map("opcoes_parcelas")
   /// Prefixo do código do título das parcelas geradas (ex.: "TM" -> TM1, TM2).
   /// Null = só o número (1, 2...) — mantém o padrão da Mensalidade.
-  prefixoTitulo   String?  @map("prefixo_titulo")
-  ordem           Int      @default(0)
-  ativo           Boolean  @default(true)
+  prefixoTitulo        String?           @map("prefixo_titulo")
+  ordem                Int               @default(0)
+  ativo                Boolean           @default(true)
   /// Forma de pagamento sugerida no cadastro da matrícula (editável por título).
   formaPagamentoPadrao AsaasBillingType? @map("forma_pagamento_padrao")
   /// Cupom de desconto só incide nos tipos que aceitam (ex.: Mensalidade).
-  aceitaCupom     Boolean  @default(false) @map("aceita_cupom")
+  aceitaCupom          Boolean           @default(false) @map("aceita_cupom")
   /// false = parcelas deste tipo (ex.: Taxa de matrícula) nunca entram no
   /// relatório/documento de protesto.
-  entraNoProtesto Boolean  @default(true) @map("entra_no_protesto")
+  entraNoProtesto      Boolean           @default(true) @map("entra_no_protesto")
   /// false = tipo que não aparece no cadastro da matrícula (ex.: Renegociação,
   /// que nasce de uma renegociação e não da matrícula).
-  disponivelNoCadastro Boolean @default(true) @map("disponivel_no_cadastro")
+  disponivelNoCadastro Boolean           @default(true) @map("disponivel_no_cadastro")
 
   @@map("tipos_cobranca")
 }
-
 
 enum TipoDescontoCupom {
   PERCENTUAL
@@ -729,4 +732,55 @@ model Cupom {
   matriculas Matricula[]
 
   @@map("cupons")
+}
+
+// Tipos de solicitação que o aluno pode fazer à secretaria na área do aluno
+// (declaração de matrícula, histórico escolar...).
+model TipoSolicitacao {
+  id        String  @id @default(uuid())
+  nome      String  @unique
+  descricao String?
+  ordem     Int     @default(0)
+  ativo     Boolean @default(true)
+
+  solicitacoes SolicitacaoDocumento[]
+
+  @@map("tipos_solicitacao")
+}
+
+enum StatusSolicitacao {
+  ABERTA
+  ATENDIDA
+  RECUSADA
+}
+
+// Pedido de documento feito pelo aluno; a secretaria atende anexando o arquivo
+// (ATENDIDA) ou recusa com um motivo (RECUSADA).
+model SolicitacaoDocumento {
+  id                String            @id @default(uuid())
+  tipoSolicitacaoId String            @map("tipo_solicitacao_id")
+  alunoId           String            @map("aluno_id")
+  matriculaId       String?           @map("matricula_id")
+  status            StatusSolicitacao @default(ABERTA)
+  observacaoAluno   String?           @map("observacao_aluno")
+  respostaStaff     String?           @map("resposta_staff")
+
+  arquivoNome    String? @map("arquivo_nome")
+  arquivoChave   String? @map("arquivo_chave")
+  arquivoMime    String? @map("arquivo_mime")
+  arquivoTamanho Int?    @map("arquivo_tamanho")
+
+  atendidoPorId String?   @map("atendido_por_id")
+  atendidoEm    DateTime? @map("atendido_em")
+  criadoEm      DateTime  @default(now()) @map("criado_em")
+  atualizadoEm  DateTime  @updatedAt @map("atualizado_em")
+
+  tipo        TipoSolicitacao @relation(fields: [tipoSolicitacaoId], references: [id])
+  aluno       Aluno           @relation(fields: [alunoId], references: [id])
+  matricula   Matricula?      @relation(fields: [matriculaId], references: [id])
+  atendidoPor Usuario?        @relation(fields: [atendidoPorId], references: [id])
+
+  @@index([alunoId])
+  @@index([status])
+  @@map("solicitacoes_documento")
 }

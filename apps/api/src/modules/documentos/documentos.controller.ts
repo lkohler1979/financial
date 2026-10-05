@@ -39,6 +39,7 @@ export const documentosController = {
       paramString(req, "tipoId"),
       req.file,
       usuarioAtual(req),
+      req.ip,
     );
     res.status(201).json(documento);
   }),

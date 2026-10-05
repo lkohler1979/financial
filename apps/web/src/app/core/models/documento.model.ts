@@ -32,6 +32,9 @@ export interface Documento {
   situacaoDeferimento: SituacaoDeferimentoDocumento;
   vencimento?: string | null;
   anexadoEm?: string | null;
+  /** IP de origem do último envio e se foi o próprio aluno (área do aluno). */
+  anexadoIp?: string | null;
+  anexadoPorAluno?: boolean;
   deferidoEm?: string | null;
   validadoPor?: { id: string; nome: string } | null;
   observacaoInterna?: string | null;

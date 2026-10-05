@@ -109,7 +109,9 @@ interface Edicao {
             }
             @if (item.documento?.anexadoEm) {
               <span class="text-xs text-gray-500">
-                Anexado em {{ item.documento!.anexadoEm | date: "dd/MM/yyyy HH:mm" }}
+                Anexado {{ item.documento!.anexadoPorAluno ? "pelo aluno " : "" }}em
+                {{ item.documento!.anexadoEm | date: "dd/MM/yyyy HH:mm:ss" }}
+                @if (item.documento!.anexadoIp) { · IP {{ item.documento!.anexadoIp }} }
               </span>
             }
             @if (item.documento?.deferidoEm) {

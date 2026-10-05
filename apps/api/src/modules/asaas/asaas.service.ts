@@ -153,7 +153,7 @@ export const asaasService = {
    * coleta número/CVV (evita assumir escopo de PCI-DSS); o cliente paga pela
    * `asaasInvoiceUrl`, a página segura hospedada pelo próprio Asaas.
    */
-  async gerarCobrancaParcela(parcelaId: string, billingType: AsaasBillingType, usuarioId: string) {
+  async gerarCobrancaParcela(parcelaId: string, billingType: AsaasBillingType, usuarioId: string | null) {
     const parcela = await financeiroRepository.findById(parcelaId);
     if (!parcela) throw new NotFoundError("Parcela não encontrada");
 
@@ -229,13 +229,15 @@ export const asaasService = {
       asaasDataGeracao: new Date(),
     });
 
-    await registrarAuditoria({
-      usuarioId,
-      entidade: ENTIDADE_PARCELA,
-      entidadeId: parcelaId,
-      acao: "ATUALIZACAO",
-      detalhes: { acao: "cobranca_gerada", billingType, asaasPaymentId: cobranca.id },
-    });
+    if (usuarioId) {
+      await registrarAuditoria({
+        usuarioId,
+        entidade: ENTIDADE_PARCELA,
+        entidadeId: parcelaId,
+        acao: "ATUALIZACAO",
+        detalhes: { acao: "cobranca_gerada", billingType, asaasPaymentId: cobranca.id },
+      });
+    }
 
     return selecionarCamposCobranca(atualizada);
   },
@@ -249,7 +251,7 @@ export const asaasService = {
    */
   async gerarCobrancaPixRede(
     parcela: NonNullable<Awaited<ReturnType<typeof financeiroRepository.findById>>>,
-    usuarioId: string,
+    usuarioId: string | null,
   ) {
     const client = await obterClienteRede();
 
@@ -276,13 +278,15 @@ export const asaasService = {
       asaasDataGeracao: new Date(),
     });
 
-    await registrarAuditoria({
-      usuarioId,
-      entidade: ENTIDADE_PARCELA,
-      entidadeId: parcela.id,
-      acao: "ATUALIZACAO",
-      detalhes: { acao: "cobranca_gerada", billingType: "PIX", provedor: "REDE", tid: cobranca.tid },
-    });
+    if (usuarioId) {
+      await registrarAuditoria({
+        usuarioId,
+        entidade: ENTIDADE_PARCELA,
+        entidadeId: parcela.id,
+        acao: "ATUALIZACAO",
+        detalhes: { acao: "cobranca_gerada", billingType: "PIX", provedor: "REDE", tid: cobranca.tid },
+      });
+    }
 
     return selecionarCamposCobranca(atualizada);
   },

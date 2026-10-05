@@ -138,6 +138,30 @@ describe("documentosService.anexarArquivo", () => {
   });
 });
 
+describe("documentosService.anexarArquivo — registro de origem", () => {
+  const pdf = { originalname: "cpf.pdf", mimetype: "application/pdf", size: 10, buffer: Buffer.from("x") };
+
+  it("guarda IP e marca envio do próprio aluno (sem usuário)", async () => {
+    await documentosService.anexarArquivo("m1", "t-cpf", pdf, null, "200.1.2.3");
+    expect(repo.update).toHaveBeenCalledWith(
+      "d1",
+      expect.objectContaining({
+        anexadoIp: "200.1.2.3",
+        anexadoPorAluno: true,
+        anexadoEm: expect.any(Date),
+      }),
+    );
+  });
+
+  it("envio da equipe guarda o IP mas não é marcado como do aluno", async () => {
+    await documentosService.anexarArquivo("m1", "t-cpf", pdf, "u", "10.0.0.5");
+    expect(repo.update).toHaveBeenCalledWith(
+      "d1",
+      expect.objectContaining({ anexadoIp: "10.0.0.5", anexadoPorAluno: false }),
+    );
+  });
+});
+
 describe("documentosService.listarDaMatricula", () => {
   it("monta um item por tipo e conta obrigatórios pendentes", async () => {
     repo.listarTiposAtivos.mockResolvedValue([tipoCpf, tipoContrato] as never);

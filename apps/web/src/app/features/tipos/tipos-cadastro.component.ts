@@ -9,6 +9,7 @@ import { EscopoDocumento, TipoDocumento } from "../../core/models/documento.mode
 import { FormaPagamento, TipoCobranca } from "../../core/models/tipo-cobranca.model";
 import { CuponsService } from "../../core/services/cupons.service";
 import { DocumentosService } from "../../core/services/documentos.service";
+import { SolicitacoesService } from "../../core/services/solicitacoes.service";
 import { TiposCobrancaService } from "../../core/services/tipos-cobranca.service";
 
 /** Linha editável de tipo de cobrança — `opcoes` é o texto "1, 6, 12". */
@@ -44,6 +45,14 @@ interface LinhaCupom {
   tipoDesconto: TipoDescontoCupom;
   valor: number | null;
   validadeAte: string;
+  ativo: boolean;
+}
+
+interface LinhaSolicitacao {
+  id?: string;
+  nome: string;
+  descricao: string;
+  ordem: number;
   ativo: boolean;
 }
 
@@ -181,6 +190,45 @@ interface LinhaCupom {
       </button>
     </section>
 
+    <section class="bg-white rounded-lg border p-5 mb-5">
+      <p class="text-sm font-medium text-gray-700 mb-1">Tipos de solicitação (área do aluno)</p>
+      <p class="text-xs text-gray-500 mb-3">
+        Documentos que o aluno pode pedir à secretaria pela área do aluno (declaração de matrícula,
+        histórico...). Os pedidos aparecem em Solicitações.
+      </p>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-xs text-gray-400">
+              <th class="py-1 pr-2">Nome</th>
+              <th class="pr-2">Descrição</th>
+              <th class="pr-2">Ordem</th>
+              <th class="pr-2">Ativo</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (l of solicitacoes; track $index) {
+              <tr class="border-t">
+                <td class="py-1 pr-2"><input class="border rounded px-2 py-1 w-64" [(ngModel)]="l.nome" /></td>
+                <td class="pr-2"><input class="border rounded px-2 py-1 w-72" [(ngModel)]="l.descricao" /></td>
+                <td class="pr-2"><input class="border rounded px-2 py-1 w-14" type="number" [(ngModel)]="l.ordem" /></td>
+                <td class="pr-2"><mat-checkbox [(ngModel)]="l.ativo"></mat-checkbox></td>
+                <td>
+                  <button mat-icon-button type="button" aria-label="Salvar" (click)="salvarSolicitacao(l)">
+                    <mat-icon>save</mat-icon>
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <button mat-stroked-button type="button" class="mt-3" (click)="novaSolicitacao()">
+        <mat-icon>add</mat-icon> Novo tipo de solicitação
+      </button>
+    </section>
+
     <section class="bg-white rounded-lg border p-5">
       <p class="text-sm font-medium text-gray-700 mb-1">Tipos de documento</p>
       <p class="text-xs text-gray-500 mb-3">
@@ -236,11 +284,13 @@ export class TiposCadastroComponent implements OnInit {
   private readonly cobrancaService = inject(TiposCobrancaService);
   private readonly cuponsService = inject(CuponsService);
   private readonly documentosService = inject(DocumentosService);
+  private readonly solicitacoesService = inject(SolicitacoesService);
   private readonly snackBar = inject(MatSnackBar);
 
   cobrancas: LinhaCobranca[] = [];
   cupons: LinhaCupom[] = [];
   documentos: LinhaDocumento[] = [];
+  solicitacoes: LinhaSolicitacao[] = [];
 
   ngOnInit(): void {
     this.carregar();
@@ -273,6 +323,15 @@ export class TiposCadastroComponent implements OnInit {
         valor: c.valor,
         validadeAte: c.validadeAte ? c.validadeAte.substring(0, 10) : "",
         ativo: c.ativo,
+      }));
+    });
+    this.solicitacoesService.listarTipos(true).subscribe((tipos) => {
+      this.solicitacoes = tipos.map((t) => ({
+        id: t.id,
+        nome: t.nome,
+        descricao: t.descricao ?? "",
+        ordem: t.ordem ?? 0,
+        ativo: t.ativo ?? true,
       }));
     });
     this.documentosService.listarTipos(true).subscribe((tipos) => {
@@ -312,6 +371,32 @@ export class TiposCadastroComponent implements OnInit {
       ...this.cupons,
       { codigo: "", descricao: "", tipoDesconto: "PERCENTUAL", valor: null, validadeAte: "", ativo: true },
     ];
+  }
+
+  novaSolicitacao(): void {
+    this.solicitacoes = [
+      ...this.solicitacoes,
+      { nome: "", descricao: "", ordem: this.solicitacoes.length + 1, ativo: true },
+    ];
+  }
+
+  salvarSolicitacao(l: LinhaSolicitacao): void {
+    const payload = {
+      nome: l.nome,
+      descricao: l.descricao || null,
+      ordem: Number(l.ordem),
+      ativo: l.ativo,
+    };
+    const req = l.id
+      ? this.solicitacoesService.atualizarTipo(l.id, payload)
+      : this.solicitacoesService.criarTipo(payload);
+    req.subscribe({
+      next: () => {
+        this.snackBar.open("Tipo de solicitação salvo", "Fechar", { duration: 3000 });
+        this.carregar();
+      },
+      error: (e) => this.erro(e),
+    });
   }
 
   novoDocumento(): void {

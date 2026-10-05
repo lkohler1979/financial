@@ -9,6 +9,8 @@ declare global {
       usuarioId?: string;
       /** Perfil do usuário autenticado (RBAC), resolvido junto com `usuarioId`. */
       usuarioPerfil?: PerfilUsuario;
+      /** Id do aluno autenticado na área do aluno (`requireAluno`). */
+      alunoId?: string;
     }
   }
 }

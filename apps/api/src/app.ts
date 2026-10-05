@@ -23,9 +23,14 @@ import { auditoriaRouter } from "./modules/auditoria/auditoria.routes";
 import { cuponsRouter } from "./modules/cupons/cupons.routes";
 import { tiposCobrancaRouter } from "./modules/tipos-cobranca/tipos-cobranca.routes";
 import { documentosRouter } from "./modules/documentos/documentos.routes";
+import { portalRouter } from "./modules/portal/portal.routes";
+import { solicitacoesRouter } from "./modules/solicitacoes/solicitacoes.routes";
 import { dashboardRouter } from "./modules/dashboard/dashboard.routes";
 
 export const app = express();
+
+// Atrás de proxy reverso, TRUST_PROXY = nº de proxies (ex.: 1) para req.ip ser o IP real do cliente.
+if (process.env.TRUST_PROXY) app.set("trust proxy", Number(process.env.TRUST_PROXY) || process.env.TRUST_PROXY);
 
 app.use(helmet());
 app.use(cors());
@@ -56,6 +61,9 @@ app.use("/api/asaas/webhook", asaasWebhookRouter);
 // configurado em Configurações (header `authorization`).
 app.use("/api/rede/webhook", redeWebhookRouter);
 
+// Área do aluno: autenticação própria (token de aluno), fora do RBAC interno.
+app.use("/api/portal", portalRouter);
+
 app.use("/api", requireAuth);
 app.use("/api", auditoriaRequestContext);
 
@@ -72,6 +80,7 @@ app.use("/api/matriculas", requireRole("ADMINISTRADOR", "FINANCEIRO", "USUARIO")
 app.use("/api/cupons", requireRole("ADMINISTRADOR", "FINANCEIRO", "USUARIO"), cuponsRouter);
 app.use("/api/tipos-cobranca", requireRole("ADMINISTRADOR", "FINANCEIRO", "USUARIO"), tiposCobrancaRouter);
 app.use("/api/documentos", requireRole("ADMINISTRADOR", "FINANCEIRO", "USUARIO"), documentosRouter);
+app.use("/api/solicitacoes", requireRole("ADMINISTRADOR", "FINANCEIRO", "USUARIO"), solicitacoesRouter);
 app.use("/api/financeiro", requireRole("ADMINISTRADOR", "FINANCEIRO"), financeiroRouter);
 app.use("/api/importacao", requireRole("ADMINISTRADOR", "FINANCEIRO"), importacaoRouter);
 app.use(

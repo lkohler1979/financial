@@ -59,6 +59,14 @@ export interface Configuracao {
   emissaoAntecipadaDias: number;
   /** Máximo de parcelas no cartão pela Rede (1 = só à vista). */
   redeCartaoMaxParcelas: number;
+  /** NFS-e emitida pelo Asaas: no mês corrente, até o dia limite, emite as do mês anterior. */
+  nfseAtiva: boolean;
+  nfseDiaLimite: number;
+  nfseServicoCodigo: string;
+  nfseServicoNome: string;
+  nfseServicoDescricao: string;
+  nfseMunicipalServiceId: string | null;
+  nfseIssPercentual: number | string;
 }
 
 export type AtualizarConfiguracaoPayload = Omit<

@@ -46,6 +46,14 @@ export const atualizarConfiguracaoSchema = z
     provedorPix: z.enum(["ASAAS", "REDE"]).nullable().optional(),
     provedorCartao: z.enum(["ASAAS", "REDE"]).nullable().optional(),
     redeCartaoMaxParcelas: z.coerce.number().int().min(1).max(12).optional(),
+    // NFS-e (emissão pelo Asaas): ver nfse.service.ts.
+    nfseAtiva: z.boolean().optional(),
+    nfseDiaLimite: z.coerce.number().int().min(1).max(28).optional(),
+    nfseServicoCodigo: z.string().trim().min(1).max(20).optional(),
+    nfseServicoNome: z.string().trim().min(1).max(200).optional(),
+    nfseServicoDescricao: z.string().trim().min(1).max(500).optional(),
+    nfseMunicipalServiceId: z.string().trim().max(100).nullable().optional(),
+    nfseIssPercentual: z.coerce.number().min(0).max(5).optional(),
     redeAmbiente: z.enum(["SANDBOX", "PRODUCAO"]).optional(),
     // PV/chave de integração/token em texto puro, só nesta entrada — o
     // service criptografa antes de persistir e nunca os devolve (mesmo

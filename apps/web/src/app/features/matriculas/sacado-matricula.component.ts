@@ -60,6 +60,27 @@ import { formatarCnpj, formatarCpf, normalizarCpf, validarCnpj, validarCpf } fro
           </label>
         }
       </div>
+      <p class="text-xs text-gray-500 mt-3 mb-1">
+        Endereço do tomador (a nota fiscal de serviço exige — se ficar em branco, a nota pode ser recusada)
+      </p>
+      <div class="grid gap-3 md:grid-cols-5">
+        <label class="text-sm">
+          <span class="block text-xs text-gray-500">CEP</span>
+          <input class="border rounded px-2 py-1 w-full" inputmode="numeric" maxlength="9" [(ngModel)]="cep" (ngModelChange)="mudou()" (blur)="buscarCep()" [disabled]="existente()" />
+        </label>
+        <label class="text-sm md:col-span-2">
+          <span class="block text-xs text-gray-500">Logradouro</span>
+          <input class="border rounded px-2 py-1 w-full" [(ngModel)]="endereco" (ngModelChange)="mudou()" [disabled]="existente()" />
+        </label>
+        <label class="text-sm">
+          <span class="block text-xs text-gray-500">Número</span>
+          <input class="border rounded px-2 py-1 w-full" [(ngModel)]="numero" (ngModelChange)="mudou()" [disabled]="existente()" />
+        </label>
+        <label class="text-sm">
+          <span class="block text-xs text-gray-500">Bairro</span>
+          <input class="border rounded px-2 py-1 w-full" [(ngModel)]="bairro" (ngModelChange)="mudou()" [disabled]="existente()" />
+        </label>
+      </div>
       @if (existente()) {
         <p class="text-xs text-green-700 mt-1">Sacado já cadastrado — dados carregados.</p>
       }
@@ -89,6 +110,25 @@ export class SacadoMatriculaComponent {
   email = "";
   telefone = "";
   dataNascimento = "";
+  cep = "";
+  endereco = "";
+  numero = "";
+  bairro = "";
+
+  /** Preenche logradouro e bairro pelo CEP (ViaCEP) — se falhar, digita-se à mão. */
+  async buscarCep(): Promise<void> {
+    const digitos = this.cep.replace(/\D/g, "");
+    if (digitos.length !== 8 || this.existente()) return;
+    try {
+      const dados = await (await fetch(`https://viacep.com.br/ws/${digitos}/json/`)).json();
+      if (dados.erro) return;
+      if (!this.endereco) this.endereco = dados.logradouro ?? "";
+      if (!this.bairro) this.bairro = dados.bairro ?? "";
+      this.mudou();
+    } catch {
+      // Sem internet/serviço fora: segue com preenchimento manual.
+    }
+  }
 
   alternar(outro: boolean): void {
     this.outro.set(outro);
@@ -113,6 +153,10 @@ export class SacadoMatriculaComponent {
       this.email = achado.email ?? "";
       this.telefone = achado.telefone ?? "";
       this.dataNascimento = achado.dataNascimento ? achado.dataNascimento.substring(0, 10) : "";
+      this.cep = achado.cep ?? "";
+      this.endereco = achado.endereco ?? "";
+      this.numero = achado.numero ?? "";
+      this.bairro = achado.bairro ?? "";
       this.existente.set(true);
       this.mudou();
     });
@@ -138,6 +182,10 @@ export class SacadoMatriculaComponent {
         ...(this.email.trim() ? { email: this.email.trim() } : {}),
         ...(this.telefone.trim() ? { telefone: this.telefone.trim() } : {}),
         ...(this.tipo === "FISICA" && this.dataNascimento ? { dataNascimento: this.dataNascimento } : {}),
+        ...(this.cep.trim() ? { cep: this.cep.trim() } : {}),
+        ...(this.endereco.trim() ? { endereco: this.endereco.trim() } : {}),
+        ...(this.numero.trim() ? { numero: this.numero.trim() } : {}),
+        ...(this.bairro.trim() ? { bairro: this.bairro.trim() } : {}),
       },
     });
   }

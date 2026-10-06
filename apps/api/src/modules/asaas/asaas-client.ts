@@ -21,10 +21,65 @@ export interface AsaasCriarClienteInput {
   email?: string;
   mobilePhone?: string;
   externalReference?: string;
+  postalCode?: string;
+  address?: string;
+  addressNumber?: string;
+  complement?: string;
+  province?: string;
 }
 
 export interface AsaasCliente {
   id: string;
+}
+
+/** Endereço do cliente — a NFS-e exige o endereço do tomador. */
+export interface AsaasEnderecoCliente {
+  postalCode?: string;
+  address?: string;
+  addressNumber?: string;
+  complement?: string;
+  province?: string;
+}
+
+export type StatusNotaAsaas =
+  | "SCHEDULED"
+  | "AUTHORIZED"
+  | "PROCESSING_CANCELLATION"
+  | "CANCELED"
+  | "CANCELLATION_DENIED"
+  | "ERROR";
+
+export interface AsaasAgendarNotaInput {
+  /** Cliente Asaas do tomador (a nota sai em nome dele, independentemente da cobrança). */
+  customer: string;
+  serviceDescription: string;
+  observations: string;
+  externalReference: string;
+  value: number;
+  deductions: number;
+  /** YYYY-MM-DD — competência (último dia do mês de referência). */
+  effectiveDate: string;
+  municipalServiceId?: string;
+  municipalServiceCode?: string;
+  municipalServiceName: string;
+  taxes: {
+    retainIss: boolean;
+    iss: number;
+    pis: number;
+    cofins: number;
+    csll: number;
+    inss: number;
+    ir: number;
+  };
+}
+
+export interface AsaasNota {
+  id: string;
+  status: StatusNotaAsaas;
+  statusDescription: string | null;
+  number: string | null;
+  pdfUrl: string | null;
+  xmlUrl: string | null;
 }
 
 export type AsaasBillingType = "BOLETO" | "PIX" | "CREDIT_CARD";
@@ -102,6 +157,29 @@ export class AsaasClient {
       method: "POST",
       body: JSON.stringify(dados),
     });
+  }
+
+  /** Atualiza o endereço de um cliente já criado (clientes antigos não têm — a nota precisa). */
+  atualizarCliente(id: string, endereco: AsaasEnderecoCliente): Promise<AsaasCliente> {
+    return this.requisitar<AsaasCliente>(`/customers/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      body: JSON.stringify(endereco),
+    });
+  }
+
+  /** Agenda uma NFS-e (POST /invoices) — ainda não é emitida; ver `emitirNota`. */
+  agendarNota(dados: AsaasAgendarNotaInput): Promise<AsaasNota> {
+    return this.requisitar<AsaasNota>("/invoices", { method: "POST", body: JSON.stringify(dados) });
+  }
+
+  /** Emite uma nota já agendada (POST /invoices/{id}/authorize). */
+  emitirNota(id: string): Promise<AsaasNota> {
+    return this.requisitar<AsaasNota>(`/invoices/${encodeURIComponent(id)}/authorize`, { method: "POST" });
+  }
+
+  /** Situação atual da nota: número, PDF e XML aparecem quando AUTHORIZED. */
+  consultarNota(id: string): Promise<AsaasNota> {
+    return this.requisitar<AsaasNota>(`/invoices/${encodeURIComponent(id)}`);
   }
 
   /**

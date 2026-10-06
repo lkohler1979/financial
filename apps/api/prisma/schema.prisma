@@ -346,6 +346,15 @@ model Parcela {
   /// continua paga; ao concluir na Rede, a parcela reabre e estes campos são limpos.
   cartaoEstornoId         String?            @map("cartao_estorno_id")
   cartaoEstornoEm         DateTime?          @map("cartao_estorno_em")
+  /// NFS-e emitida para este pagamento (Asaas). Uma nota por parcela paga.
+  nfseAsaasId             String?            @unique @map("nfse_asaas_id")
+  /// AGENDADA | AUTORIZADA | ERRO | CANCELADA
+  nfseStatus              String?            @map("nfse_status")
+  nfseNumero              String?            @map("nfse_numero")
+  nfsePdfUrl              String?            @map("nfse_pdf_url")
+  nfseCompetencia         DateTime?          @map("nfse_competencia")
+  nfseEmitidaEm           DateTime?          @map("nfse_emitida_em")
+  nfseErro                String?            @map("nfse_erro")
   asaasDataGeracao        DateTime?          @map("asaas_data_geracao")
 
   matricula Matricula @relation(fields: [matriculaId], references: [id])
@@ -444,6 +453,17 @@ model Configuracao {
   emissaoAntecipadaDias            Int           @default(10) @map("emissao_antecipada_dias")
   /// Máximo de parcelas no cartão pela Rede (1 = só à vista; a Rede aceita até 12).
   redeCartaoMaxParcelas            Int           @default(1) @map("rede_cartao_max_parcelas")
+
+  /// NFS-e (emissão via Asaas): no mês corrente, até `nfseDiaLimite`, emite as notas do mês
+  /// anterior das mensalidades/renegociações pagas. Desligado por padrão.
+  nfseAtiva              Boolean @default(false) @map("nfse_ativa")
+  nfseDiaLimite          Int     @default(10) @map("nfse_dia_limite")
+  nfseServicoCodigo      String  @default("08.01.01") @map("nfse_servico_codigo")
+  nfseServicoNome        String  @default("Ensino regular pré-escolar, fundamental e médio.") @map("nfse_servico_nome")
+  nfseServicoDescricao   String  @default("PRESTAÇÃO DE SERVIÇOS EDUCACIONAIS") @map("nfse_servico_descricao")
+  /// Id do serviço municipal no Asaas (GET /invoices/municipalServices) — opcional.
+  nfseMunicipalServiceId String? @map("nfse_municipal_service_id")
+  nfseIssPercentual      Decimal @default(0) @map("nfse_iss_percentual") @db.Decimal(5, 2)
 
   // --- Qual provedor atende cada tipo de cobrança ---
   // Null = tipo desabilitado (não aparece no menu "Gerar cobrança"). Nunca os
@@ -851,6 +871,11 @@ model Sacado {
   telefone        String?
   /// Só pessoa física — segundo fator de acesso à consulta de títulos.
   dataNascimento  DateTime?        @map("data_nascimento")
+  cep             String?
+  endereco        String?
+  numero          String?
+  complemento     String?
+  bairro          String?
   asaasCustomerId String?          @unique @map("asaas_customer_id")
   criadoEm        DateTime         @default(now()) @map("criado_em")
   atualizadoEm    DateTime         @updatedAt @map("atualizado_em")

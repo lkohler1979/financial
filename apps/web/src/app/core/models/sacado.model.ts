@@ -8,6 +8,11 @@ export interface Sacado {
   email?: string | null;
   telefone?: string | null;
   dataNascimento?: string | null;
+  cep?: string | null;
+  endereco?: string | null;
+  numero?: string | null;
+  complemento?: string | null;
+  bairro?: string | null;
 }
 
 /** Dados de um responsável financeiro enviados no cadastro da matrícula
@@ -19,6 +24,11 @@ export interface SacadoPayload {
   email?: string;
   telefone?: string;
   dataNascimento?: string;
+  cep?: string;
+  endereco?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
 }
 
 export interface SacadoListado extends Sacado {
@@ -40,4 +50,9 @@ export interface AtualizarSacadoPayload {
   email?: string | null;
   telefone?: string | null;
   dataNascimento?: string;
+  cep?: string | null;
+  endereco?: string | null;
+  numero?: string | null;
+  complemento?: string | null;
+  bairro?: string | null;
 }

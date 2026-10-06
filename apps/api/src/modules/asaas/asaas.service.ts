@@ -104,7 +104,7 @@ function montarJurosMultaDesconto(configuracao: {
   };
 }
 
-async function obterClienteAsaas(): Promise<AsaasClient> {
+export async function obterClienteAsaas(): Promise<AsaasClient> {
   const configuracao = await configuracoesRepository.obterOuCriar();
   if (!configuracao.asaasApiKeyCriptografada) {
     throw new ValidationError(
@@ -144,6 +144,11 @@ export const asaasService = {
       email: aluno.email ?? undefined,
       mobilePhone: aluno.telefone1 ?? undefined,
       externalReference: aluno.id,
+      ...(aluno.cep ? { postalCode: aluno.cep.replace(/\D/g, "") } : {}),
+      ...(aluno.endereco ? { address: aluno.endereco } : {}),
+      ...(aluno.numero ? { addressNumber: aluno.numero } : {}),
+      ...(aluno.complemento ? { complement: aluno.complemento } : {}),
+      ...(aluno.bairro ? { province: aluno.bairro } : {}),
     });
 
     await alunosRepository.update(aluno.id, { asaasCustomerId: clienteAsaas.id });
@@ -163,6 +168,11 @@ export const asaasService = {
       email: sacado.email ?? undefined,
       mobilePhone: sacado.telefone ?? undefined,
       externalReference: sacado.id,
+      ...(sacado.cep ? { postalCode: sacado.cep.replace(/\D/g, "") } : {}),
+      ...(sacado.endereco ? { address: sacado.endereco } : {}),
+      ...(sacado.numero ? { addressNumber: sacado.numero } : {}),
+      ...(sacado.complemento ? { complement: sacado.complemento } : {}),
+      ...(sacado.bairro ? { province: sacado.bairro } : {}),
     });
     await sacadosRepository.update(sacado.id, { asaasCustomerId: clienteAsaas.id });
     return clienteAsaas.id;

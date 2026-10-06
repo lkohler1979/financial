@@ -226,11 +226,11 @@ import { formatarCnpj, formatarCpf } from "../../shared/utils/cpf.util";
       @if (editando && id) {
         <section class="bg-white rounded-lg border p-4 mb-4">
           <div class="flex flex-wrap items-center gap-3">
-            <p class="text-sm font-medium text-gray-700 m-0">Responsável financeiro</p>
+            <p class="text-sm font-medium text-gray-700 m-0">Responsável financeiro e tomador da nota fiscal</p>
             @if (sacadoNome) {
-              <span class="text-sm"><strong>{{ sacadoNome }}</strong> — {{ sacadoDocumento }} (boleto e Pix saem em nome dele)</span>
+              <span class="text-sm"><strong>{{ sacadoNome }}</strong> — {{ sacadoDocumento }} (cobrança e nota fiscal saem em nome dele)</span>
             } @else {
-              <span class="text-sm text-gray-600">O próprio aluno</span>
+              <span class="text-sm text-gray-600">O próprio aluno (padrão) — a nota fiscal sai no nome dele</span>
             }
             <button mat-stroked-button type="button" class="ml-auto" (click)="alterandoSacado = !alterandoSacado">
               {{ alterandoSacado ? "Fechar" : "Alterar responsável" }}

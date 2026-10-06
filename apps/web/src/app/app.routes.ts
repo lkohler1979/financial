@@ -27,6 +27,13 @@ export const routes: Routes = [
       import("./features/portal/portal-home.component").then((m) => m.PortalHomeComponent),
   },
   {
+    path: "notas-fiscais",
+    canActivate: [authGuard, perfilGuard],
+    data: { perfis: ADMIN_E_FINANCEIRO },
+    loadComponent: () =>
+      import("./features/nfse/notas-fiscais.component").then((m) => m.NotasFiscaisComponent),
+  },
+  {
     path: "sacados",
     canActivate: [authGuard, perfilGuard],
     data: { perfis: TODOS_PERFIS },

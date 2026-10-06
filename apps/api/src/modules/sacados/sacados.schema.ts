@@ -20,6 +20,11 @@ export const sacadoDadosSchema = z
     email: z.string().trim().email("E-mail inválido").optional().or(z.literal("")),
     telefone: z.string().trim().max(30).optional().or(z.literal("")),
     dataNascimento: dataLocalOpcional,
+    cep: z.string().trim().max(10).optional().or(z.literal("")),
+    endereco: z.string().trim().max(200).optional().or(z.literal("")),
+    numero: z.string().trim().max(20).optional().or(z.literal("")),
+    complemento: z.string().trim().max(100).optional().or(z.literal("")),
+    bairro: z.string().trim().max(100).optional().or(z.literal("")),
   })
   .superRefine((dados, ctx) => {
     const ok = dados.tipoPessoa === "FISICA" ? validarCpf(dados.cpfCnpj) : validarCnpj(dados.cpfCnpj);
@@ -38,6 +43,11 @@ export const atualizarSacadoSchema = z.object({
   email: z.string().trim().email("E-mail inválido").nullable().optional().or(z.literal("")),
   telefone: z.string().trim().max(30).nullable().optional().or(z.literal("")),
   dataNascimento: dataLocalOpcional,
+  cep: z.string().trim().max(10).nullable().optional().or(z.literal("")),
+  endereco: z.string().trim().max(200).nullable().optional().or(z.literal("")),
+  numero: z.string().trim().max(20).nullable().optional().or(z.literal("")),
+  complemento: z.string().trim().max(100).nullable().optional().or(z.literal("")),
+  bairro: z.string().trim().max(100).nullable().optional().or(z.literal("")),
 });
 
 export const listarSacadosSchema = z.object({

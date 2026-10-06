@@ -321,6 +321,47 @@ import {
       </section>
 
       <section class="bg-white rounded-lg border p-5">
+        <p class="text-sm font-medium text-gray-700 mb-1">Nota fiscal de serviço (NFS-e)</p>
+        <p class="text-xs text-gray-500 mb-4">
+          Emitida pelo Asaas (a conta precisa ter as informações fiscais da empresa cadastradas lá). Com a emissão
+          automática ligada, o sistema emite, no mês corrente e até o dia limite, a nota de cada mensalidade e
+          renegociação paga no mês anterior — uma por parcela, no nome do sacado (se houver) ou do aluno. Taxa de
+          matrícula não gera nota. Use a tela Notas fiscais para conferir antes e emitir manualmente.
+        </p>
+        <mat-checkbox formControlName="nfseAtiva">Emissão automática ligada</mat-checkbox>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mt-3">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>Emitir até o dia</mat-label>
+            <input matInput type="number" min="1" max="28" formControlName="nfseDiaLimite" />
+            <mat-hint>Do mês seguinte ao da competência</mat-hint>
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>Código do serviço</mat-label>
+            <input matInput formControlName="nfseServicoCodigo" />
+            <mat-hint>Ex.: 08.01.01</mat-hint>
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="md:col-span-2">
+            <mat-label>Nome do serviço</mat-label>
+            <input matInput formControlName="nfseServicoNome" />
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="md:col-span-2">
+            <mat-label>Descrição na nota</mat-label>
+            <input matInput formControlName="nfseServicoDescricao" />
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>ISS (%)</mat-label>
+            <input matInput type="number" min="0" max="5" step="0.01" formControlName="nfseIssPercentual" />
+            <mat-hint>0 no Simples Nacional</mat-hint>
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>ID do serviço municipal (Asaas)</mat-label>
+            <input matInput formControlName="nfseMunicipalServiceId" />
+            <mat-hint>Opcional</mat-hint>
+          </mat-form-field>
+        </div>
+      </section>
+
+      <section class="bg-white rounded-lg border p-5">
         <p class="text-sm font-medium text-gray-700 mb-1">Integração Rede (e.Rede/Itaú)</p>
         <p class="text-xs text-gray-500 mb-4">
           Credenciais da Rede — só Pix é suportado nesta integração. Deixe a chave/token em
@@ -605,6 +646,13 @@ export class ConfiguracoesComponent implements OnInit {
     provedorPix: this.fb.control<PagamentoProvedor | null>("ASAAS"),
     provedorCartao: this.fb.control<PagamentoProvedor | null>("ASAAS"),
     redeCartaoMaxParcelas: this.fb.nonNullable.control(1, [Validators.min(1), Validators.max(12)]),
+    nfseAtiva: this.fb.nonNullable.control(false),
+    nfseDiaLimite: this.fb.nonNullable.control(10, [Validators.min(1), Validators.max(28)]),
+    nfseServicoCodigo: this.fb.nonNullable.control("08.01.01", Validators.required),
+    nfseServicoNome: this.fb.nonNullable.control("Ensino regular pré-escolar, fundamental e médio.", Validators.required),
+    nfseServicoDescricao: this.fb.nonNullable.control("PRESTAÇÃO DE SERVIÇOS EDUCACIONAIS", Validators.required),
+    nfseMunicipalServiceId: this.fb.control<string | null>(null),
+    nfseIssPercentual: this.fb.nonNullable.control<number | string>(0, [Validators.min(0), Validators.max(5)]),
     redeAmbiente: this.fb.nonNullable.control<RedeAmbiente>("SANDBOX"),
   });
 
@@ -687,6 +735,8 @@ export class ConfiguracoesComponent implements OnInit {
       ...valor,
       legadoUrl: valor.legadoUrl.trim() || null,
       legadoUsuario: valor.legadoUsuario.trim() || null,
+      nfseMunicipalServiceId: valor.nfseMunicipalServiceId?.trim() || null,
+      nfseIssPercentual: Number(valor.nfseIssPercentual),
       ...(novaSenha ? { legadoSenha: novaSenha } : {}),
       ...(novaChaveAsaas ? { asaasApiKey: novaChaveAsaas } : {}),
       ...(novoTokenAsaas ? { asaasWebhookToken: novoTokenAsaas } : {}),

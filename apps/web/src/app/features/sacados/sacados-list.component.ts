@@ -97,6 +97,26 @@ import { formatarCnpj, formatarCpf } from "../../shared/utils/cpf.util";
               <input class="border rounded px-2 py-1 w-full" type="date" [(ngModel)]="dataNascimento" />
             </label>
           }
+          <label class="text-sm">
+            <span class="block text-xs text-gray-500">CEP</span>
+            <input class="border rounded px-2 py-1 w-full" maxlength="9" [(ngModel)]="cep" />
+          </label>
+          <label class="text-sm md:col-span-2">
+            <span class="block text-xs text-gray-500">Logradouro</span>
+            <input class="border rounded px-2 py-1 w-full" [(ngModel)]="endereco" />
+          </label>
+          <label class="text-sm">
+            <span class="block text-xs text-gray-500">Número</span>
+            <input class="border rounded px-2 py-1 w-full" [(ngModel)]="numero" />
+          </label>
+          <label class="text-sm">
+            <span class="block text-xs text-gray-500">Complemento</span>
+            <input class="border rounded px-2 py-1 w-full" [(ngModel)]="complemento" />
+          </label>
+          <label class="text-sm">
+            <span class="block text-xs text-gray-500">Bairro</span>
+            <input class="border rounded px-2 py-1 w-full" [(ngModel)]="bairro" />
+          </label>
         </div>
         <div class="flex gap-2 mt-3">
           <button mat-flat-button color="primary" type="button" [disabled]="!nome.trim() || salvando()" (click)="salvar(s)">
@@ -155,6 +175,11 @@ export class SacadosListComponent implements OnInit {
   email = "";
   telefone = "";
   dataNascimento = "";
+  cep = "";
+  endereco = "";
+  numero = "";
+  complemento = "";
+  bairro = "";
 
   protected readonly rotuloSituacao = rotuloSituacaoMatricula;
   protected readonly classeSituacao = classeSituacaoMatricula;
@@ -200,6 +225,11 @@ export class SacadosListComponent implements OnInit {
       this.email = ficha.email ?? "";
       this.telefone = ficha.telefone ?? "";
       this.dataNascimento = ficha.dataNascimento ? ficha.dataNascimento.substring(0, 10) : "";
+      this.cep = ficha.cep ?? "";
+      this.endereco = ficha.endereco ?? "";
+      this.numero = ficha.numero ?? "";
+      this.complemento = ficha.complemento ?? "";
+      this.bairro = ficha.bairro ?? "";
     });
   }
 
@@ -211,6 +241,11 @@ export class SacadosListComponent implements OnInit {
         email: this.email.trim() || null,
         telefone: this.telefone.trim() || null,
         ...(s.tipoPessoa === "FISICA" && this.dataNascimento ? { dataNascimento: this.dataNascimento } : {}),
+        cep: this.cep.trim() || null,
+        endereco: this.endereco.trim() || null,
+        numero: this.numero.trim() || null,
+        complemento: this.complemento.trim() || null,
+        bairro: this.bairro.trim() || null,
       })
       .subscribe({
         next: () => {

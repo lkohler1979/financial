@@ -94,6 +94,16 @@ import { AuthService } from "./core/auth/auth.service";
           [active]="documentos.isActive"
           >Documentos</a
         >
+        @if (authService.temPerfil("ADMINISTRADOR", "FINANCEIRO")) {
+          <a
+            mat-tab-link
+            routerLink="/notas-fiscais"
+            routerLinkActive
+            #notasFiscais="routerLinkActive"
+            [active]="notasFiscais.isActive"
+            >Notas fiscais</a
+          >
+        }
         <a
           mat-tab-link
           routerLink="/sacados"

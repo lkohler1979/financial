@@ -34,6 +34,13 @@ function serializarConfiguracao(configuracao: {
   asaasDescontoDiasAntesVencimento: number | null;
   emissaoAntecipadaDias: number;
   redeCartaoMaxParcelas: number;
+  nfseAtiva: boolean;
+  nfseDiaLimite: number;
+  nfseServicoCodigo: string;
+  nfseServicoNome: string;
+  nfseServicoDescricao: string;
+  nfseMunicipalServiceId: string | null;
+  nfseIssPercentual: Prisma.Decimal | number;
   provedorBoleto: PagamentoProvedor | null;
   provedorPix: PagamentoProvedor | null;
   provedorCartao: PagamentoProvedor | null;
@@ -144,6 +151,15 @@ export const configuracoesService = {
       ...(input.asaasDescontoPercentual !== undefined
         ? { asaasDescontoPercentual: input.asaasDescontoPercentual }
         : {}),
+      ...(input.nfseAtiva !== undefined ? { nfseAtiva: input.nfseAtiva } : {}),
+      ...(input.nfseDiaLimite !== undefined ? { nfseDiaLimite: input.nfseDiaLimite } : {}),
+      ...(input.nfseServicoCodigo !== undefined ? { nfseServicoCodigo: input.nfseServicoCodigo } : {}),
+      ...(input.nfseServicoNome !== undefined ? { nfseServicoNome: input.nfseServicoNome } : {}),
+      ...(input.nfseServicoDescricao !== undefined ? { nfseServicoDescricao: input.nfseServicoDescricao } : {}),
+      ...(input.nfseMunicipalServiceId !== undefined
+        ? { nfseMunicipalServiceId: input.nfseMunicipalServiceId || null }
+        : {}),
+      ...(input.nfseIssPercentual !== undefined ? { nfseIssPercentual: input.nfseIssPercentual } : {}),
       ...(input.redeCartaoMaxParcelas !== undefined
         ? { redeCartaoMaxParcelas: input.redeCartaoMaxParcelas }
         : {}),

@@ -62,6 +62,11 @@ export const sacadosService = {
       email: vazioParaNulo(dados.email),
       telefone: vazioParaNulo(dados.telefone),
       dataNascimento: dados.tipoPessoa === "FISICA" ? (dados.dataNascimento ?? null) : null,
+      cep: vazioParaNulo(dados.cep),
+      endereco: vazioParaNulo(dados.endereco),
+      numero: vazioParaNulo(dados.numero),
+      complemento: vazioParaNulo(dados.complemento),
+      bairro: vazioParaNulo(dados.bairro),
     });
     await registrarAuditoria({
       usuarioId,
@@ -82,6 +87,11 @@ export const sacadosService = {
       ...(input.dataNascimento !== undefined && atual.tipoPessoa === "FISICA"
         ? { dataNascimento: input.dataNascimento }
         : {}),
+      ...(input.cep !== undefined ? { cep: vazioParaNulo(input.cep) } : {}),
+      ...(input.endereco !== undefined ? { endereco: vazioParaNulo(input.endereco) } : {}),
+      ...(input.numero !== undefined ? { numero: vazioParaNulo(input.numero) } : {}),
+      ...(input.complemento !== undefined ? { complemento: vazioParaNulo(input.complemento) } : {}),
+      ...(input.bairro !== undefined ? { bairro: vazioParaNulo(input.bairro) } : {}),
     });
     await registrarAuditoria({
       usuarioId,

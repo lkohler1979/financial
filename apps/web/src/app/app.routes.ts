@@ -27,6 +27,13 @@ export const routes: Routes = [
       import("./features/portal/portal-home.component").then((m) => m.PortalHomeComponent),
   },
   {
+    path: "sacados",
+    canActivate: [authGuard, perfilGuard],
+    data: { perfis: TODOS_PERFIS },
+    loadComponent: () =>
+      import("./features/sacados/sacados-list.component").then((m) => m.SacadosListComponent),
+  },
+  {
     path: "solicitacoes",
     canActivate: [authGuard, perfilGuard],
     data: { perfis: TODOS_PERFIS },

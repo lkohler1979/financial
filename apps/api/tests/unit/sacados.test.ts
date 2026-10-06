@@ -54,3 +54,20 @@ describe("sacadosService.obterOuCriar", () => {
     await expect(sacadosService.obterOuCriar(dados, "u")).rejects.toBeInstanceOf(ValidationError);
   });
 });
+
+describe("sacadosService.remover", () => {
+  it("não remove sacado com matrículas; remove quando livre", async () => {
+    (sacadosRepository as unknown as Record<string, ReturnType<typeof vi.fn>>).countMatriculas = vi.fn();
+    (sacadosRepository as unknown as Record<string, ReturnType<typeof vi.fn>>).delete = vi.fn();
+    const r = sacadosRepository as unknown as { countMatriculas: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn> };
+    repo.findById.mockResolvedValue({ id: "s1" } as never);
+
+    r.countMatriculas.mockResolvedValue(2);
+    await expect(sacadosService.remover("s1", "u")).rejects.toMatchObject({ statusCode: 409 });
+    expect(r.delete).not.toHaveBeenCalled();
+
+    r.countMatriculas.mockResolvedValue(0);
+    await sacadosService.remover("s1", "u");
+    expect(r.delete).toHaveBeenCalledWith("s1");
+  });
+});

@@ -20,3 +20,24 @@ export interface SacadoPayload {
   telefone?: string;
   dataNascimento?: string;
 }
+
+export interface SacadoListado extends Sacado {
+  _count: { matriculas: number };
+}
+
+export interface SacadoFicha extends Sacado {
+  matriculas: {
+    id: string;
+    numeroMatricula: string | null;
+    situacao: string;
+    aluno: { id: string; nome: string; codigo: string | null };
+    curso: { id: string; nome: string };
+  }[];
+}
+
+export interface AtualizarSacadoPayload {
+  nome?: string;
+  email?: string | null;
+  telefone?: string | null;
+  dataNascimento?: string;
+}

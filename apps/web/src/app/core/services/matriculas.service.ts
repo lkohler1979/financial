@@ -10,6 +10,7 @@ import {
   MatriculaPayload,
   SituacaoMatriculaOpcao,
 } from "../models/matricula.model";
+import { SacadoPayload } from "../models/sacado.model";
 import { Paginado } from "../models/paginado.model";
 
 @Injectable({ providedIn: "root" })
@@ -59,6 +60,17 @@ export class MatriculasService {
 
   buscarPorId(id: string): Observable<Matricula> {
     return this.http.get<Matricula>(`${this.baseUrl}/${id}`);
+  }
+
+  /** Troca o responsável financeiro (null = volta a ser o próprio aluno). */
+  alterarSacado(
+    id: string,
+    payload: { sacadoId?: string | null; sacado?: SacadoPayload },
+  ): Observable<Matricula & { cobrancasEmitidasNoSacadoAnterior: number }> {
+    return this.http.put<Matricula & { cobrancasEmitidasNoSacadoAnterior: number }>(
+      `${this.baseUrl}/${id}/sacado`,
+      payload,
+    );
   }
 
   situacoes(): Observable<SituacaoMatriculaOpcao[]> {

@@ -12,6 +12,7 @@ import { tiposCobrancaService } from "../tipos-cobranca/tipos-cobranca.service";
 import { aplicarDesconto, cuponsService } from "../cupons/cupons.service";
 import { matriculasRepository } from "./matriculas.repository";
 import type {
+  AlterarSacadoInput,
   AtualizarMatriculaInput,
   CriarMatriculaInput,
   ListarMatriculasInput,
@@ -524,6 +525,38 @@ export const matriculasService = {
     });
 
     return serializarMatricula(matricula);
+  },
+
+  /**
+   * Troca (ou remove) o responsável financeiro. Cobranças já emitidas continuam
+   * no nome do sacado anterior — a resposta informa quantas, para a equipe
+   * cancelar/reemitir se precisar; só as próximas saem no nome do novo.
+   */
+  async alterarSacado(id: string, input: AlterarSacadoInput, usuarioId: string) {
+    const atual = await this.buscarPorId(id);
+    const novo = input.sacado
+      ? await sacadosService.obterOuCriar(input.sacado, usuarioId)
+      : input.sacadoId
+        ? await sacadosService.buscarPorId(input.sacadoId)
+        : null;
+
+    if ((atual.sacado?.id ?? null) === (novo?.id ?? null)) {
+      throw new ValidationError("O responsável financeiro já é este");
+    }
+
+    const matricula = await matriculasRepository.update(id, {
+      sacado: novo ? { connect: { id: novo.id } } : { disconnect: true },
+    });
+    const cobrancasEmitidas = await matriculasRepository.countCobrancasEmitidasEmAberto(id);
+
+    await registrarAuditoria({
+      usuarioId,
+      entidade: ENTIDADE,
+      entidadeId: id,
+      acao: "ATUALIZACAO",
+      detalhes: { acao: "sacado_alterado", de: atual.sacado?.id ?? null, para: novo?.id ?? null },
+    });
+    return { ...serializarMatricula(matricula), cobrancasEmitidasNoSacadoAnterior: cobrancasEmitidas };
   },
 
   async remover(id: string, usuarioId: string) {

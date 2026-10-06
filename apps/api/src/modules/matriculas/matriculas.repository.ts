@@ -120,6 +120,13 @@ export const matriculasRepository = {
     return prisma.matricula.update({ where: { id }, data, include: incluiAlunoCurso });
   },
 
+  /** Cobranças já emitidas (boleto/Pix) e ainda em aberto — ficam no nome do sacado de antes. */
+  countCobrancasEmitidasEmAberto(matriculaId: string) {
+    return prisma.parcela.count({
+      where: { matriculaId, status: "EM_ABERTO", asaasPaymentId: { not: null } },
+    });
+  },
+
   delete(id: string) {
     return prisma.matricula.delete({ where: { id } });
   },

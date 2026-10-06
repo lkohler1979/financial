@@ -96,6 +96,14 @@ import { AuthService } from "./core/auth/auth.service";
         >
         <a
           mat-tab-link
+          routerLink="/sacados"
+          routerLinkActive
+          #sacados="routerLinkActive"
+          [active]="sacados.isActive"
+          >Sacados</a
+        >
+        <a
+          mat-tab-link
           routerLink="/solicitacoes"
           routerLinkActive
           #solicitacoes="routerLinkActive"
@@ -168,7 +176,8 @@ export class AppComponent {
     ),
     { initialValue: this.router.url },
   );
-  readonly naAreaDoAluno = () => this.url().startsWith("/aluno");
+  // Só "/aluno" e "/aluno/..." — "/alunos" (cadastro da equipe) mantém o menu.
+  readonly naAreaDoAluno = () => /^\/aluno(\/|\?|$)/.test(this.url());
 
   sair(): void {
     this.authService.logout();

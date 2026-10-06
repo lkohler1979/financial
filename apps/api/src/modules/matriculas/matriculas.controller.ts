@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { asyncHandler } from "../../shared/utils/async-handler";
 import { paramString, usuarioAtual } from "../../shared/utils/http";
 import {
+  alterarSacadoSchema,
   alterarSituacaoSchema,
   atualizarMatriculaSchema,
   criarMatriculaSchema,
@@ -27,6 +28,11 @@ export const matriculasController = {
 
   historicoSituacao: asyncHandler(async (req: Request, res: Response) => {
     res.json(await situacaoService.listarHistorico(paramString(req, "id")));
+  }),
+
+  alterarSacado: asyncHandler(async (req: Request, res: Response) => {
+    const input = alterarSacadoSchema.parse(req.body);
+    res.json(await matriculasService.alterarSacado(paramString(req, "id"), input, usuarioAtual(req)));
   }),
 
   alterarSituacao: asyncHandler(async (req: Request, res: Response) => {

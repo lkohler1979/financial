@@ -50,6 +50,13 @@ const cobrancaSchema = z.object({
   observacoes: z.string().trim().max(1000).optional(),
 });
 
+// Troca do responsável financeiro de uma matrícula já criada: um sacado existente,
+// os dados de um novo, ou null para voltar a ser o próprio aluno.
+export const alterarSacadoSchema = z.object({
+  sacadoId: z.string().uuid().nullable().optional(),
+  sacado: sacadoDadosSchema.optional(),
+});
+
 export const alterarSituacaoSchema = z.object({
   situacao: z.string().trim().min(1, "Informe a nova situação"),
   periodoLetivo: z.string().trim().max(50).nullable().optional(),
@@ -96,6 +103,7 @@ export const listarMatriculasSchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
 });
 
+export type AlterarSacadoInput = z.infer<typeof alterarSacadoSchema>;
 export type CriarMatriculaInput = z.infer<typeof criarMatriculaSchema>;
 export type AtualizarMatriculaInput = z.infer<typeof atualizarMatriculaSchema>;
 export type ListarMatriculasInput = z.infer<typeof listarMatriculasSchema>;

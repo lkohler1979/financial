@@ -16,6 +16,8 @@ import { MatriculasService } from "../../core/services/matriculas.service";
 import { AuthService } from "../../core/auth/auth.service";
 import { DocumentosMatriculaComponent } from "./documentos-matricula.component";
 import { SituacaoMatriculaComponent } from "./situacao-matricula.component";
+import { SacadoMatriculaComponent } from "./sacado-matricula.component";
+import { SacadoPayload } from "../../core/models/sacado.model";
 import { AlunosService } from "../../core/services/alunos.service";
 import { CursosService } from "../../core/services/cursos.service";
 import { CobrancaService } from "../../core/services/cobranca.service";
@@ -42,6 +44,7 @@ import { formatarCnpj, formatarCpf } from "../../shared/utils/cpf.util";
     MatProgressBarModule,
     DocumentosMatriculaComponent,
     SituacaoMatriculaComponent,
+    SacadoMatriculaComponent,
   ],
   template: `
     <div class="flex items-center gap-2 mb-4">
@@ -220,11 +223,39 @@ import { formatarCnpj, formatarCpf } from "../../shared/utils/cpf.util";
         </div>
       }
 
-      @if (editando && sacadoNome) {
-        <p class="text-sm bg-blue-50 border border-blue-200 rounded px-3 py-2 mb-4">
-          Responsável financeiro (sacado): <strong>{{ sacadoNome }}</strong> — {{ sacadoDocumento }}.
-          Boleto e Pix saem em nome dele.
-        </p>
+      @if (editando && id) {
+        <section class="bg-white rounded-lg border p-4 mb-4">
+          <div class="flex flex-wrap items-center gap-3">
+            <p class="text-sm font-medium text-gray-700 m-0">Responsável financeiro</p>
+            @if (sacadoNome) {
+              <span class="text-sm"><strong>{{ sacadoNome }}</strong> — {{ sacadoDocumento }} (boleto e Pix saem em nome dele)</span>
+            } @else {
+              <span class="text-sm text-gray-600">O próprio aluno</span>
+            }
+            <button mat-stroked-button type="button" class="ml-auto" (click)="alterandoSacado = !alterandoSacado">
+              {{ alterandoSacado ? "Fechar" : "Alterar responsável" }}
+            </button>
+          </div>
+
+          @if (alterandoSacado) {
+            <app-sacado-matricula (alterado)="aoMudarSacado($event)"></app-sacado-matricula>
+            <p class="text-xs text-amber-700 mt-2">
+              Cobranças (boleto/Pix) já emitidas continuam no nome do responsável anterior; só as
+              próximas saem no nome do novo.
+            </p>
+            <div class="flex gap-2 mt-2">
+              <button
+                mat-flat-button
+                color="primary"
+                type="button"
+                [disabled]="!sacadoNovoValido || salvandoSacado"
+                (click)="salvarSacado()"
+              >
+                Salvar responsável
+              </button>
+            </div>
+          }
+        </section>
       }
 
       @if (editando && id && situacaoAtual) {
@@ -259,6 +290,44 @@ export class MatriculaFormComponent implements OnInit {
   situacaoAtual = "";
   sacadoNome = "";
   sacadoDocumento = "";
+  alterandoSacado = false;
+  salvandoSacado = false;
+  sacadoNovo: SacadoPayload | null = null;
+  sacadoNovoValido = true;
+
+  aoMudarSacado(evento: { sacado: SacadoPayload | null; valido: boolean }): void {
+    this.sacadoNovo = evento.sacado;
+    this.sacadoNovoValido = evento.valido;
+  }
+
+  /** "O próprio aluno" (sacado nulo) remove o responsável; senão grava o novo. */
+  salvarSacado(): void {
+    if (!this.id) return;
+    this.salvandoSacado = true;
+    this.service
+      .alterarSacado(this.id, this.sacadoNovo ? { sacado: this.sacadoNovo } : { sacadoId: null })
+      .subscribe({
+        next: (m) => {
+          this.salvandoSacado = false;
+          this.alterandoSacado = false;
+          this.sacadoNome = m.sacado?.nome ?? "";
+          this.sacadoDocumento = m.sacado
+            ? m.sacado.tipoPessoa === "FISICA"
+              ? formatarCpf(m.sacado.cpfCnpj)
+              : formatarCnpj(m.sacado.cpfCnpj)
+            : "";
+          const emitidas = m.cobrancasEmitidasNoSacadoAnterior;
+          this.snackBar.open(
+            emitidas > 0
+              ? `Responsável alterado. Atenção: ${emitidas} cobrança(s) já emitida(s) continuam no nome do anterior.`
+              : "Responsável alterado",
+            "Fechar",
+            { duration: emitidas > 0 ? 10000 : 3000 },
+          );
+        },
+        error: () => (this.salvandoSacado = false),
+      });
+  }
 
   editando = false;
   carregando = false;

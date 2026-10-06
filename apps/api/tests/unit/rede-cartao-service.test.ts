@@ -15,6 +15,7 @@ import { AppError, NotFoundError } from "../../src/shared/errors/app-error";
 const criarCobrancaCartao = vi.fn();
 vi.mock("../../src/modules/rede/rede-client", () => ({
   RedeClient: vi.fn().mockImplementation(() => ({ criarCobrancaCartao })),
+  gerarReferenciaRede: () => "PREF1234",
 }));
 vi.mock("../../src/shared/utils/criptografia", () => ({ decifrar: (v: string) => `dec(${v})`, criptografar: (v: string) => v }));
 vi.mock("../../src/modules/financeiro/financeiro.repository", () => ({
@@ -94,6 +95,14 @@ describe("redeService.pagarComCartao", () => {
     );
     expect(finSvc.atualizar).toHaveBeenCalledWith("p1", expect.objectContaining({ status: "PAGO", valorPago: 123.45 }), "sistema-id");
     expect(r).toMatchObject({ bandeira: "Mastercard", final: "0007", tid: "TID1" });
+    // A Rede (v2) não devolve o nome da bandeira: ela é deduzida do prefixo do número.
+  });
+
+  it("bandeira vem do número quando a Rede não informa", async () => {
+    criarCobrancaCartao.mockResolvedValue({ ...aprovado, bandeira: null });
+    const r = await redeService.pagarComCartao("p1", { ...cartao, numero: "4235647728025682" });
+    expect(r.bandeira).toBe("Visa");
+    expect(fin.update).toHaveBeenCalledWith("p1", expect.objectContaining({ cartaoBandeira: "Visa" }));
     expect(JSON.stringify(r)).not.toContain("5448280000000007");
   });
 

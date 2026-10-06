@@ -8,9 +8,17 @@ export const emissaoCobrancaQueue = new Queue(EMISSAO_COBRANCA_QUEUE_NAME, {
   connection: redisConnection,
 });
 
-/** Agenda a emissão antecipada para todo dia às 06:00 (horário de Brasília).
- * Idempotente: o scheduler é recriado com o mesmo id a cada partida do worker. */
+export const JOB_CONFERIR_ESTORNOS_ID = "conferir-estornos-diario";
+
+/** Agenda a emissão antecipada (06:00) e a conferência de estornos (07:00), horário de Brasília.
+ * Idempotente: os schedulers são recriados com o mesmo id a cada partida do worker. */
 export async function programarEmissaoDiaria() {
+  // Estornos de cartão que a Rede ainda processava (D+1): conferidos todo dia às 07:00.
+  await emissaoCobrancaQueue.upsertJobScheduler(
+    JOB_CONFERIR_ESTORNOS_ID,
+    { pattern: "0 7 * * *", tz: "America/Sao_Paulo" },
+    { name: "conferir-estornos", data: {} },
+  );
   await emissaoCobrancaQueue.upsertJobScheduler(
     JOB_EMISSAO_DIARIA_ID,
     { pattern: "0 6 * * *", tz: "America/Sao_Paulo" },

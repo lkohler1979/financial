@@ -342,6 +342,10 @@ model Parcela {
   cartaoBandeira          String?            @map("cartao_bandeira")
   cartaoFinal             String?            @map("cartao_final")
   cartaoParcelas          Int?               @map("cartao_parcelas")
+  /// Estorno pedido à Rede e ainda em processamento (D+1): enquanto preenchido a parcela
+  /// continua paga; ao concluir na Rede, a parcela reabre e estes campos são limpos.
+  cartaoEstornoId         String?            @map("cartao_estorno_id")
+  cartaoEstornoEm         DateTime?          @map("cartao_estorno_em")
   asaasDataGeracao        DateTime?          @map("asaas_data_geracao")
 
   matricula Matricula @relation(fields: [matriculaId], references: [id])

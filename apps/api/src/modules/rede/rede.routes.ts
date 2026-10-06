@@ -7,3 +7,8 @@ import { redeController } from "./rede.controller";
 // /api/asaas/parcelas/:id/cobranca, que despacha pro provedor configurado.
 export const redeWebhookRouter = Router();
 redeWebhookRouter.post("/", redeController.webhook);
+
+// Rotas internas (exigem login): estorno de cartão é financeiro sensível — só administrador.
+export const redeRouter = Router();
+redeRouter.post("/parcelas/:parcelaId/estorno", redeController.estornar);
+redeRouter.post("/parcelas/:parcelaId/estorno/conferir", redeController.conferirEstorno);

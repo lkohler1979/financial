@@ -44,3 +44,7 @@ export const pagamentoCartaoSchema = z
   });
 
 export type PagamentoCartaoInput = z.infer<typeof pagamentoCartaoSchema>;
+
+export const estornoCartaoSchema = z.object({
+  motivo: z.string().trim().min(3, "Informe o motivo do estorno").max(300),
+});

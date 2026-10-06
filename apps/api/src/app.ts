@@ -17,7 +17,7 @@ import { cobrancaRouter } from "./modules/cobranca/cobranca.routes";
 import { sincronizacaoLegadoRouter } from "./modules/sincronizacao-legado/sincronizacao-legado.routes";
 import { importacaoLegadoRouter } from "./modules/importacao-legado/importacao-legado.routes";
 import { asaasRouter, asaasWebhookRouter } from "./modules/asaas/asaas.routes";
-import { redeWebhookRouter } from "./modules/rede/rede.routes";
+import { redeRouter, redeWebhookRouter } from "./modules/rede/rede.routes";
 import { configuracoesRouter } from "./modules/configuracoes/configuracoes.routes";
 import { auditoriaRouter } from "./modules/auditoria/auditoria.routes";
 import { cuponsRouter } from "./modules/cupons/cupons.routes";
@@ -82,6 +82,7 @@ app.use("/api/cupons", requireRole("ADMINISTRADOR", "FINANCEIRO", "USUARIO"), cu
 app.use("/api/tipos-cobranca", requireRole("ADMINISTRADOR", "FINANCEIRO", "USUARIO"), tiposCobrancaRouter);
 app.use("/api/documentos", requireRole("ADMINISTRADOR", "FINANCEIRO", "USUARIO"), documentosRouter);
 app.use("/api/sacados", requireRole("ADMINISTRADOR", "FINANCEIRO", "USUARIO"), sacadosRouter);
+app.use("/api/rede", requireRole("ADMINISTRADOR"), redeRouter);
 app.use("/api/solicitacoes", requireRole("ADMINISTRADOR", "FINANCEIRO", "USUARIO"), solicitacoesRouter);
 app.use("/api/financeiro", requireRole("ADMINISTRADOR", "FINANCEIRO"), financeiroRouter);
 app.use("/api/importacao", requireRole("ADMINISTRADOR", "FINANCEIRO"), importacaoRouter);

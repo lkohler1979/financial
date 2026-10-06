@@ -20,6 +20,12 @@ const BASE_URLS: Record<"SANDBOX" | "PRODUCAO", { oauth: string; transacoes: str
   },
 };
 
+/** Referência única por transação (a Rede limita a 16 caracteres alfanuméricos). */
+export function gerarReferenciaRede(): string {
+  const aleatorio = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `P${Date.now().toString(36).toUpperCase()}${aleatorio}`.slice(0, 16);
+}
+
 export interface RedeClienteConfig {
   /** PV (número de filiação) — usado como `clientId` no OAuth2. */
   pv: string;
@@ -72,6 +78,16 @@ export interface RedeResultadoCartao {
   bin: string | null;
   final: string | null;
 }
+
+/** Resultado de um pedido de estorno: concluído na hora (359) ou aceito e em processamento (360, D+1). */
+export interface RedeResultadoEstorno {
+  concluido: boolean;
+  returnCode: string;
+  returnMessage: string;
+  refundId: string | null;
+}
+
+export type StatusEstornoRede = "Done" | "Denied" | "Processing";
 
 interface RedeTokenResposta {
   access_token: string;
@@ -224,6 +240,52 @@ export class RedeClient {
       bin: c.cardBin ?? null,
       final: c.last4 ?? null,
     };
+  }
+
+  /**
+   * Estorna (cancela) uma transação de cartão — `POST /v2/transactions/{tid}/refunds`.
+   * 359 = estorno concluído; 360 = pedido aceito, resultado final só no dia seguinte
+   * (conferir com `consultarEstornos`). Qualquer outro código lança AppError com a
+   * mensagem da Rede (ex.: 354 prazo expirado, 355 já cancelada).
+   */
+  async estornarCartao(tid: string, amountCentavos: number): Promise<RedeResultadoEstorno> {
+    const { resposta, corpo } = await this.enviar(`/${encodeURIComponent(tid)}/refunds`, {
+      method: "POST",
+      body: JSON.stringify({ amount: amountCentavos }),
+    });
+    const c = corpo as { returnCode?: string; returnMessage?: string; refundId?: string } | null;
+
+    if (!c?.returnCode) {
+      throw new AppError(`Rede respondeu ${resposta.status} ao pedir o estorno`, 502, "REDE_ERRO");
+    }
+    if (c.returnCode !== "359" && c.returnCode !== "360") {
+      throw new AppError(
+        `Estorno não realizado: ${c.returnMessage ?? c.returnCode}`,
+        422,
+        "REDE_ESTORNO_RECUSADO",
+        { returnCode: c.returnCode },
+      );
+    }
+    return {
+      concluido: c.returnCode === "359",
+      returnCode: c.returnCode,
+      returnMessage: c.returnMessage ?? "",
+      refundId: c.refundId ?? null,
+    };
+  }
+
+  /** Lista os estornos de uma transação (`GET /v2/transactions/{tid}/refunds`) com o status de cada um. */
+  async consultarEstornos(
+    tid: string,
+  ): Promise<{ refundId: string | null; status: StatusEstornoRede; amount: number }[]> {
+    const corpo = await this.requisitar<{
+      refunds?: { refundId?: string; status?: StatusEstornoRede; amount?: number }[];
+    }>(`/${encodeURIComponent(tid)}/refunds`, { method: "GET" });
+    return (corpo.refunds ?? []).map((r) => ({
+      refundId: r.refundId ?? null,
+      status: r.status ?? "Processing",
+      amount: r.amount ?? 0,
+    }));
   }
 
   /**

@@ -1,21 +1,17 @@
+import { registrarAuditoria } from "../auditoria/auditoria.service";
 import { AppError, NotFoundError, ValidationError } from "../../shared/errors/app-error";
 import { decifrar } from "../../shared/utils/criptografia";
 import { configuracoesRepository } from "../configuracoes/configuracoes.repository";
 import { financeiroRepository } from "../financeiro/financeiro.repository";
 import { financeiroService } from "../financeiro/financeiro.service";
 import { sincronizacaoLegadoRepository } from "../sincronizacao-legado/sincronizacao-legado.repository";
-import { RedeClient } from "./rede-client";
+import { detectarBandeira } from "../../shared/utils/cartao";
+import { gerarReferenciaRede, RedeClient } from "./rede-client";
 import type { PagamentoCartaoInput, RedeWebhookPayload } from "./rede.schema";
 
 // Único evento tratado nesta primeira versão — devolução (PV.REFUND_PIX)
 // fica pra uma fase futura, igual à decisão já tomada pro Asaas.
 const EVENTO_PIX_PAGO = "PV.UPDATE_TRANSACTION_PIX";
-
-/** Referência única por tentativa (a Rede limita a 16 caracteres alfanuméricos). */
-function gerarReferencia(): string {
-  const aleatorio = Math.random().toString(36).slice(2, 6).toUpperCase();
-  return `P${Date.now().toString(36).toUpperCase()}${aleatorio}`.slice(0, 16);
-}
 
 export interface ResultadoPagamentoCartao {
   bandeira: string | null;
@@ -24,7 +20,167 @@ export interface ResultadoPagamentoCartao {
   tid: string;
 }
 
+/** Cliente da Rede com as credenciais salvas em Configurações (ou erro claro se faltarem). */
+async function obterClienteRede(): Promise<RedeClient> {
+  const configuracao = await configuracoesRepository.obterOuCriar();
+  if (!configuracao.redePvCriptografado || !configuracao.redeChaveIntegracaoCriptografada) {
+    throw new ValidationError("Integração com a Rede não está configurada (tela de Configurações)");
+  }
+  return new RedeClient({
+    pv: decifrar(configuracao.redePvCriptografado),
+    chaveIntegracao: decifrar(configuracao.redeChaveIntegracaoCriptografada),
+    ambiente: configuracao.redeAmbiente,
+  });
+}
+
+/** Parcela paga no cartão pela Rede — a única que pode ser estornada por aqui. */
+function exigirPagaNoCartaoRede(parcela: {
+  status: string;
+  provedorPagamento: string | null;
+  asaasBillingType: string | null;
+  asaasPaymentId: string | null;
+}) {
+  if (
+    parcela.status !== "PAGO" ||
+    parcela.provedorPagamento !== "REDE" ||
+    parcela.asaasBillingType !== "CREDIT_CARD" ||
+    !parcela.asaasPaymentId
+  ) {
+    throw new ValidationError("Só é possível estornar parcelas pagas no cartão pela Rede");
+  }
+}
+
+export interface ResultadoEstorno {
+  /** true = o dinheiro já foi devolvido e a parcela reabriu; false = Rede ainda processando (D+1). */
+  concluido: boolean;
+}
+
 export const redeService = {
+  /**
+   * Estorno TOTAL de um pagamento de cartão feito pela Rede.
+   * - 359 (mesmo dia): estorno concluído na hora → a parcela volta a "em aberto".
+   * - 360 (dia seguinte, D+1): pedido aceito; a parcela continua paga e fica marcada
+   *   "estorno em processamento" até `conferirEstorno` confirmar com a Rede.
+   * Só ADMINISTRADOR (ver rota). Fica na Auditoria com o motivo.
+   */
+  async estornarCartao(parcelaId: string, motivo: string, usuarioId: string): Promise<ResultadoEstorno> {
+    const parcela = await financeiroRepository.findById(parcelaId);
+    if (!parcela) throw new NotFoundError("Parcela não encontrada");
+    exigirPagaNoCartaoRede(parcela);
+    if (parcela.cartaoEstornoId) {
+      throw new ValidationError("Já existe um estorno em processamento para esta parcela");
+    }
+
+    const client = await obterClienteRede();
+    const valorPago = Number(parcela.valorPago ?? parcela.valor);
+    const resultado = await client.estornarCartao(
+      parcela.asaasPaymentId as string,
+      Math.round(valorPago * 100),
+    );
+
+    await registrarAuditoria({
+      usuarioId,
+      entidade: "Parcela",
+      entidadeId: parcela.id,
+      acao: "ATUALIZACAO",
+      detalhes: {
+        acao: "estorno_cartao_solicitado",
+        tid: parcela.asaasPaymentId,
+        refundId: resultado.refundId,
+        concluido: resultado.concluido,
+        motivo,
+      },
+    });
+
+    if (resultado.concluido) {
+      await this.reabrirParcelaEstornada(parcela.id, usuarioId);
+      return { concluido: true };
+    }
+    await financeiroRepository.update(parcela.id, {
+      cartaoEstornoId: resultado.refundId,
+      cartaoEstornoEm: new Date(),
+    });
+    return { concluido: false };
+  },
+
+  /**
+   * Confere na Rede um estorno em processamento: concluído → parcela reabre;
+   * negado → some a marcação de "em processamento" (a parcela segue paga).
+   */
+  async conferirEstorno(parcelaId: string, usuarioId: string | null): Promise<"CONCLUIDO" | "NEGADO" | "PROCESSANDO"> {
+    const parcela = await financeiroRepository.findById(parcelaId);
+    if (!parcela) throw new NotFoundError("Parcela não encontrada");
+    if (!parcela.cartaoEstornoId || !parcela.asaasPaymentId) {
+      throw new ValidationError("Esta parcela não tem estorno em processamento");
+    }
+
+    const client = await obterClienteRede();
+    const estornos = await client.consultarEstornos(parcela.asaasPaymentId);
+    const estorno = estornos.find((e) => e.refundId === parcela.cartaoEstornoId);
+    if (!estorno || estorno.status === "Processing") return "PROCESSANDO";
+
+    if (estorno.status === "Done") {
+      await this.reabrirParcelaEstornada(parcela.id, usuarioId);
+      return "CONCLUIDO";
+    }
+    await financeiroRepository.update(parcela.id, { cartaoEstornoId: null, cartaoEstornoEm: null });
+    if (usuarioId) {
+      await registrarAuditoria({
+        usuarioId,
+        entidade: "Parcela",
+        entidadeId: parcela.id,
+        acao: "ATUALIZACAO",
+        detalhes: { acao: "estorno_cartao_negado", tid: parcela.asaasPaymentId, refundId: parcela.cartaoEstornoId },
+      });
+    }
+    return "NEGADO";
+  },
+
+  /** Job diário: confere todos os estornos que a Rede ainda estava processando. */
+  async conferirEstornosPendentes(): Promise<{ conferidos: number; concluidos: number; negados: number }> {
+    const pendentes = await financeiroRepository.listarComEstornoPendente();
+    const usuarioSistema = await sincronizacaoLegadoRepository.obterUsuarioSistema();
+    const resumo = { conferidos: 0, concluidos: 0, negados: 0 };
+    for (const parcela of pendentes) {
+      try {
+        const r = await this.conferirEstorno(parcela.id, usuarioSistema ?? null);
+        resumo.conferidos += 1;
+        if (r === "CONCLUIDO") resumo.concluidos += 1;
+        if (r === "NEGADO") resumo.negados += 1;
+      } catch (erro) {
+        console.error(`[rede] falha ao conferir estorno da parcela ${parcela.id}`, erro instanceof Error ? erro.message : erro);
+      }
+    }
+    return resumo;
+  },
+
+  /** Dinheiro devolvido: a dívida reabre (em aberto, sem baixa nem vínculo com a transação). */
+  async reabrirParcelaEstornada(parcelaId: string, usuarioId: string | null) {
+    await financeiroRepository.update(parcelaId, {
+      status: "EM_ABERTO",
+      dataPagamento: null,
+      valorPago: null,
+      asaasPaymentId: null,
+      asaasBillingType: null,
+      provedorPagamento: null,
+      asaasStatus: "REFUNDED",
+      cartaoBandeira: null,
+      cartaoFinal: null,
+      cartaoParcelas: null,
+      cartaoEstornoId: null,
+      cartaoEstornoEm: null,
+    });
+    if (usuarioId) {
+      await registrarAuditoria({
+        usuarioId,
+        entidade: "Parcela",
+        entidadeId: parcelaId,
+        acao: "ATUALIZACAO",
+        detalhes: { acao: "estorno_cartao_concluido" },
+      });
+    }
+  },
+
   /**
    * Cobra o cartão de crédito de uma parcela direto na Rede (captura automática)
    * e dá baixa na parcela quando aprovado. O número e o CVV só passam por aqui a
@@ -69,7 +225,7 @@ export const redeService = {
     });
 
     const resultado = await client.criarCobrancaCartao({
-      reference: gerarReferencia(),
+      reference: gerarReferenciaRede(),
       amount: Math.round(Number(parcela.valor) * 100),
       installments: cartao.parcelas,
       cardholderName: cartao.nome,
@@ -88,6 +244,8 @@ export const redeService = {
       );
     }
 
+    const bandeira = resultado.bandeira ?? detectarBandeira(cartao.numero);
+
     // A cobrança JÁ foi feita no cartão: a partir daqui qualquer falha precisa ser
     // rastreável (TID) — nunca silenciosa, e nunca com dado de cartão.
     try {
@@ -97,7 +255,7 @@ export const redeService = {
         provedorPagamento: "REDE",
         asaasStatus: "APPROVED",
         asaasDataGeracao: new Date(),
-        cartaoBandeira: resultado.bandeira,
+        cartaoBandeira: bandeira,
         cartaoFinal: resultado.final,
         cartaoParcelas: cartao.parcelas,
       });
@@ -129,7 +287,7 @@ export const redeService = {
     }
 
     return {
-      bandeira: resultado.bandeira,
+      bandeira,
       final: resultado.final,
       parcelas: cartao.parcelas,
       tid: resultado.tid,

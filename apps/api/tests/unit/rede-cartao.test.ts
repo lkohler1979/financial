@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { luhnValido, normalizarNomePortador, validadeNaoVencida } from "../../src/shared/utils/cartao";
+import { detectarBandeira, luhnValido, normalizarNomePortador, validadeNaoVencida } from "../../src/shared/utils/cartao";
 import { LimitadorTentativas } from "../../src/shared/utils/limitador";
 import { pagamentoCartaoSchema } from "../../src/modules/rede/rede.schema";
 import { RedeClient } from "../../src/modules/rede/rede-client";
@@ -26,6 +26,19 @@ describe("utilitários de cartão", () => {
   it("nome do portador sem acento/especiais e até 30 caracteres", () => {
     expect(normalizarNomePortador("  José d'Ávila-Çãe   Júnior ")).toBe("Jose dAvilaCae Junior");
     expect(normalizarNomePortador("A".repeat(50))).toHaveLength(30);
+  });
+});
+
+describe("detectarBandeira", () => {
+  it("identifica pelo prefixo os cartões de teste da Rede", () => {
+    expect(detectarBandeira("5448280000000007")).toBe("Mastercard");
+    expect(detectarBandeira("2223000148400010")).toBe("Mastercard");
+    expect(detectarBandeira("4235647728025682")).toBe("Visa");
+    expect(detectarBandeira("4389351648020055")).toBe("Elo");
+    expect(detectarBandeira("371341553758128")).toBe("Amex");
+    expect(detectarBandeira("6062825624254001")).toBe("Hipercard");
+    expect(detectarBandeira("36490101441625")).toBe("Diners");
+    expect(detectarBandeira("9999999999999999")).toBeNull();
   });
 });
 

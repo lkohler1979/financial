@@ -35,6 +35,7 @@ vi.mock("../../src/modules/rede/rede-client", () => ({
   RedeClient: vi.fn().mockImplementation(() => ({
     criarCobrancaPix: criarCobrancaPixRedeMock,
   })),
+  gerarReferenciaRede: () => "PREF1234",
 }));
 
 vi.mock("../../src/modules/configuracoes/configuracoes.repository", () => ({
@@ -200,8 +201,13 @@ describe("asaasService.gerarCobrancaParcela", () => {
     expect(criarCobrancaMock).not.toHaveBeenCalled();
     expect(criarClienteMock).not.toHaveBeenCalled();
     expect(criarCobrancaPixRedeMock).toHaveBeenCalledWith(
-      expect.objectContaining({ reference: "parcela-1", amount: 10000 }),
+      // Referência curta (limite de 16 da Rede), nunca o UUID da parcela; vínculo é o TID gravado.
+      expect.objectContaining({ reference: expect.stringMatching(/^[A-Z0-9]{1,16}$/), amount: 10000 }),
     );
+    // Expiração em horário local (sem "Z") e dentro do limite de 15 dias da Rede.
+    const { dateTimeExpiration } = criarCobrancaPixRedeMock.mock.calls[0][0];
+    expect(dateTimeExpiration).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/);
+    expect(new Date(dateTimeExpiration).getTime() - Date.now()).toBeLessThan(15 * 24 * 3600 * 1000);
     expect(financeiro.update).toHaveBeenCalledWith(
       "parcela-1",
       expect.objectContaining({

@@ -57,6 +57,12 @@ export interface Parcela {
    * leitura/exibição. */
   asaasPaymentId?: string | null;
   asaasBillingType?: "BOLETO" | "PIX" | "CREDIT_CARD" | null;
+  /** Pagamento no cartão pela Rede — só bandeira e final (o número nunca é guardado). */
+  cartaoBandeira?: string | null;
+  cartaoFinal?: string | null;
+  cartaoParcelas?: number | null;
+  /** Preenchido enquanto a Rede ainda processa um estorno pedido (D+1). */
+  cartaoEstornoId?: string | null;
   /** Forma de pagamento escolhida para este título no cadastro. */
   formaPagamento?: "BOLETO" | "PIX" | "CREDIT_CARD" | null;
   /** Qual provedor processou esta cobrança — Asaas ou Rede (Pix). */

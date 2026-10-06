@@ -19,6 +19,7 @@ import { ConfiguracoesService } from "../../core/services/configuracoes.service"
 import { FinanceiroService } from "../../core/services/financeiro.service";
 import { RelatoriosService } from "../../core/services/relatorios.service";
 import { SincronizacaoLegadoService } from "../../core/services/sincronizacao-legado.service";
+import { RedeService } from "../../core/services/rede.service";
 import { AsaasBillingType, AsaasService } from "../../core/services/asaas.service";
 import { FichaCobranca, SituacaoCobranca, Tag } from "../../core/models/cobranca.model";
 import { Parcela } from "../../core/models/parcela.model";
@@ -243,6 +244,22 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
                   }}
                 </td>
                 <td class="py-1 whitespace-nowrap">
+                  @if (pagoNoCartaoRede(parcela)) {
+                    <span class="text-xs text-gray-500 mr-1">
+                      {{ parcela.cartaoBandeira }} final {{ parcela.cartaoFinal }}
+                      {{ parcela.cartaoParcelas && parcela.cartaoParcelas > 1 ? parcela.cartaoParcelas + "x" : "à vista" }}
+                    </span>
+                    @if (parcela.cartaoEstornoId) {
+                      <span class="text-xs text-amber-700 mr-1">Estorno em processamento</span>
+                      <button mat-button class="!min-w-0 !px-2" type="button" (click)="conferirEstorno(parcela)">
+                        Conferir
+                      </button>
+                    } @else {
+                      <button mat-button color="warn" class="!min-w-0 !px-2" type="button" (click)="estornarCartao(parcela)">
+                        Estornar
+                      </button>
+                    }
+                  }
                   @if (parcela.asaasPaymentId) {
                     @if (parcela.asaasBillingType === "BOLETO" && parcela.asaasBoletoUrl) {
                       <a mat-button class="!min-w-0 !px-2" [href]="parcela.asaasBoletoUrl" target="_blank">
@@ -379,6 +396,7 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
   private readonly relatoriosService = inject(RelatoriosService);
   private readonly sincronizacaoLegadoService = inject(SincronizacaoLegadoService);
   private readonly asaasService = inject(AsaasService);
+  private readonly redeService = inject(RedeService);
   private readonly snackBar = inject(MatSnackBar);
   protected readonly formatarCpf = formatarCpf;
 
@@ -651,6 +669,46 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
 
   rotuloForma(forma: AsaasBillingType): string {
     return { BOLETO: "boleto", PIX: "Pix", CREDIT_CARD: "cobrança no cartão" }[forma];
+  }
+
+  /** Parcela paga no cartão pela Rede — a única que o estorno do sistema alcança. */
+  pagoNoCartaoRede(parcela: Parcela): boolean {
+    return (
+      parcela.status === "PAGO" &&
+      parcela.provedorPagamento === "REDE" &&
+      parcela.asaasBillingType === "CREDIT_CARD"
+    );
+  }
+
+  /** Estorno total no cartão: pede o motivo (vai para a Auditoria) e confirma antes de enviar. */
+  estornarCartao(parcela: Parcela): void {
+    const motivo = window.prompt(
+      `Estornar o pagamento no cartão (final ${parcela.cartaoFinal ?? "—"}) da parcela ${parcela.parcela}?\n` +
+        "O valor é devolvido ao cliente e a parcela volta a ficar em aberto.\n\nInforme o motivo:",
+    );
+    if (!motivo?.trim()) return;
+    this.redeService.estornarCartao(parcela.id, motivo.trim()).subscribe((r) => {
+      this.snackBar.open(
+        r.concluido
+          ? "Estorno concluído — a parcela voltou a ficar em aberto"
+          : "Estorno solicitado — a Rede conclui no próximo dia útil; use Conferir depois",
+        "Fechar",
+        { duration: 8000 },
+      );
+      this.carregar();
+    });
+  }
+
+  conferirEstorno(parcela: Parcela): void {
+    this.redeService.conferirEstorno(parcela.id).subscribe((r) => {
+      const msg = {
+        CONCLUIDO: "Estorno concluído — a parcela voltou a ficar em aberto",
+        NEGADO: "A Rede negou o estorno — a parcela continua paga",
+        PROCESSANDO: "A Rede ainda está processando o estorno",
+      }[r.situacao];
+      this.snackBar.open(msg, "Fechar", { duration: 6000 });
+      this.carregar();
+    });
   }
 
   gerarCobranca(parcela: Parcela, billingType: AsaasBillingType): void {

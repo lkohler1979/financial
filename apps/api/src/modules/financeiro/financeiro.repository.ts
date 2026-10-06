@@ -73,6 +73,14 @@ export const financeiroRepository = {
     return prisma.parcela.create({ data, include: incluiMatricula });
   },
 
+  /** Parcelas pagas no cartão (Rede) com estorno ainda em processamento na adquirente. */
+  listarComEstornoPendente() {
+    return prisma.parcela.findMany({
+      where: { status: "PAGO", cartaoEstornoId: { not: null }, provedorPagamento: "REDE" },
+      select: { id: true },
+    });
+  },
+
   update(id: string, data: Prisma.ParcelaUpdateInput) {
     return prisma.parcela.update({ where: { id }, data, include: incluiMatricula });
   },

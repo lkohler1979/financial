@@ -36,3 +36,21 @@ export function normalizarNomePortador(nome: string): string {
     .trim()
     .slice(0, 30);
 }
+
+/**
+ * Bandeira pelo número do cartão (a resposta da Rede não traz o nome). Só olha
+ * o prefixo (BIN); nunca guarda nem repete o número.
+ */
+export function detectarBandeira(numero: string): string | null {
+  const n = numero.replace(/\D/g, "");
+  const prefixo = (len: number) => Number(n.slice(0, len));
+  if (/^(4011|4312|4389|4514|4576|5041|5066|5067|5090|6277|6362|6363|650|6516|6550)/.test(n)) return "Elo";
+  if (/^(606282|3841)/.test(n)) return "Hipercard";
+  if (/^(637095|637568|637599|637609|637612)/.test(n)) return "Hiper";
+  if (/^3[47]/.test(n)) return "Amex";
+  if (/^(30[0-5]|36|38|39)/.test(n)) return "Diners";
+  if (/^35(2[89]|[3-8])/.test(n)) return "JCB";
+  if (/^4/.test(n)) return "Visa";
+  if ((prefixo(2) >= 51 && prefixo(2) <= 55) || (prefixo(4) >= 2221 && prefixo(4) <= 2720)) return "Mastercard";
+  return null;
+}

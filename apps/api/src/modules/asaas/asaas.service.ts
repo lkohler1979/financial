@@ -10,7 +10,7 @@ import { financeiroService } from "../financeiro/financeiro.service";
 import { sincronizacaoLegadoRepository } from "../sincronizacao-legado/sincronizacao-legado.repository";
 import { AsaasBillingType, AsaasClient } from "./asaas-client";
 import type { AsaasWebhookPayload } from "./asaas.schema";
-import { RedeClient } from "../rede/rede-client";
+import { gerarReferenciaRede, RedeClient } from "../rede/rede-client";
 
 const ENTIDADE_PARCELA = "Parcela";
 
@@ -62,10 +62,16 @@ function obterProvedorParaTipo(
   return configuracao.provedorCartao;
 }
 
-/** Formata uma data no formato exigido pela Rede: YYYY-MM-DDThh:mm:ss (sem
- * milissegundos nem timezone). */
+/** Formata uma data no formato exigido pela Rede: YYYY-MM-DDThh:mm:ss, em
+ * horário LOCAL (America/Sao_Paulo — o processo roda com TZ fixo) e sem
+ * milissegundos nem fuso. Em UTC o QR Code passava do limite de 15 dias e a
+ * Rede recusava (erro 3077). */
 function formatarDataHoraRede(data: Date): string {
-  return data.toISOString().slice(0, 19);
+  const dois = (n: number) => String(n).padStart(2, "0");
+  return (
+    `${data.getFullYear()}-${dois(data.getMonth() + 1)}-${dois(data.getDate())}` +
+    `T${dois(data.getHours())}:${dois(data.getMinutes())}:${dois(data.getSeconds())}`
+  );
 }
 
 /** Monta `fine`/`interest`/`discount` a partir da Configuração — cada um só
@@ -288,12 +294,14 @@ export const asaasService = {
 
     const agora = new Date();
     const umDiaAFrente = new Date(agora.getTime() + 24 * 60 * 60 * 1000);
-    const maximoFuturo = new Date(agora.getTime() + 15 * 24 * 60 * 60 * 1000);
+    // Limite da Rede: até 15 dias — 1 hora de margem para não estourar por arredondamento/fuso.
+    const maximoFuturo = new Date(agora.getTime() + (15 * 24 - 1) * 60 * 60 * 1000);
     const alvo = parcela.vencimento > agora ? parcela.vencimento : umDiaAFrente;
     const expiracao = alvo > maximoFuturo ? maximoFuturo : alvo;
 
     const cobranca = await client.criarCobrancaPix({
-      reference: parcela.id,
+      // A Rede limita a referência a 16 caracteres — o vínculo com a parcela é o TID, gravado abaixo.
+      reference: gerarReferenciaRede(),
       amount: Math.round(Number(parcela.valor) * 100),
       dateTimeExpiration: formatarDataHoraRede(expiracao),
     });

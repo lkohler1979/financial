@@ -1,11 +1,18 @@
 import { Worker } from "bullmq";
 import { redisConnection } from "../redis-connection";
 import { EMISSAO_COBRANCA_QUEUE_NAME } from "../queues/emissao-cobranca.queue";
+import { redeService } from "../../modules/rede/rede.service";
 import { emissaoCobrancaService } from "../../modules/asaas/emissao-cobranca.service";
 
 export const emissaoCobrancaWorker = new Worker(
   EMISSAO_COBRANCA_QUEUE_NAME,
-  () => emissaoCobrancaService.executarEmissaoAntecipada(),
+  async (job) => {
+    if (job.name === "conferir-estornos") {
+      const r = await redeService.conferirEstornosPendentes();
+      return { emitidas: 0, falhas: [], ...r };
+    }
+    return emissaoCobrancaService.executarEmissaoAntecipada();
+  },
   { connection: redisConnection, concurrency: 1 },
 );
 

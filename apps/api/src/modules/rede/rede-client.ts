@@ -45,6 +45,34 @@ export interface RedeCobrancaPix {
   dataExpiracao: string | null;
 }
 
+export interface RedeCriarCobrancaCartaoInput {
+  /** Até 16 caracteres alfanuméricos, único por tentativa. */
+  reference: string;
+  /** Em centavos. */
+  amount: number;
+  /** 1 = à vista; de 2 a 12 = parcelado. */
+  installments: number;
+  cardholderName: string;
+  cardNumber: string;
+  expirationMonth: number;
+  /** 4 dígitos. */
+  expirationYear: number;
+  securityCode: string;
+}
+
+/** Resultado de uma tentativa de cartão — nunca contém número nem CVV. */
+export interface RedeResultadoCartao {
+  aprovado: boolean;
+  returnCode: string;
+  returnMessage: string;
+  tid: string | null;
+  nsu: string | null;
+  authorizationCode: string | null;
+  bandeira: string | null;
+  bin: string | null;
+  final: string | null;
+}
+
 interface RedeTokenResposta {
   access_token: string;
   expires_in: number;
@@ -91,7 +119,7 @@ export class RedeClient {
     return corpo.access_token;
   }
 
-  private async requisitar<T>(caminho: string, init: RequestInit = {}): Promise<T> {
+  private async enviar(caminho: string, init: RequestInit = {}) {
     const token = await this.obterTokenAcesso();
     const resposta = await fetch(`${BASE_URLS[this.config.ambiente].transacoes}${caminho}`, {
       ...init,
@@ -101,8 +129,12 @@ export class RedeClient {
         ...init.headers,
       },
     });
-
     const corpo = await resposta.json().catch(() => null);
+    return { resposta, corpo };
+  }
+
+  private async requisitar<T>(caminho: string, init: RequestInit = {}): Promise<T> {
+    const { resposta, corpo } = await this.enviar(caminho, init);
 
     if (!resposta.ok) {
       const mensagem =
@@ -134,6 +166,63 @@ export class RedeClient {
       qrCodeImagem: corpo.qrCodeResponse?.qrCodeImage ?? null,
       qrCodeCopiaECola: corpo.qrCodeResponse?.qrCodeData ?? null,
       dataExpiracao: corpo.qrCodeResponse?.dateTimeExpiration ?? null,
+    };
+  }
+
+  /**
+   * Autoriza e captura (automática) um cartão de crédito — `POST /v2/transactions`
+   * com `kind: "credit"`. Recusa do emissor NÃO lança erro: volta `aprovado: false`
+   * com o código/mensagem da Rede (a Rede devolve `returnCode` "00" só quando aprova).
+   * Falha de comunicação/autenticação lança AppError. O corpo enviado (com o
+   * número do cartão) nunca é logado nem devolvido em erros.
+   */
+  async criarCobrancaCartao(dados: RedeCriarCobrancaCartaoInput): Promise<RedeResultadoCartao> {
+    const { resposta, corpo } = await this.enviar("", {
+      method: "POST",
+      body: JSON.stringify({
+        capture: true,
+        kind: "credit",
+        reference: dados.reference,
+        amount: dados.amount,
+        ...(dados.installments >= 2 ? { installments: dados.installments } : {}),
+        cardholderName: dados.cardholderName,
+        cardNumber: dados.cardNumber,
+        expirationMonth: dados.expirationMonth,
+        expirationYear: dados.expirationYear,
+        securityCode: dados.securityCode,
+      }),
+    });
+
+    const c = corpo as {
+      returnCode?: string;
+      returnMessage?: string;
+      tid?: string;
+      nsu?: string;
+      authorizationCode?: string;
+      cardBin?: string;
+      last4?: string;
+      brand?: { name?: string; authorizationCode?: string };
+    } | null;
+
+    // Sem returnCode = a Rede nem chegou a avaliar (erro de infraestrutura).
+    if (!c?.returnCode) {
+      throw new AppError(
+        `Rede respondeu ${resposta.status} ao processar o cartão`,
+        502,
+        "REDE_ERRO",
+      );
+    }
+
+    return {
+      aprovado: resposta.ok && c.returnCode === "00",
+      returnCode: c.returnCode,
+      returnMessage: c.returnMessage ?? "",
+      tid: c.tid ?? null,
+      nsu: c.nsu ?? null,
+      authorizationCode: c.authorizationCode ?? c.brand?.authorizationCode ?? null,
+      bandeira: c.brand?.name?.replace(/\.$/, "") ?? null,
+      bin: c.cardBin ?? null,
+      final: c.last4 ?? null,
     };
   }
 

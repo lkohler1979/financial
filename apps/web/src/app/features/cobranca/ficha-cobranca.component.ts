@@ -432,7 +432,8 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
         [
           ["BOLETO", res.provedorBoleto],
           ["PIX", res.provedorPix],
-          ["CREDIT_CARD", res.provedorCartao],
+          // Cartão pela Rede é pago pelo aluno no formulário do portal: não gera link na Ficha.
+          ["CREDIT_CARD", res.provedorCartao === "REDE" ? null : res.provedorCartao],
         ] as const
       )
         .filter(([, provedor]) => provedor != null)

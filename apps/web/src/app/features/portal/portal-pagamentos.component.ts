@@ -1,11 +1,13 @@
 import { CurrencyPipe, DatePipe } from "@angular/common";
 import { Component, inject, input, OnInit, signal } from "@angular/core";
 import { MatButtonModule } from "@angular/material/button";
+import { MatDialog } from "@angular/material/dialog";
 import { MatMenuModule } from "@angular/material/menu";
 import { MatSnackBar } from "@angular/material/snack-bar";
 import { PortalMatricula, PortalParcela } from "../../core/models/portal.model";
 import { FormaPagamento, ROTULO_FORMA_PAGAMENTO } from "../../core/models/tipo-cobranca.model";
 import { PortalService } from "../../core/services/portal.service";
+import { PortalCartaoDialogComponent } from "./portal-cartao-dialog.component";
 
 const ROTULO_STATUS: Record<string, string> = {
   EM_ABERTO: "Em aberto",
@@ -76,7 +78,7 @@ const ROTULO_STATUS: Record<string, string> = {
                     }
                   } @else if (formaDe(p)) {
                     <button mat-flat-button color="primary" type="button" [disabled]="gerando() === p.id" (click)="gerar(p, formaDe(p)!)">
-                      {{ gerando() === p.id ? "Gerando..." : "Emitir " + rotuloForma(formaDe(p)!) }}
+                      {{ gerando() === p.id ? "Gerando..." : (formaDe(p) === "CREDIT_CARD" && provedorCartao() === "REDE" ? "Pagar com cartão" : "Emitir " + rotuloForma(formaDe(p)!)) }}
                     </button>
                   } @else {
                     <button mat-flat-button color="primary" type="button" [disabled]="gerando() === p.id" [matMenuTriggerFor]="menu">
@@ -107,16 +109,27 @@ const ROTULO_STATUS: Record<string, string> = {
 export class PortalPagamentosComponent implements OnInit {
   private readonly portal = inject(PortalService);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly dialog = inject(MatDialog);
 
   /** Recebido só para manter a mesma interface das outras abas. */
   readonly matriculas = input.required<PortalMatricula[]>();
   readonly parcelas = signal<PortalParcela[]>([]);
   readonly formas = signal<FormaPagamento[]>(["BOLETO", "PIX"]);
   readonly gerando = signal<string | null>(null);
+  /** Cartão pela Rede = formulário no portal; pelo Asaas = fatura hospedada (link). */
+  readonly provedorCartao = signal<"ASAAS" | "REDE" | null>(null);
+  readonly cartaoMaxParcelas = signal(1);
 
   ngOnInit(): void {
     this.carregar();
-    this.portal.formasPagamento().subscribe({ next: (f) => this.formas.set(f), error: () => undefined });
+    this.portal.configuracaoPagamento().subscribe({
+      next: (c) => {
+        this.formas.set(c.formas);
+        this.provedorCartao.set(c.provedorCartao);
+        this.cartaoMaxParcelas.set(c.cartaoMaxParcelas);
+      },
+      error: () => undefined,
+    });
   }
 
   private carregar(): void {
@@ -149,7 +162,38 @@ export class PortalPagamentosComponent implements OnInit {
     return p.formaPagamento && this.formas().includes(p.formaPagamento) ? p.formaPagamento : null;
   }
 
+  /** Abre o formulário de cartão (Rede); ao aprovar, a parcela passa a Paga. */
+  pagarNoCartao(p: PortalParcela): void {
+    this.dialog
+      .open(PortalCartaoDialogComponent, {
+        width: "420px",
+        maxWidth: "95vw",
+        disableClose: true,
+        autoFocus: "input",
+        data: {
+          parcelaId: p.id,
+          descricao: `${p.tipoTitulo ?? "Parcela"} - ${p.parcela.replace("/", " / ")}`,
+          valor: Number(p.valor),
+          maxParcelas: this.cartaoMaxParcelas(),
+        },
+      })
+      .afterClosed()
+      .subscribe((r) => {
+        if (!r?.aprovado) return;
+        this.snackBar.open(
+          `Pagamento aprovado${r.final ? ` — cartão final ${r.final}` : ""}`,
+          "Fechar",
+          { duration: 6000 },
+        );
+        this.carregar();
+      });
+  }
+
   gerar(p: PortalParcela, forma: FormaPagamento): void {
+    if (forma === "CREDIT_CARD" && this.provedorCartao() === "REDE") {
+      this.pagarNoCartao(p);
+      return;
+    }
     this.gerando.set(p.id);
     this.portal.gerarCobranca(p.id, forma).subscribe({
       next: (c) => {

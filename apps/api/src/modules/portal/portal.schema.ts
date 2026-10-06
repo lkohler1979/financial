@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { pagamentoCartaoSchema } from "../rede/rede.schema";
 
 // documento = CPF (com data de nascimento) ou CNPJ (com o número de uma matrícula
 // que a empresa paga) — ver portalService.login.
@@ -21,6 +22,8 @@ export const solicitarDocumentoSchema = z.object({
 export const gerarCobrancaAlunoSchema = z.object({
   formaPagamento: z.enum(["BOLETO", "PIX", "CREDIT_CARD"]).optional(),
 });
+
+export const pagamentoCartaoPortalSchema = pagamentoCartaoSchema;
 
 export type LoginPortalInput = z.infer<typeof loginPortalSchema>;
 export type SolicitarDocumentoInput = z.infer<typeof solicitarDocumentoSchema>;

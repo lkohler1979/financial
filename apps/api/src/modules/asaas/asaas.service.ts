@@ -192,8 +192,17 @@ export const asaasService = {
       // Só Pix é suportado pela Rede nesta primeira versão — garantido pelo
       // Zod em configuracoes.schema.ts (provedorBoleto/provedorCartao só
       // aceitam ASAAS), mas confere de novo aqui por segurança.
+      if (billingType === "CREDIT_CARD") {
+        // Cartão pela Rede não tem link: o pagador digita o cartão no formulário
+        // (área do aluno) e a baixa é imediata — ver redeService.pagarComCartao.
+        throw new AppError(
+          "Cartão pela Rede é pago no formulário de cartão (não gera link de cobrança)",
+          422,
+          "CARTAO_REDE_SEM_LINK",
+        );
+      }
       if (billingType !== "PIX") {
-        throw new ValidationError("A Rede só suporta Pix nesta integração");
+        throw new ValidationError("A Rede suporta apenas Pix e cartão de crédito");
       }
       return this.gerarCobrancaPixRede(parcela, usuarioId);
     }

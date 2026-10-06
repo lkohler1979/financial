@@ -338,6 +338,10 @@ model Parcela {
   /// referência/exibição; o StatusParcela interno continua sendo a fonte de
   /// verdade pro resto do sistema (protesto, relatórios etc.).
   asaasStatus             String?            @map("asaas_status")
+  /// Pagamento no cartão pela Rede: só o que a Rede devolve — número e CVV nunca são gravados.
+  cartaoBandeira          String?            @map("cartao_bandeira")
+  cartaoFinal             String?            @map("cartao_final")
+  cartaoParcelas          Int?               @map("cartao_parcelas")
   asaasDataGeracao        DateTime?          @map("asaas_data_geracao")
 
   matricula Matricula @relation(fields: [matriculaId], references: [id])
@@ -434,6 +438,8 @@ model Configuracao {
   /// Emissão automática diária das cobranças das demais parcelas: quantos dias
   /// antes do vencimento. 0 = desligada (só a pedido, na Ficha ou pelo aluno).
   emissaoAntecipadaDias            Int           @default(10) @map("emissao_antecipada_dias")
+  /// Máximo de parcelas no cartão pela Rede (1 = só à vista; a Rede aceita até 12).
+  redeCartaoMaxParcelas            Int           @default(1) @map("rede_cartao_max_parcelas")
 
   // --- Qual provedor atende cada tipo de cobrança ---
   // Null = tipo desabilitado (não aparece no menu "Gerar cobrança"). Nunca os

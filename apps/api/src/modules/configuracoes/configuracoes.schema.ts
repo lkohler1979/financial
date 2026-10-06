@@ -39,12 +39,13 @@ export const atualizarConfiguracaoSchema = z
     asaasWebhookToken: z.string().min(1).max(300).optional(),
     // Qual provedor atende cada tipo de cobrança no menu "Gerar cobrança" —
     // null desabilita o tipo. Nunca os dois provedores no mesmo tipo (por
-    // isso é um valor único, não uma lista). Boleto e Cartão só aceitam
-    // ASAAS (Rede não tem Boleto, e Cartão via Rede exigiria coletar dado de
-    // cartão — não implementado, decisão do usuário 2026-10-01).
+    // isso é um valor único, não uma lista). Boleto só aceita ASAAS (a Rede não
+    // tem boleto). Cartão pela Rede é pago num formulário do Ethos que envia o
+    // cartão à API da Rede (sem gravá-lo) — escopo PCI aceito pelo usuário em 2026-10-06.
     provedorBoleto: z.enum(["ASAAS"]).nullable().optional(),
     provedorPix: z.enum(["ASAAS", "REDE"]).nullable().optional(),
-    provedorCartao: z.enum(["ASAAS"]).nullable().optional(),
+    provedorCartao: z.enum(["ASAAS", "REDE"]).nullable().optional(),
+    redeCartaoMaxParcelas: z.coerce.number().int().min(1).max(12).optional(),
     redeAmbiente: z.enum(["SANDBOX", "PRODUCAO"]).optional(),
     // PV/chave de integração/token em texto puro, só nesta entrada — o
     // service criptografa antes de persistir e nunca os devolve (mesmo

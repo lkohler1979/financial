@@ -23,6 +23,8 @@ portalRouter.post(
 portalRouter.get("/documentos/:documentoId/arquivo", requireSomenteAluno, portalController.baixarDocumento);
 portalRouter.get("/parcelas", portalController.listarParcelas);
 portalRouter.get("/formas-pagamento", portalController.formasPagamento);
+portalRouter.get("/pagamento", portalController.configuracaoPagamento);
+portalRouter.post("/parcelas/:parcelaId/cartao", portalController.pagarComCartao);
 portalRouter.post("/parcelas/:parcelaId/cobranca", portalController.gerarCobranca);
 portalRouter.get("/tipos-solicitacao", requireSomenteAluno, portalController.listarTiposSolicitacao);
 portalRouter.get("/solicitacoes", requireSomenteAluno, portalController.listarSolicitacoes);

@@ -239,9 +239,23 @@ import {
               <mat-select formControlName="provedorCartao">
                 <mat-option [value]="null">Desabilitado</mat-option>
                 <mat-option value="ASAAS">Asaas</mat-option>
+                <mat-option value="REDE">Rede</mat-option>
               </mat-select>
-              <mat-hint>Cartão pela Rede ainda não foi implementado.</mat-hint>
+              @if (form.controls.provedorCartao.value === "REDE") {
+                <mat-hint>
+                  O aluno digita o cartão no portal; o número vai direto à Rede e nunca é gravado.
+                </mat-hint>
+              } @else {
+                <mat-hint>Asaas: o aluno paga na fatura hospedada.</mat-hint>
+              }
             </mat-form-field>
+            @if (form.controls.provedorCartao.value === "REDE") {
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                <mat-label>Máx. de parcelas no cartão (Rede)</mat-label>
+                <input matInput type="number" min="1" max="12" formControlName="redeCartaoMaxParcelas" />
+                <mat-hint>1 = só à vista (a Rede aceita até 12x)</mat-hint>
+              </mat-form-field>
+            }
           </div>
         </div>
 
@@ -590,6 +604,7 @@ export class ConfiguracoesComponent implements OnInit {
     provedorBoleto: this.fb.control<PagamentoProvedor | null>("ASAAS"),
     provedorPix: this.fb.control<PagamentoProvedor | null>("ASAAS"),
     provedorCartao: this.fb.control<PagamentoProvedor | null>("ASAAS"),
+    redeCartaoMaxParcelas: this.fb.nonNullable.control(1, [Validators.min(1), Validators.max(12)]),
     redeAmbiente: this.fb.nonNullable.control<RedeAmbiente>("SANDBOX"),
   });
 

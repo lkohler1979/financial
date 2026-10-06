@@ -1,4 +1,5 @@
 import type { AsaasBillingType, EmissaoCobranca } from "@prisma/client";
+import { AppError } from "../../shared/errors/app-error";
 import { configuracoesRepository } from "../configuracoes/configuracoes.repository";
 import { asaasService } from "./asaas.service";
 import { emissaoCobrancaRepository } from "./emissao-cobranca.repository";
@@ -46,6 +47,8 @@ export const emissaoCobrancaService = {
         );
         resultado.emitidas += 1;
       } catch (erro) {
+        // Cartão pela Rede é pago pelo próprio aluno: não há cobrança a emitir.
+        if (erro instanceof AppError && erro.codigo === "CARTAO_REDE_SEM_LINK") continue;
         resultado.falhas.push({ parcelaId: parcela.id, erro: mensagem(erro) });
       }
     }

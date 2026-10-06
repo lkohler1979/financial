@@ -221,7 +221,7 @@ describe("asaasService.gerarCobrancaParcela", () => {
     } as never);
 
     await expect(asaasService.gerarCobrancaParcela("parcela-1", "BOLETO", USUARIO)).rejects.toThrow(
-      "A Rede só suporta Pix",
+      "A Rede suporta apenas Pix e cartão",
     );
   });
 
@@ -443,5 +443,16 @@ describe("asaasService.processarWebhook", () => {
       asaasService.processarWebhook(payloadConfirmado, "token-webhook"),
     ).resolves.toBeUndefined();
     expect(financeiroSvc.atualizar).not.toHaveBeenCalled();
+  });
+});
+
+describe("asaasService.gerarCobrancaParcela — cartão pela Rede", () => {
+  it("não gera link: o pagador usa o formulário de cartão (código próprio para a emissão automática ignorar)", async () => {
+    financeiro.findById.mockResolvedValue(parcelaFake as never);
+    configRepo.obterOuCriar.mockResolvedValue({ ...CONFIG_COM_ASAAS, provedorCartao: "REDE" } as never);
+
+    await expect(
+      asaasService.gerarCobrancaParcela("parcela-1", "CREDIT_CARD", USUARIO),
+    ).rejects.toMatchObject({ codigo: "CARTAO_REDE_SEM_LINK", statusCode: 422 });
   });
 });

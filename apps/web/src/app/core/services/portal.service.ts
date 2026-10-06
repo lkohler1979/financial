@@ -3,6 +3,9 @@ import { inject, Injectable } from "@angular/core";
 import { Observable } from "rxjs";
 import { environment } from "../../../environments/environment";
 import {
+  PortalConfigPagamento,
+  PortalDadosCartao,
+  PortalResultadoCartao,
   PortalCobranca,
   PortalDocumentos,
   PortalMe,
@@ -45,6 +48,15 @@ export class PortalService {
 
   formasPagamento(): Observable<FormaPagamento[]> {
     return this.http.get<FormaPagamento[]>(`${this.baseUrl}/formas-pagamento`);
+  }
+
+  configuracaoPagamento(): Observable<PortalConfigPagamento> {
+    return this.http.get<PortalConfigPagamento>(`${this.baseUrl}/pagamento`);
+  }
+
+  /** Paga a parcela no cartão (Rede). Os dados vão só nesta chamada — nada é guardado no navegador. */
+  pagarComCartao(parcelaId: string, cartao: PortalDadosCartao): Observable<PortalResultadoCartao> {
+    return this.http.post<PortalResultadoCartao>(`${this.baseUrl}/parcelas/${parcelaId}/cartao`, cartao);
   }
 
   gerarCobranca(parcelaId: string, formaPagamento?: FormaPagamento): Observable<PortalCobranca> {

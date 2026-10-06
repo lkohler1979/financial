@@ -4,6 +4,7 @@ import { paramString } from "../../shared/utils/http";
 import {
   gerarCobrancaAlunoSchema,
   loginPortalSchema,
+  pagamentoCartaoPortalSchema,
   solicitarDocumentoSchema,
 } from "./portal.schema";
 import { portalService } from "./portal.service";
@@ -51,6 +52,22 @@ export const portalController = {
 
   formasPagamento: asyncHandler(async (_req: Request, res: Response) => {
     res.json(await portalService.formasPagamento());
+  }),
+
+  configuracaoPagamento: asyncHandler(async (_req: Request, res: Response) => {
+    res.json(await portalService.configuracaoPagamento());
+  }),
+
+  pagarComCartao: asyncHandler(async (req: Request, res: Response) => {
+    const cartao = pagamentoCartaoPortalSchema.parse(req.body);
+    const r = await portalService.pagarComCartao(
+      sessaoAtual(req),
+      paramString(req, "parcelaId"),
+      cartao,
+      req.ip ?? "desconhecido",
+    );
+    // Resposta sem nenhum dado do cartão além da bandeira e dos 4 últimos dígitos.
+    res.json({ aprovado: true, bandeira: r.bandeira, final: r.final, parcelas: r.parcelas });
   }),
 
   gerarCobranca: asyncHandler(async (req: Request, res: Response) => {

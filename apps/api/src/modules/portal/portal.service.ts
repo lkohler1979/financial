@@ -6,6 +6,10 @@ import type { AsaasBillingType } from "../asaas/asaas-client";
 import { documentosService, type ArquivoEnviado } from "../documentos/documentos.service";
 import { tiposCobrancaService } from "../tipos-cobranca/tipos-cobranca.service";
 import { solicitacoesService } from "../solicitacoes/solicitacoes.service";
+import { redeService } from "../rede/rede.service";
+import { configuracoesRepository } from "../configuracoes/configuracoes.repository";
+import { LimitadorTentativas } from "../../shared/utils/limitador";
+import type { PagamentoCartaoInput } from "../rede/rede.schema";
 import { portalRepository, type SessaoPortal } from "./portal.repository";
 import type { LoginPortalInput, SolicitarDocumentoInput } from "./portal.schema";
 
@@ -51,7 +55,14 @@ function mesmaData(nascimento: Date | null, informada: string): boolean {
 
 export function limparLimitesLogin() {
   falhas.clear();
+  limiteCartaoParcela.limpar();
+  limiteCartaoIp.limpar();
 }
+
+// Contra robôs que testam cartões (recomendação do manual da e.Rede): poucas
+// tentativas falhas por parcela e por IP. Só falhas contam; pagamento aprovado zera.
+const limiteCartaoParcela = new LimitadorTentativas(5, JANELA_MS);
+const limiteCartaoIp = new LimitadorTentativas(20, JANELA_MS);
 
 export const portalService = {
   /**
@@ -203,6 +214,54 @@ export const portalService = {
     }
     const billingType = forma ?? parcela.formaPagamento ?? "BOLETO";
     return asaasService.gerarCobrancaParcela(parcelaId, billingType, null);
+  },
+
+  /** Como o pagamento está configurado — o portal decide se mostra o formulário de cartão. */
+  async configuracaoPagamento() {
+    const [formas, configuracao] = await Promise.all([
+      tiposCobrancaService.formasPagamentoHabilitadas(),
+      configuracoesRepository.obterOuCriar(),
+    ]);
+    return {
+      formas,
+      provedorCartao: configuracao.provedorCartao,
+      cartaoMaxParcelas: configuracao.redeCartaoMaxParcelas,
+    };
+  },
+
+  /** Paga a parcela no cartão (Rede). Só do dono da parcela; com limite de tentativas falhas. */
+  async pagarComCartao(
+    sessao: SessaoPortal,
+    parcelaId: string,
+    cartao: PagamentoCartaoInput,
+    ip: string,
+    agora = Date.now(),
+  ) {
+    const parcela = await portalRepository.findParcelaDoDono(parcelaId, sessao);
+    if (!parcela) throw new NotFoundError("Parcela não encontrada");
+
+    const chaveParcela = `parcela:${parcelaId}`;
+    const chaveIp = `ip:${ip}`;
+    if (limiteCartaoParcela.bloqueado(chaveParcela, agora) || limiteCartaoIp.bloqueado(chaveIp, agora)) {
+      throw new AppError(
+        "Muitas tentativas de pagamento. Aguarde alguns minutos e tente novamente.",
+        429,
+        "MUITAS_TENTATIVAS",
+      );
+    }
+
+    try {
+      const resultado = await redeService.pagarComCartao(parcelaId, cartao);
+      limiteCartaoParcela.limpar(chaveParcela);
+      return resultado;
+    } catch (erro) {
+      // Recusa/erro conta como tentativa; erro "aprovado sem baixa" não (o cartão já foi cobrado).
+      if (!(erro instanceof AppError && erro.codigo === "CARTAO_APROVADO_SEM_BAIXA")) {
+        limiteCartaoParcela.registrarFalha(chaveParcela, agora);
+        limiteCartaoIp.registrarFalha(chaveIp, agora);
+      }
+      throw erro;
+    }
   },
 
   // ---- Solicitações ----

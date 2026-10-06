@@ -57,6 +57,8 @@ export interface Configuracao {
    * o dia do vencimento). Só tem efeito com asaasDescontoPercentual preenchido. */
   asaasDescontoDiasAntesVencimento: number | null;
   emissaoAntecipadaDias: number;
+  /** Máximo de parcelas no cartão pela Rede (1 = só à vista). */
+  redeCartaoMaxParcelas: number;
 }
 
 export type AtualizarConfiguracaoPayload = Omit<

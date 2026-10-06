@@ -93,3 +93,26 @@ export interface Solicitacao {
   aluno: { id: string; codigo: string | null; nome: string; cpf: string };
   atendidoPor: { id: string; nome: string } | null;
 }
+
+/** Como o pagamento está configurado — decide se o cartão usa o formulário (Rede) ou a fatura (Asaas). */
+export interface PortalConfigPagamento {
+  formas: ("BOLETO" | "PIX" | "CREDIT_CARD")[];
+  provedorCartao: "ASAAS" | "REDE" | null;
+  cartaoMaxParcelas: number;
+}
+
+export interface PortalDadosCartao {
+  numero: string;
+  nome: string;
+  mes: number;
+  ano: number;
+  cvv: string;
+  parcelas: number;
+}
+
+export interface PortalResultadoCartao {
+  aprovado: boolean;
+  bandeira: string | null;
+  final: string | null;
+  parcelas: number;
+}

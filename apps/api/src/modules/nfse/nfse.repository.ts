@@ -77,6 +77,40 @@ export const nfseRepository = {
     });
   },
 
+  /**
+   * Pagamentos realizados (qualquer tipo) para a emissão individual: filtra por aluno, CPF/CNPJ
+   * do aluno ou do sacado, número da matrícula e/ou período de pagamento. Mais recentes primeiro.
+   */
+  buscarPagas(filtros: { busca?: string; inicio?: Date; fim?: Date; limite: number }): Promise<ParcelaParaNota[]> {
+    const busca = filtros.busca?.trim();
+    const digitos = busca?.replace(/\D/g, "");
+    return prisma.parcela.findMany({
+      where: {
+        status: "PAGO",
+        ...(filtros.inicio || filtros.fim
+          ? { dataPagamento: { ...(filtros.inicio ? { gte: filtros.inicio } : {}), ...(filtros.fim ? { lt: filtros.fim } : {}) } }
+          : {}),
+        ...(busca
+          ? {
+              matricula: {
+                OR: [
+                  { aluno: { nome: { contains: busca, mode: "insensitive" as const } } },
+                  { numeroMatricula: { contains: busca, mode: "insensitive" as const } },
+                  ...(digitos && digitos.length >= 3
+                    ? [{ aluno: { cpf: { contains: digitos } } }, { sacado: { cpfCnpj: { contains: digitos } } }]
+                    : []),
+                  { sacado: { nome: { contains: busca, mode: "insensitive" as const } } },
+                ],
+              },
+            }
+          : {}),
+      },
+      orderBy: [{ dataPagamento: "desc" }, { id: "asc" }],
+      take: filtros.limite,
+      include: incluiTomador,
+    });
+  },
+
   /** Notas já geradas (qualquer situação) para a competência informada. */
   listarNotasDaCompetencia(inicio: Date, fim: Date): Promise<ParcelaParaNota[]> {
     return prisma.parcela.findMany({

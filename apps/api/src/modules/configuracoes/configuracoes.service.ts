@@ -41,6 +41,25 @@ function serializarConfiguracao(configuracao: {
   nfseServicoDescricao: string;
   nfseMunicipalServiceId: string | null;
   nfseIssPercentual: Prisma.Decimal | number;
+  nfseProvedor: "ASAAS" | "NACIONAL";
+  nfseAmbiente: "HOMOLOGACAO" | "PRODUCAO";
+  nfseCertificadoCriptografado: string | null;
+  nfseCertificadoSenhaCriptografada: string | null;
+  nfseCertificadoTitular: string | null;
+  nfseCertificadoCnpj: string | null;
+  nfseCertificadoValidoAte: Date | null;
+  nfsePrestadorCnpj: string | null;
+  nfsePrestadorInscricaoMunicipal: string | null;
+  nfsePrestadorTelefone: string | null;
+  nfsePrestadorEmail: string | null;
+  nfseMunicipioIbge: string | null;
+  nfseOpcaoSimples: number;
+  nfseRegimeApuracaoSn: number;
+  nfseRegimeEspecial: number;
+  nfseAliquotaSimples: Prisma.Decimal | number;
+  nfseCodigoTributacaoMunicipal: string | null;
+  nfseSerieDps: number;
+  nfseProximoNumeroDps: number;
   provedorBoleto: PagamentoProvedor | null;
   provedorPix: PagamentoProvedor | null;
   provedorCartao: PagamentoProvedor | null;
@@ -58,6 +77,8 @@ function serializarConfiguracao(configuracao: {
     redePvCriptografado,
     redeChaveIntegracaoCriptografada,
     redeWebhookTokenCriptografado,
+    nfseCertificadoCriptografado,
+    nfseCertificadoSenhaCriptografada,
     ...resto
   } = configuracao;
   return {
@@ -78,6 +99,8 @@ function serializarConfiguracao(configuracao: {
     asaasApiKeyConfigurada: Boolean(asaasApiKeyCriptografada),
     asaasWebhookTokenConfigurado: Boolean(asaasWebhookTokenCriptografado),
     redePvConfigurado: Boolean(redePvCriptografado),
+    nfseCertificadoConfigurado: Boolean(nfseCertificadoCriptografado && nfseCertificadoSenhaCriptografada),
+    nfseAliquotaSimples: Number(configuracao.nfseAliquotaSimples),
     redeChaveIntegracaoConfigurada: Boolean(redeChaveIntegracaoCriptografada),
     redeWebhookTokenConfigurado: Boolean(redeWebhookTokenCriptografado),
   };
@@ -160,6 +183,24 @@ export const configuracoesService = {
         ? { nfseMunicipalServiceId: input.nfseMunicipalServiceId || null }
         : {}),
       ...(input.nfseIssPercentual !== undefined ? { nfseIssPercentual: input.nfseIssPercentual } : {}),
+      ...(input.nfseProvedor !== undefined ? { nfseProvedor: input.nfseProvedor } : {}),
+      ...(input.nfseAmbiente !== undefined ? { nfseAmbiente: input.nfseAmbiente } : {}),
+      ...(input.nfsePrestadorCnpj !== undefined ? { nfsePrestadorCnpj: input.nfsePrestadorCnpj || null } : {}),
+      ...(input.nfsePrestadorInscricaoMunicipal !== undefined
+        ? { nfsePrestadorInscricaoMunicipal: input.nfsePrestadorInscricaoMunicipal || null }
+        : {}),
+      ...(input.nfsePrestadorTelefone !== undefined ? { nfsePrestadorTelefone: input.nfsePrestadorTelefone || null } : {}),
+      ...(input.nfsePrestadorEmail !== undefined ? { nfsePrestadorEmail: input.nfsePrestadorEmail || null } : {}),
+      ...(input.nfseMunicipioIbge !== undefined ? { nfseMunicipioIbge: input.nfseMunicipioIbge || null } : {}),
+      ...(input.nfseOpcaoSimples !== undefined ? { nfseOpcaoSimples: input.nfseOpcaoSimples } : {}),
+      ...(input.nfseRegimeApuracaoSn !== undefined ? { nfseRegimeApuracaoSn: input.nfseRegimeApuracaoSn } : {}),
+      ...(input.nfseRegimeEspecial !== undefined ? { nfseRegimeEspecial: input.nfseRegimeEspecial } : {}),
+      ...(input.nfseAliquotaSimples !== undefined ? { nfseAliquotaSimples: input.nfseAliquotaSimples } : {}),
+      ...(input.nfseCodigoTributacaoMunicipal !== undefined
+        ? { nfseCodigoTributacaoMunicipal: input.nfseCodigoTributacaoMunicipal || null }
+        : {}),
+      ...(input.nfseSerieDps !== undefined ? { nfseSerieDps: input.nfseSerieDps } : {}),
+      ...(input.nfseProximoNumeroDps !== undefined ? { nfseProximoNumeroDps: input.nfseProximoNumeroDps } : {}),
       ...(input.redeCartaoMaxParcelas !== undefined
         ? { redeCartaoMaxParcelas: input.redeCartaoMaxParcelas }
         : {}),

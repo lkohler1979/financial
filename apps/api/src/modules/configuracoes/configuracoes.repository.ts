@@ -21,6 +21,16 @@ export const configuracoesRepository = {
     return prisma.configuracao.create({ data: DEFAULTS });
   },
 
+  /** Reserva (de forma atômica) o próximo número de DPS da série configurada. */
+  async reservarNumeroDps(): Promise<{ serie: number; numero: number }> {
+    const configuracao = await this.obterOuCriar();
+    const atualizada = await prisma.configuracao.update({
+      where: { id: configuracao.id },
+      data: { nfseProximoNumeroDps: { increment: 1 } },
+    });
+    return { serie: atualizada.nfseSerieDps, numero: atualizada.nfseProximoNumeroDps - 1 };
+  },
+
   async atualizar(data: Prisma.ConfiguracaoUpdateInput) {
     const configuracao = await this.obterOuCriar();
     return prisma.configuracao.update({

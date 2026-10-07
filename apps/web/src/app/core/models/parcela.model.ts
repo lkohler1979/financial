@@ -75,4 +75,10 @@ export interface Parcela {
   asaasPixQrCodeImagem?: string | null;
   asaasPixCopiaECola?: string | null;
   asaasStatus?: string | null;
+  /** NFS-e deste pagamento (AGENDADA | AUTORIZADA | ERRO | CANCELADA). */
+  nfseStatus?: string | null;
+  nfseNumero?: string | null;
+  nfsePdfUrl?: string | null;
+  nfseChaveAcesso?: string | null;
+  nfseErro?: string | null;
 }

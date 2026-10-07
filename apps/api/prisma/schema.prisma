@@ -99,6 +99,18 @@ enum PagamentoProvedor {
   REDE
 }
 
+/// Quem emite a NFS-e: o Asaas (intermediário) ou direto no Portal Nacional da NFS-e
+/// (padrão nacional, com o certificado A1 da empresa).
+enum NfseProvedor {
+  ASAAS
+  NACIONAL
+}
+
+enum NfseAmbiente {
+  HOMOLOGACAO
+  PRODUCAO
+}
+
 enum RedeAmbiente {
   SANDBOX
   PRODUCAO
@@ -355,6 +367,13 @@ model Parcela {
   nfseCompetencia         DateTime?          @map("nfse_competencia")
   nfseEmitidaEm           DateTime?          @map("nfse_emitida_em")
   nfseErro                String?            @map("nfse_erro")
+  /// Emissão direta (padrão nacional): chave de acesso de 50 dígitos, número/série da DPS
+  /// enviada e XML autorizado. O número da DPS fica gravado antes do envio — se o envio
+  /// falhar no meio, a nova tentativa reaproveita o mesmo número (a SEFIN deduplica pelo Id).
+  nfseChaveAcesso         String?            @unique @map("nfse_chave_acesso")
+  nfseNumeroDps           Int?               @map("nfse_numero_dps")
+  nfseSerieDps            Int?               @map("nfse_serie_dps")
+  nfseXml                 String?            @map("nfse_xml")
   asaasDataGeracao        DateTime?          @map("asaas_data_geracao")
 
   matricula Matricula @relation(fields: [matriculaId], references: [id])
@@ -464,6 +483,35 @@ model Configuracao {
   /// Id do serviço municipal no Asaas (GET /invoices/municipalServices) — opcional.
   nfseMunicipalServiceId String? @map("nfse_municipal_service_id")
   nfseIssPercentual      Decimal @default(0) @map("nfse_iss_percentual") @db.Decimal(5, 2)
+
+  // --- Emissão direta no Portal Nacional (certificado A1) ---
+  nfseProvedor                      NfseProvedor @default(ASAAS) @map("nfse_provedor")
+  nfseAmbiente                      NfseAmbiente @default(HOMOLOGACAO) @map("nfse_ambiente")
+  /// Arquivo .pfx (base64) e senha, criptografados (AES-256-GCM) — nunca saem da API.
+  nfseCertificadoCriptografado      String?      @map("nfse_certificado_criptografado")
+  nfseCertificadoSenhaCriptografada String?      @map("nfse_certificado_senha_criptografada")
+  nfseCertificadoTitular            String?      @map("nfse_certificado_titular")
+  nfseCertificadoCnpj               String?      @map("nfse_certificado_cnpj")
+  nfseCertificadoValidoAte          DateTime?    @map("nfse_certificado_valido_ate")
+  nfsePrestadorCnpj                 String?      @map("nfse_prestador_cnpj")
+  nfsePrestadorInscricaoMunicipal   String?      @map("nfse_prestador_inscricao_municipal")
+  nfsePrestadorTelefone             String?      @map("nfse_prestador_telefone")
+  nfsePrestadorEmail                String?      @map("nfse_prestador_email")
+  /// Código IBGE (7 dígitos) do município do prestador — emissor e local da prestação.
+  nfseMunicipioIbge                 String?      @map("nfse_municipio_ibge")
+  /// opSimpNac: 1 = não optante, 2 = MEI, 3 = ME/EPP (Simples Nacional).
+  nfseOpcaoSimples                  Int          @default(3) @map("nfse_opcao_simples")
+  /// regApTribSN (só ME/EPP): 1 = tributos federais e municipal pelo SN.
+  nfseRegimeApuracaoSn              Int          @default(1) @map("nfse_regime_apuracao_sn")
+  /// regEspTrib: 0 = nenhum.
+  nfseRegimeEspecial                Int          @default(0) @map("nfse_regime_especial")
+  /// Alíquota aproximada do Simples (%) informada em totTrib (ME/EPP).
+  nfseAliquotaSimples               Decimal      @default(0) @map("nfse_aliquota_simples") @db.Decimal(5, 2)
+  nfseCodigoTributacaoMunicipal     String?      @map("nfse_codigo_tributacao_municipal")
+  nfseSerieDps                      Int          @default(1) @map("nfse_serie_dps")
+  /// Próximo número de DPS a usar na série. Ajuste para além do último já emitido pelo
+  /// portal/outro sistema (a SEFIN rejeita número repetido).
+  nfseProximoNumeroDps              Int          @default(1) @map("nfse_proximo_numero_dps")
 
   // --- Qual provedor atende cada tipo de cobrança ---
   // Null = tipo desabilitado (não aparece no menu "Gerar cobrança"). Nunca os

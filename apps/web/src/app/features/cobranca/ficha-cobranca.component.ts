@@ -20,6 +20,8 @@ import { FinanceiroService } from "../../core/services/financeiro.service";
 import { RelatoriosService } from "../../core/services/relatorios.service";
 import { SincronizacaoLegadoService } from "../../core/services/sincronizacao-legado.service";
 import { RedeService } from "../../core/services/rede.service";
+import { NfseService } from "../../core/services/nfse.service";
+import { AuthService } from "../../core/auth/auth.service";
 import { AsaasBillingType, AsaasService } from "../../core/services/asaas.service";
 import { FichaCobranca, SituacaoCobranca, Tag } from "../../core/models/cobranca.model";
 import { Parcela } from "../../core/models/parcela.model";
@@ -244,6 +246,21 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
                   }}
                 </td>
                 <td class="py-1 whitespace-nowrap">
+                  @if (parcela.status === "PAGO" && authService.temPerfil("ADMINISTRADOR", "FINANCEIRO")) {
+                    @if (parcela.nfseStatus === "AUTORIZADA") {
+                      <span class="text-xs text-green-700 mr-1">NFS-e {{ parcela.nfseNumero }}</span>
+                      @if (parcela.nfsePdfUrl) {
+                        <a mat-button class="!min-w-0 !px-2" [href]="parcela.nfsePdfUrl" target="_blank" rel="noopener">Nota</a>
+                      } @else if (parcela.nfseChaveAcesso) {
+                        <button mat-button class="!min-w-0 !px-2" type="button" (click)="abrirNota(parcela)">Nota</button>
+                      }
+                    } @else {
+                      @if (parcela.nfseStatus === "ERRO") {
+                        <span class="text-xs text-red-600 mr-1" [title]="parcela.nfseErro ?? ''">Nota com erro</span>
+                      }
+                      <button mat-button class="!min-w-0 !px-2" type="button" (click)="emitirNota(parcela)">Emitir NFS-e</button>
+                    }
+                  }
                   @if (pagoNoCartaoRede(parcela)) {
                     <span class="text-xs text-gray-500 mr-1">
                       {{ parcela.cartaoBandeira }} final {{ parcela.cartaoFinal }}
@@ -397,6 +414,8 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
   private readonly sincronizacaoLegadoService = inject(SincronizacaoLegadoService);
   private readonly asaasService = inject(AsaasService);
   private readonly redeService = inject(RedeService);
+  private readonly nfseService = inject(NfseService);
+  readonly authService = inject(AuthService);
   private readonly snackBar = inject(MatSnackBar);
   protected readonly formatarCpf = formatarCpf;
 
@@ -681,6 +700,22 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
   }
 
   /** Estorno total no cartão: pede o motivo (vai para a Auditoria) e confirma antes de enviar. */
+  /** Nota fiscal individual deste pagamento (competência = mês do pagamento; ajustável em Notas fiscais). */
+  emitirNota(parcela: Parcela): void {
+    if (!confirm(`Emitir a NFS-e do pagamento da parcela ${parcela.parcela}? A emissão não pode ser desfeita por aqui.`)) return;
+    this.nfseService.emitirIndividual(parcela.id).subscribe({
+      next: () => {
+        this.snackBar.open("Nota emitida", "Fechar", { duration: 5000 });
+        this.carregar();
+      },
+      error: () => this.carregar(),
+    });
+  }
+
+  abrirNota(parcela: Parcela): void {
+    this.nfseService.danfse(parcela.id).subscribe((pdf) => window.open(URL.createObjectURL(pdf), "_blank"));
+  }
+
   estornarCartao(parcela: Parcela): void {
     const motivo = window.prompt(
       `Estornar o pagamento no cartão (final ${parcela.cartaoFinal ?? "—"}) da parcela ${parcela.parcela}?\n` +

@@ -11,11 +11,15 @@ import { MatDialog, MatDialogModule } from "@angular/material/dialog";
 import { MatSnackBar } from "@angular/material/snack-bar";
 import { ConfiguracoesService } from "../../core/services/configuracoes.service";
 import { MapeamentoImportacaoService } from "../../core/services/mapeamento-importacao.service";
+import { NfseService } from "../../core/services/nfse.service";
 import {
   AsaasAmbiente,
   AtualizarConfiguracaoPayload,
+  Configuracao,
   FRASE_CONFIRMACAO_LIMPAR_BASE,
   FrequenciaImportacao,
+  NfseAmbiente,
+  NfseProvedor,
   PagamentoProvedor,
   RedeAmbiente,
   TipoTituloProtesto,
@@ -323,13 +327,30 @@ import {
       <section class="bg-white rounded-lg border p-5">
         <p class="text-sm font-medium text-gray-700 mb-1">Nota fiscal de serviço (NFS-e)</p>
         <p class="text-xs text-gray-500 mb-4">
-          Emitida pelo Asaas (a conta precisa ter as informações fiscais da empresa cadastradas lá). Com a emissão
+          Pode ser emitida pelo Asaas (a conta precisa ter as informações fiscais da empresa cadastradas lá) ou
+          direto no Portal Nacional da NFS-e, com o certificado digital A1 da empresa. Com a emissão
           automática ligada, o sistema emite, no mês corrente e até o dia limite, a nota de cada mensalidade e
           renegociação paga no mês anterior — uma por parcela, no nome do sacado (se houver) ou do aluno. Taxa de
           matrícula não gera nota. Use a tela Notas fiscais para conferir antes e emitir manualmente.
         </p>
         <mat-checkbox formControlName="nfseAtiva">Emissão automática ligada</mat-checkbox>
         <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mt-3">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="md:col-span-2">
+            <mat-label>Emitir a nota por</mat-label>
+            <mat-select formControlName="nfseProvedor">
+              <mat-option value="ASAAS">Asaas (intermediário)</mat-option>
+              <mat-option value="NACIONAL">Direto no Portal Nacional (certificado A1)</mat-option>
+            </mat-select>
+          </mat-form-field>
+          @if (form.controls.nfseProvedor.value === "NACIONAL") {
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Ambiente</mat-label>
+              <mat-select formControlName="nfseAmbiente">
+                <mat-option value="HOMOLOGACAO">Homologação (testes, sem valor fiscal)</mat-option>
+                <mat-option value="PRODUCAO">Produção (valor fiscal)</mat-option>
+              </mat-select>
+            </mat-form-field>
+          }
           <mat-form-field appearance="outline" subscriptSizing="dynamic">
             <mat-label>Emitir até o dia</mat-label>
             <input matInput type="number" min="1" max="28" formControlName="nfseDiaLimite" />
@@ -359,6 +380,118 @@ import {
             <mat-hint>Opcional</mat-hint>
           </mat-form-field>
         </div>
+
+        @if (form.controls.nfseProvedor.value === "NACIONAL") {
+          <div class="border rounded-lg p-4 mt-5 bg-gray-50">
+            <p class="text-sm font-medium text-gray-700 mb-1">Certificado digital A1 (e-CNPJ)</p>
+            <p class="text-xs text-gray-500 mb-3">
+              Arquivo .pfx/.p12 da empresa. Fica guardado criptografado no servidor e é usado só para assinar as
+              notas e autenticar na SEFIN. O arquivo e a senha nunca voltam para a tela.
+            </p>
+            @if (nfseCertificado.configurado) {
+              <p class="text-sm m-0 mb-2">
+                <mat-icon class="!text-base !w-4 !h-4 align-middle text-green-600">verified</mat-icon>
+                <strong>{{ nfseCertificado.titular }}</strong>
+                @if (nfseCertificado.cnpj) { · CNPJ {{ nfseCertificado.cnpj }} }
+                · válido até {{ nfseCertificado.validoAte }}
+              </p>
+            }
+            <div class="flex flex-wrap items-center gap-3">
+              <input type="file" accept=".pfx,.p12" class="text-sm" (change)="escolherCertificado($event)" />
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="!w-64">
+                <mat-label>Senha do certificado</mat-label>
+                <input matInput type="password" autocomplete="new-password" [formControl]="certificadoSenha" />
+              </mat-form-field>
+              <button mat-flat-button color="primary" type="button" [disabled]="!certificadoArquivo || !certificadoSenha.value || enviandoCertificado" (click)="enviarCertificado()">
+                {{ nfseCertificado.configurado ? "Substituir certificado" : "Enviar certificado" }}
+              </button>
+              @if (nfseCertificado.configurado) {
+                <button mat-stroked-button type="button" [disabled]="testandoNfse" (click)="testarNfse()">Testar conexão com a SEFIN</button>
+                <button mat-button color="warn" type="button" (click)="removerCertificado()">Remover</button>
+              }
+            </div>
+            @if (resultadoTesteNfse) {
+              <p class="text-xs mt-2 mb-0" [class]="resultadoTesteNfse.ok ? 'text-green-700' : 'text-red-600'">{{ resultadoTesteNfse.mensagem }}</p>
+            }
+            @if (pendenciasNfse.length) {
+              <p class="text-xs text-amber-700 mt-2 mb-0">Falta para emitir direto: {{ pendenciasNfse.join("; ") }}.</p>
+            }
+          </div>
+
+          <p class="text-sm font-medium text-gray-700 mt-5 mb-2">Dados do prestador (a empresa que emite a nota)</p>
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>CNPJ</mat-label>
+              <input matInput inputmode="numeric" formControlName="nfsePrestadorCnpj" />
+              <mat-hint>Do certificado, se vazio</mat-hint>
+            </mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Inscrição municipal</mat-label>
+              <input matInput formControlName="nfsePrestadorInscricaoMunicipal" />
+              <mat-hint>Opcional</mat-hint>
+            </mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Código IBGE do município</mat-label>
+              <input matInput inputmode="numeric" maxlength="7" formControlName="nfseMunicipioIbge" />
+              <mat-hint>7 dígitos (Vitória/ES = 3205309)</mat-hint>
+            </mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Telefone</mat-label>
+              <input matInput formControlName="nfsePrestadorTelefone" />
+            </mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="md:col-span-2">
+              <mat-label>E-mail</mat-label>
+              <input matInput type="email" formControlName="nfsePrestadorEmail" />
+            </mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Simples Nacional</mat-label>
+              <mat-select formControlName="nfseOpcaoSimples">
+                <mat-option [value]="3">Optante — ME/EPP</mat-option>
+                <mat-option [value]="2">Optante — MEI</mat-option>
+                <mat-option [value]="1">Não optante</mat-option>
+              </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Alíquota aproximada do Simples (%)</mat-label>
+              <input matInput type="number" min="0" max="100" step="0.01" formControlName="nfseAliquotaSimples" />
+              <mat-hint>Total aproximado de tributos na nota</mat-hint>
+            </mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Apuração dos tributos (ME/EPP)</mat-label>
+              <mat-select formControlName="nfseRegimeApuracaoSn">
+                <mat-option [value]="1">Federais e municipal pelo Simples</mat-option>
+                <mat-option [value]="2">Federais pelo Simples, ISS fora</mat-option>
+                <mat-option [value]="3">Federais e municipal fora do Simples</mat-option>
+              </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Regime especial</mat-label>
+              <mat-select formControlName="nfseRegimeEspecial">
+                <mat-option [value]="0">Nenhum</mat-option>
+                <mat-option [value]="1">Ato cooperado</mat-option>
+                <mat-option [value]="2">Estimativa</mat-option>
+                <mat-option [value]="3">Sociedade de profissionais</mat-option>
+                <mat-option [value]="4">Cooperativa</mat-option>
+                <mat-option [value]="5">MEI</mat-option>
+                <mat-option [value]="6">ME/EPP</mat-option>
+              </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Código de tributação municipal</mat-label>
+              <input matInput maxlength="3" formControlName="nfseCodigoTributacaoMunicipal" />
+              <mat-hint>3 dígitos, se o município exigir</mat-hint>
+            </mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Série da DPS</mat-label>
+              <input matInput type="number" min="1" max="89999" formControlName="nfseSerieDps" />
+            </mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Próximo número da DPS</mat-label>
+              <input matInput type="number" min="1" formControlName="nfseProximoNumeroDps" />
+              <mat-hint>Acima do último emitido pelo portal</mat-hint>
+            </mat-form-field>
+          </div>
+        }
       </section>
 
       <section class="bg-white rounded-lg border p-5">
@@ -612,6 +745,7 @@ import {
 export class ConfiguracoesComponent implements OnInit {
   private readonly service = inject(ConfiguracoesService);
   private readonly mapeamentoService = inject(MapeamentoImportacaoService);
+  private readonly nfseService = inject(NfseService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly fb = inject(FormBuilder);
   private readonly dialog = inject(MatDialog);
@@ -619,6 +753,20 @@ export class ConfiguracoesComponent implements OnInit {
   readonly fraseConfirmacao = FRASE_CONFIRMACAO_LIMPAR_BASE;
   readonly confirmacaoLimpeza = this.fb.nonNullable.control("");
   limpandoBase = false;
+
+  // Certificado A1 da NFS-e: o arquivo e a senha são enviados à parte (não fazem parte do "Salvar").
+  readonly certificadoSenha = this.fb.nonNullable.control("");
+  certificadoArquivo: File | null = null;
+  enviandoCertificado = false;
+  testandoNfse = false;
+  resultadoTesteNfse: { ok: boolean; mensagem: string } | null = null;
+  pendenciasNfse: string[] = [];
+  nfseCertificado: { configurado: boolean; titular: string | null; cnpj: string | null; validoAte: string } = {
+    configurado: false,
+    titular: null,
+    cnpj: null,
+    validoAte: "",
+  };
 
   readonly form = this.fb.nonNullable.group({
     frequenciaImportacao: this.fb.nonNullable.control<FrequenciaImportacao>("MANUAL"),
@@ -653,6 +801,20 @@ export class ConfiguracoesComponent implements OnInit {
     nfseServicoDescricao: this.fb.nonNullable.control("PRESTAÇÃO DE SERVIÇOS EDUCACIONAIS", Validators.required),
     nfseMunicipalServiceId: this.fb.control<string | null>(null),
     nfseIssPercentual: this.fb.nonNullable.control<number | string>(0, [Validators.min(0), Validators.max(5)]),
+    nfseProvedor: this.fb.nonNullable.control<NfseProvedor>("ASAAS"),
+    nfseAmbiente: this.fb.nonNullable.control<NfseAmbiente>("HOMOLOGACAO"),
+    nfsePrestadorCnpj: this.fb.control<string | null>(null),
+    nfsePrestadorInscricaoMunicipal: this.fb.control<string | null>(null),
+    nfsePrestadorTelefone: this.fb.control<string | null>(null),
+    nfsePrestadorEmail: this.fb.control<string | null>(null),
+    nfseMunicipioIbge: this.fb.control<string | null>(null),
+    nfseOpcaoSimples: this.fb.nonNullable.control(3),
+    nfseRegimeApuracaoSn: this.fb.nonNullable.control(1),
+    nfseRegimeEspecial: this.fb.nonNullable.control(0),
+    nfseAliquotaSimples: this.fb.nonNullable.control<number | string>(0, [Validators.min(0), Validators.max(100)]),
+    nfseCodigoTributacaoMunicipal: this.fb.control<string | null>(null),
+    nfseSerieDps: this.fb.nonNullable.control(1, [Validators.min(1), Validators.max(89999)]),
+    nfseProximoNumeroDps: this.fb.nonNullable.control(1, [Validators.min(1)]),
     redeAmbiente: this.fb.nonNullable.control<RedeAmbiente>("SANDBOX"),
   });
 
@@ -715,9 +877,72 @@ export class ConfiguracoesComponent implements OnInit {
         this.redePvConfigurado = configuracao.redePvConfigurado;
         this.redeChaveIntegracaoConfigurada = configuracao.redeChaveIntegracaoConfigurada;
         this.redeWebhookTokenConfigurado = configuracao.redeWebhookTokenConfigurado;
+        this.atualizarResumoCertificado(configuracao);
         this.carregando = false;
       },
       error: () => (this.carregando = false),
+    });
+  }
+
+  private atualizarResumoCertificado(configuracao: Configuracao): void {
+    this.nfseCertificado = {
+      configurado: configuracao.nfseCertificadoConfigurado,
+      titular: configuracao.nfseCertificadoTitular,
+      cnpj: configuracao.nfseCertificadoCnpj,
+      validoAte: configuracao.nfseCertificadoValidoAte
+        ? new Date(configuracao.nfseCertificadoValidoAte).toLocaleDateString("pt-BR")
+        : "",
+    };
+    this.nfseService.situacaoNacional().subscribe({ next: (s) => (this.pendenciasNfse = s.pendencias), error: () => undefined });
+  }
+
+  escolherCertificado(evento: Event): void {
+    this.certificadoArquivo = (evento.target as HTMLInputElement).files?.[0] ?? null;
+  }
+
+  /** Lê o .pfx, converte para base64 e envia com a senha — a API valida, criptografa e guarda. */
+  async enviarCertificado(): Promise<void> {
+    if (!this.certificadoArquivo || !this.certificadoSenha.value) return;
+    this.enviandoCertificado = true;
+    const bytes = new Uint8Array(await this.certificadoArquivo.arrayBuffer());
+    let binario = "";
+    bytes.forEach((b) => (binario += String.fromCharCode(b)));
+    this.nfseService.salvarCertificado(btoa(binario), this.certificadoSenha.value).subscribe({
+      next: (r) => {
+        this.enviandoCertificado = false;
+        this.certificadoSenha.setValue("");
+        this.certificadoArquivo = null;
+        this.resultadoTesteNfse = null;
+        this.snackBar.open(`Certificado de ${r.titular} cadastrado`, "Fechar", { duration: 5000 });
+        this.carregar();
+      },
+      error: () => (this.enviandoCertificado = false),
+    });
+  }
+
+  removerCertificado(): void {
+    const dados: ConfirmDialogData = {
+      titulo: "Remover certificado",
+      mensagem: "Sem o certificado a emissão direta na SEFIN para de funcionar até um novo ser enviado. Remover?",
+      confirmarTexto: "Remover",
+    };
+    this.dialog.open(ConfirmDialogComponent, { data: dados }).afterClosed().subscribe((ok) => {
+      if (!ok) return;
+      this.nfseService.removerCertificado().subscribe(() => {
+        this.resultadoTesteNfse = null;
+        this.carregar();
+      });
+    });
+  }
+
+  testarNfse(): void {
+    this.testandoNfse = true;
+    this.nfseService.testarConexao().subscribe({
+      next: (r) => {
+        this.testandoNfse = false;
+        this.resultadoTesteNfse = r;
+      },
+      error: () => (this.testandoNfse = false),
     });
   }
 
@@ -737,6 +962,13 @@ export class ConfiguracoesComponent implements OnInit {
       legadoUsuario: valor.legadoUsuario.trim() || null,
       nfseMunicipalServiceId: valor.nfseMunicipalServiceId?.trim() || null,
       nfseIssPercentual: Number(valor.nfseIssPercentual),
+      nfseAliquotaSimples: Number(valor.nfseAliquotaSimples),
+      nfsePrestadorCnpj: valor.nfsePrestadorCnpj?.replace(/\D/g, "") || null,
+      nfsePrestadorInscricaoMunicipal: valor.nfsePrestadorInscricaoMunicipal?.trim() || null,
+      nfsePrestadorTelefone: valor.nfsePrestadorTelefone?.trim() || null,
+      nfsePrestadorEmail: valor.nfsePrestadorEmail?.trim() || null,
+      nfseMunicipioIbge: valor.nfseMunicipioIbge?.trim() || null,
+      nfseCodigoTributacaoMunicipal: valor.nfseCodigoTributacaoMunicipal?.trim() || null,
       ...(novaSenha ? { legadoSenha: novaSenha } : {}),
       ...(novaChaveAsaas ? { asaasApiKey: novaChaveAsaas } : {}),
       ...(novoTokenAsaas ? { asaasWebhookToken: novoTokenAsaas } : {}),
@@ -757,6 +989,7 @@ export class ConfiguracoesComponent implements OnInit {
         this.redePvConfigurado = configuracao.redePvConfigurado;
         this.redeChaveIntegracaoConfigurada = configuracao.redeChaveIntegracaoConfigurada;
         this.redeWebhookTokenConfigurado = configuracao.redeWebhookTokenConfigurado;
+        this.atualizarResumoCertificado(configuracao);
         this.redePvControl.setValue("");
         this.redeChaveIntegracaoControl.setValue("");
         this.redeWebhookTokenControl.setValue("");

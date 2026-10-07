@@ -54,6 +54,32 @@ export const atualizarConfiguracaoSchema = z
     nfseServicoDescricao: z.string().trim().min(1).max(500).optional(),
     nfseMunicipalServiceId: z.string().trim().max(100).nullable().optional(),
     nfseIssPercentual: z.coerce.number().min(0).max(5).optional(),
+    // Emissão direta no Portal Nacional (o certificado A1 vai por PUT /api/nfse/certificado).
+    nfseProvedor: z.enum(["ASAAS", "NACIONAL"]).optional(),
+    nfseAmbiente: z.enum(["HOMOLOGACAO", "PRODUCAO"]).optional(),
+    nfsePrestadorCnpj: z
+      .string()
+      .trim()
+      .transform((v) => v.replace(/\D/g, ""))
+      .refine((v) => v === "" || v.length === 14, "CNPJ deve ter 14 dígitos")
+      .nullable()
+      .optional(),
+    nfsePrestadorInscricaoMunicipal: z.string().trim().max(15).nullable().optional(),
+    nfsePrestadorTelefone: z.string().trim().max(30).nullable().optional(),
+    nfsePrestadorEmail: z.string().trim().email().max(80).nullable().optional(),
+    nfseMunicipioIbge: z
+      .string()
+      .trim()
+      .regex(/^\d{7}$/, "Código IBGE deve ter 7 dígitos")
+      .nullable()
+      .optional(),
+    nfseOpcaoSimples: z.coerce.number().int().min(1).max(3).optional(),
+    nfseRegimeApuracaoSn: z.coerce.number().int().min(1).max(3).optional(),
+    nfseRegimeEspecial: z.coerce.number().int().min(0).max(6).optional(),
+    nfseAliquotaSimples: z.coerce.number().min(0).max(100).optional(),
+    nfseCodigoTributacaoMunicipal: z.string().trim().max(3).nullable().optional(),
+    nfseSerieDps: z.coerce.number().int().min(1).max(89999).optional(),
+    nfseProximoNumeroDps: z.coerce.number().int().min(1).max(999999999999999).optional(),
     redeAmbiente: z.enum(["SANDBOX", "PRODUCAO"]).optional(),
     // PV/chave de integração/token em texto puro, só nesta entrada — o
     // service criptografa antes de persistir e nunca os devolve (mesmo

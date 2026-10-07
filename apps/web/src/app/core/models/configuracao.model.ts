@@ -12,6 +12,11 @@ export type PagamentoProvedor = "ASAAS" | "REDE";
 
 export type RedeAmbiente = "SANDBOX" | "PRODUCAO";
 
+/** Quem emite a NFS-e: o Asaas ou direto no Portal Nacional (certificado A1). */
+export type NfseProvedor = "ASAAS" | "NACIONAL";
+
+export type NfseAmbiente = "HOMOLOGACAO" | "PRODUCAO";
+
 export interface Configuracao {
   id: string;
   frequenciaImportacao: FrequenciaImportacao;
@@ -67,6 +72,27 @@ export interface Configuracao {
   nfseServicoDescricao: string;
   nfseMunicipalServiceId: string | null;
   nfseIssPercentual: number | string;
+  nfseProvedor: NfseProvedor;
+  nfseAmbiente: NfseAmbiente;
+  /** O .pfx e a senha nunca saem da API — só estes dados do certificado. */
+  nfseCertificadoConfigurado: boolean;
+  nfseCertificadoTitular: string | null;
+  nfseCertificadoCnpj: string | null;
+  nfseCertificadoValidoAte: string | null;
+  nfsePrestadorCnpj: string | null;
+  nfsePrestadorInscricaoMunicipal: string | null;
+  nfsePrestadorTelefone: string | null;
+  nfsePrestadorEmail: string | null;
+  /** Código IBGE (7 dígitos) do município do prestador. */
+  nfseMunicipioIbge: string | null;
+  /** 1 não optante, 2 MEI, 3 ME/EPP. */
+  nfseOpcaoSimples: number;
+  nfseRegimeApuracaoSn: number;
+  nfseRegimeEspecial: number;
+  nfseAliquotaSimples: number | string;
+  nfseCodigoTributacaoMunicipal: string | null;
+  nfseSerieDps: number;
+  nfseProximoNumeroDps: number;
 }
 
 export type AtualizarConfiguracaoPayload = Omit<
@@ -78,6 +104,10 @@ export type AtualizarConfiguracaoPayload = Omit<
   | "redePvConfigurado"
   | "redeChaveIntegracaoConfigurada"
   | "redeWebhookTokenConfigurado"
+  | "nfseCertificadoConfigurado"
+  | "nfseCertificadoTitular"
+  | "nfseCertificadoCnpj"
+  | "nfseCertificadoValidoAte"
 > & {
   /** Só enviado quando o admin digita uma nova senha — deixe undefined para manter a atual. */
   legadoSenha?: string;

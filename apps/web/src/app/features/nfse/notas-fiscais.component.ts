@@ -3,7 +3,7 @@ import { Component, inject, OnInit, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatSnackBar } from "@angular/material/snack-bar";
-import { NfsePrevia } from "../../core/models/nfse.model";
+import { NfsePagamento, NfsePrevia } from "../../core/models/nfse.model";
 import { NfseService } from "../../core/services/nfse.service";
 import { formatarCnpj, formatarCpf } from "../../shared/utils/cpf.util";
 
@@ -39,6 +39,102 @@ const COR_STATUS: Record<string, string> = {
         <input class="border rounded px-2 py-1" type="month" [ngModel]="mes()" (ngModelChange)="trocarMes($event)" />
       </label>
     </div>
+
+    <section class="bg-white rounded-lg border p-4 mb-5">
+      <h2 class="text-base font-medium m-0 mb-1">Emitir nota de um pagamento</h2>
+      <p class="text-xs text-gray-500 mt-0 mb-3">
+        Para emitir a nota de um pagamento específico (qualquer tipo, qualquer mês), busque pelo aluno, CPF/CNPJ ou
+        matrícula. A competência vem preenchida com o último dia do mês do pagamento e pode ser alterada.
+      </p>
+      <form class="flex flex-wrap items-end gap-3" (ngSubmit)="buscarPagamentos()">
+        <label class="text-sm">
+          <span class="block text-xs text-gray-500">Aluno, CPF/CNPJ ou matrícula</span>
+          <input class="border rounded px-2 py-1 w-64" name="busca" [(ngModel)]="busca" />
+        </label>
+        <label class="text-sm">
+          <span class="block text-xs text-gray-500">Pago de</span>
+          <input class="border rounded px-2 py-1" type="date" name="de" [(ngModel)]="de" />
+        </label>
+        <label class="text-sm">
+          <span class="block text-xs text-gray-500">até</span>
+          <input class="border rounded px-2 py-1" type="date" name="ate" [(ngModel)]="ate" />
+        </label>
+        <button mat-flat-button color="primary" type="submit" [disabled]="buscando()">Buscar pagamentos</button>
+      </form>
+
+      @if (pagamentos(); as lista) {
+        <div class="overflow-x-auto mt-3">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="text-left text-xs text-gray-400">
+                <th class="p-2">Pago em</th>
+                <th class="p-2">Parcela</th>
+                <th class="p-2">Aluno</th>
+                <th class="p-2">Tomador da nota</th>
+                <th class="p-2 text-right">Valor</th>
+                <th class="p-2">Nota</th>
+                <th class="p-2">Competência</th>
+                <th class="p-2"></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (i of lista; track i.parcelaId) {
+                <tr class="border-t align-top">
+                  <td class="p-2 whitespace-nowrap">{{ i.dataPagamento | date: "dd/MM/yyyy" }}</td>
+                  <td class="p-2">
+                    {{ i.tipoTitulo }} {{ i.parcela }}
+                    @if (!i.geraNotaAutomatica) {
+                      <span class="block text-xs text-amber-700">Tipo fora da emissão automática</span>
+                    }
+                  </td>
+                  <td class="p-2">{{ i.aluno }}<span class="block text-xs text-gray-400">{{ i.curso }}</span></td>
+                  <td class="p-2">
+                    {{ i.tomador.nome }}
+                    <span class="block text-xs text-gray-400">
+                      {{ i.tomador.origem === "SACADO" ? "Sacado" : "Aluno" }} · {{ documento(i.tomador.documento) }}
+                    </span>
+                    @for (e of i.erros; track e) { <span class="block text-xs text-red-600">{{ e }}</span> }
+                    @for (a of i.avisos; track a) { <span class="block text-xs text-amber-700">{{ a }}</span> }
+                  </td>
+                  <td class="p-2 text-right whitespace-nowrap">{{ i.valor | currency: "BRL" }}</td>
+                  <td class="p-2">
+                    @if (i.statusNota) {
+                      <span class="px-2 py-0.5 rounded text-xs" [class]="cor(i.statusNota)">{{ i.statusNota }}</span>
+                      @if (i.numeroNota) { <span class="block text-xs text-gray-500">Nº {{ i.numeroNota }}</span> }
+                    } @else {
+                      <span class="text-xs text-gray-400">Sem nota</span>
+                    }
+                    @if (i.erro) { <span class="block text-xs text-red-600">{{ i.erro }}</span> }
+                  </td>
+                  <td class="p-2">
+                    @if (i.statusNota !== "AUTORIZADA") {
+                      <input
+                        class="border rounded px-2 py-1"
+                        type="date"
+                        [max]="hoje"
+                        [ngModel]="competenciaDe(i)"
+                        (ngModelChange)="definirCompetencia(i.parcelaId, $event)"
+                      />
+                    }
+                  </td>
+                  <td class="p-2 text-right whitespace-nowrap">
+                    @if (i.statusNota === "AUTORIZADA") {
+                      <button mat-button type="button" (click)="abrirPdf(i)">PDF</button>
+                    } @else {
+                      <button mat-flat-button color="primary" type="button" [disabled]="ocupado() || i.erros.length > 0" (click)="emitirIndividual(i)">
+                        Emitir nota
+                      </button>
+                    }
+                  </td>
+                </tr>
+              } @empty {
+                <tr><td class="p-4 text-gray-500" colspan="8">Nenhum pagamento encontrado para esse filtro.</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
 
     @if (previa(); as p) {
       <div class="bg-white rounded-lg border p-4 mb-4">
@@ -136,6 +232,7 @@ const COR_STATUS: Record<string, string> = {
                 </td>
                 <td class="p-2 text-right">
                   @if (e.pdfUrl) { <a mat-button [href]="e.pdfUrl" target="_blank" rel="noopener">PDF</a> }
+                  @else if (e.viaSefin) { <button mat-button type="button" (click)="baixarDanfse(e.parcelaId)">PDF</button> }
                 </td>
               </tr>
             } @empty {
@@ -157,6 +254,16 @@ export class NotasFiscaisComponent implements OnInit {
   readonly previa = signal<NfsePrevia | null>(null);
   readonly ocupado = signal(false);
 
+  // Nota individual de um pagamento
+  busca = "";
+  de = "";
+  ate = "";
+  readonly hoje = new Date().toISOString().slice(0, 10);
+  readonly pagamentos = signal<NfsePagamento[] | null>(null);
+  readonly buscando = signal(false);
+  /** Competência escolhida por parcela (sobrepõe a sugerida). */
+  readonly competencias = signal<Record<string, string>>({});
+
   ngOnInit(): void {
     this.carregar();
   }
@@ -173,6 +280,60 @@ export class NotasFiscaisComponent implements OnInit {
 
   documento(valor: string): string {
     return valor.length === 14 ? formatarCnpj(valor) : formatarCpf(valor);
+  }
+
+  competenciaDe(item: NfsePagamento): string {
+    return this.competencias()[item.parcelaId] ?? item.competenciaPadrao ?? this.hoje;
+  }
+
+  definirCompetencia(parcelaId: string, valor: string): void {
+    this.competencias.update((atual) => ({ ...atual, [parcelaId]: valor }));
+  }
+
+  buscarPagamentos(): void {
+    this.buscando.set(true);
+    this.service.pagamentos({ busca: this.busca.trim() || undefined, de: this.de || undefined, ate: this.ate || undefined }).subscribe({
+      next: (lista) => {
+        this.pagamentos.set(lista);
+        this.buscando.set(false);
+      },
+      error: () => this.buscando.set(false),
+    });
+  }
+
+  emitirIndividual(item: NfsePagamento): void {
+    const competencia = this.competenciaDe(item);
+    const aviso = item.geraNotaAutomatica ? "" : `\n\nAtenção: "${item.tipoTitulo}" normalmente não gera nota fiscal.`;
+    if (
+      !confirm(
+        `Emitir a nota de ${item.valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} para ${item.tomador.nome}, competência ${competencia.split("-").reverse().join("/")}? A emissão não pode ser desfeita por aqui.${aviso}`,
+      )
+    ) {
+      return;
+    }
+    this.ocupado.set(true);
+    this.service.emitirIndividual(item.parcelaId, competencia).subscribe({
+      next: () => {
+        this.ocupado.set(false);
+        this.snackBar.open("Nota emitida", "Fechar", { duration: 5000 });
+        this.buscarPagamentos();
+        this.carregar();
+      },
+      error: () => {
+        this.ocupado.set(false);
+        this.buscarPagamentos();
+      },
+    });
+  }
+
+  /** Abre o PDF: link direto do Asaas ou DANFSe baixado da SEFIN pela API. */
+  abrirPdf(item: NfsePagamento): void {
+    if (item.pdfUrl) window.open(item.pdfUrl, "_blank", "noopener");
+    else if (item.viaSefin) this.baixarDanfse(item.parcelaId);
+  }
+
+  baixarDanfse(parcelaId: string): void {
+    this.service.danfse(parcelaId).subscribe((pdf) => window.open(URL.createObjectURL(pdf), "_blank"));
   }
 
   private carregar(): void {

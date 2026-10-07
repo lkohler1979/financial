@@ -24,6 +24,7 @@ export interface NfseEmitida {
   status: StatusNota;
   numero: string | null;
   pdfUrl: string | null;
+  viaSefin: boolean;
   erro: string | null;
 }
 
@@ -36,6 +37,36 @@ export interface NfsePrevia {
   pendentes: NfsePendente[];
   totalPendente: number;
   emitidas: NfseEmitida[];
+}
+
+/** Pagamento realizado que pode receber uma nota individual. */
+export interface NfsePagamento {
+  parcelaId: string;
+  parcela: string;
+  tipoTitulo: string | null;
+  /** A rotina automática só emite Mensalidade/Renegociação; os demais tipos só saem aqui, à mão. */
+  geraNotaAutomatica: boolean;
+  dataPagamento: string;
+  valor: number;
+  aluno: string;
+  curso: string;
+  matricula: string | null;
+  tomador: { origem: "SACADO" | "ALUNO"; nome: string; documento: string };
+  /** Último dia do mês do pagamento (limitado a hoje), YYYY-MM-DD. */
+  competenciaPadrao: string | null;
+  statusNota: StatusNota | null;
+  numeroNota: string | null;
+  erro: string | null;
+  pdfUrl: string | null;
+  /** Emitida direto na SEFIN: o PDF (DANFSe) é baixado pela API. */
+  viaSefin: boolean;
+  erros: string[];
+  avisos: string[];
+}
+
+export interface NfseSituacaoNacional {
+  pronto: boolean;
+  pendencias: string[];
 }
 
 export interface NfseResultadoEmissao {

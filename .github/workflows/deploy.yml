@@ -29,8 +29,14 @@ jobs:
         run: |
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
           if [ -n "$DEPLOY_SSH_KEY" ]; then
-            printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+            # Tolera chave colada com quebras de linha do Windows (CRLF); se mesmo assim não for
+            # uma chave válida, ignora e o próximo passo usa a senha.
+            printf '%s\n' "$DEPLOY_SSH_KEY" | tr -d '\r' > ~/.ssh/deploy_key
             chmod 600 ~/.ssh/deploy_key
+            if ! ssh-keygen -y -P "" -f ~/.ssh/deploy_key > /dev/null 2>&1; then
+              echo "::warning::DEPLOY_SSH_KEY inválida (formato ou protegida por senha) - usando DEPLOY_PASSWORD"
+              rm -f ~/.ssh/deploy_key
+            fi
           fi
           ssh-keyscan -T 15 -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
 

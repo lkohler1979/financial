@@ -1,0 +1,53 @@
+name: Deploy
+
+# Produção sempre reflete a main: depois que o CI (lint + testes) passa num push na main,
+# entra na VPS por SSH e roda o scripts/deploy.sh (pull, build, migrations e restart no PM2).
+# Se o CI falhar, nada é publicado. Também pode ser disparado à mão (Actions → Deploy → Run workflow).
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+# Um deploy por vez; um novo push espera o em andamento terminar (não cancela no meio de migrations).
+concurrency:
+  group: deploy-producao
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    timeout-minutes: 30
+
+    steps:
+      - name: Configurar SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          if [ -n "$DEPLOY_SSH_KEY" ]; then
+            printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+            chmod 600 ~/.ssh/deploy_key
+          fi
+          ssh-keyscan -T 15 -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+
+      - name: Rodar scripts/deploy.sh na VPS
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PASSWORD: ${{ secrets.DEPLOY_PASSWORD }}
+        run: |
+          comando='cd /opt/financial && ./scripts/deploy.sh'
+          opcoes='-o ServerAliveInterval=30 -o ServerAliveCountMax=20'
+          if [ -f ~/.ssh/deploy_key ]; then
+            ssh $opcoes -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" "$comando"
+          elif [ -n "$DEPLOY_PASSWORD" ]; then
+            sudo apt-get install -y -qq sshpass
+            SSHPASS="$DEPLOY_PASSWORD" sshpass -e ssh $opcoes "$DEPLOY_USER@$DEPLOY_HOST" "$comando"
+          else
+            echo "Configure o secret DEPLOY_SSH_KEY (recomendado) ou DEPLOY_PASSWORD." >&2
+            exit 1
+          fi

@@ -5,10 +5,14 @@
 #   ./scripts/deploy.sh
 #
 # O que faz, em ordem: git pull, instala dependencias (npm workspaces), build
-# do backend, backup do banco, migrations do Prisma, build do frontend, restart dos
-# processos no PM2 (api + worker; o frontend e servido estaticamente pelo Nginx - ver
+# do backend, (opcional) backup do banco, migrations do Prisma, build do frontend, restart
+# dos processos no PM2 (api + worker; o frontend e servido estaticamente pelo Nginx - ver
 # DEPLOY.md) e health check da API. Para no primeiro erro - inclusive se a API nao
 # responder depois do restart.
+#
+# Backup do banco: DESLIGADO por padrao (decisao do usuario, 2026-10-16: "para o futuro").
+# Para ligar: DEPLOY_BACKUP=1 no ambiente ou no /opt/financial/.env (e instalar
+# postgresql-client na VPS para ter o pg_dump).
 
 set -euo pipefail
 
@@ -35,6 +39,11 @@ log() {
 fail() {
   printf '\n\033[1;31m[deploy] ERRO: %s\033[0m\n' "$1" >&2
   exit 1
+}
+
+# O backup so roda se DEPLOY_BACKUP=1 (ambiente ou .env). Desligado por padrao.
+backup_ligado() {
+  [ "${DEPLOY_BACKUP:-0}" = "1" ] || grep -qE '^DEPLOY_BACKUP=1[[:space:]]*$' "$ROOT_DIR/.env" 2>/dev/null
 }
 
 # Backup do banco antes das migrations (o banco nao tem rollback). Le DATABASE_URL do .env, tira o
@@ -67,7 +76,7 @@ verificar_saude() {
     sleep 2
   done
   pm2 logs ethos-api --lines 40 --nostream || true
-  fail "a API nao respondeu em $HEALTH_URL apos o restart. O codigo novo esta no ar mas com problema: veja os logs acima. O backup anterior as migrations esta em $BACKUP_DIR; para voltar o codigo, 'git reset --hard <commit anterior>' e rode este script de novo."
+  fail "a API nao respondeu em $HEALTH_URL apos o restart. O codigo novo esta no ar mas com problema: veja os logs acima. Para voltar o codigo, 'git reset --hard <commit anterior>' e rode este script de novo."
 }
 
 exec 200>"$LOCK_FILE"
@@ -107,7 +116,11 @@ npx prisma generate
 npm run build
 
 log "4/7 - Backup do banco (antes das migrations)"
-fazer_backup
+if backup_ligado; then
+  fazer_backup
+else
+  log "Backup desligado (DEPLOY_BACKUP=1 liga) - seguindo sem backup"
+fi
 
 log "5/7 - Rodando migrations do Prisma"
 cd "$API_DIR"

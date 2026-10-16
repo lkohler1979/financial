@@ -45,7 +45,9 @@ jobs:
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_PASSWORD: ${{ secrets.DEPLOY_PASSWORD }}
         run: |
-          comando='cd /opt/financial && bash ./scripts/deploy.sh'
+          # Atualiza o código ANTES de rodar o script: o bash lê o deploy.sh do disco, então sem isso o
+          # primeiro deploy depois de mudar o script ainda executaria a versão antiga.
+          comando='cd /opt/financial && git fetch origin main && git reset --hard origin/main && bash ./scripts/deploy.sh'
           opcoes='-o ServerAliveInterval=30 -o ServerAliveCountMax=20'
           if [ -f ~/.ssh/deploy_key ]; then
             ssh $opcoes -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" "$comando"

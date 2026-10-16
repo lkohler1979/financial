@@ -18,6 +18,22 @@ export const importacaoLegadoLoteWorker = new Worker<ImportacaoLegadoLoteJobData
   { connection: redisConnection, concurrency: 1, lockDuration: 5 * 60_000 },
 );
 
+// O deploy reinicia o worker (PM2) no meio de uma busca longa. Ao subir, e ao receber o sinal de
+// parada, o lote em andamento é marcado como interrompido — senão a tela ficaria esperando para
+// sempre e o botão bloqueado.
+importacaoLegadoLoteService
+  .marcarInterrompidosPorReinicio()
+  .catch((erro) => console.error("[worker:importacao-legado-lote] falha ao liberar lotes", erro));
+
+for (const sinal of ["SIGINT", "SIGTERM"] as const) {
+  process.once(sinal, () => {
+    importacaoLegadoLoteService
+      .marcarInterrompidosPorReinicio()
+      .catch(() => undefined)
+      .finally(() => process.exit(0));
+  });
+}
+
 importacaoLegadoLoteWorker.on("completed", (job) => {
   console.log(`[worker:importacao-legado-lote] job ${job.id} concluído`);
 });

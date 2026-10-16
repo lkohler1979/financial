@@ -19,6 +19,7 @@ vi.mock("../../src/modules/importacao-legado/importacao-legado-lote.repository",
     ultimo: vi.fn(),
     atualizar: vi.fn(),
     emAndamento: vi.fn(),
+    marcarInterrompidos: vi.fn(),
     registrarOcorrencias: vi.fn(),
     contarOcorrenciasPorTipo: vi.fn(),
     listarOcorrencias: vi.fn(),
@@ -366,6 +367,44 @@ describe("importacaoLegadoLoteService.executar", () => {
     expect(
       (lote.atualizar.mock.calls.at(-1)?.[1] as { pessoasProcessadas: number }).pessoasProcessadas,
     ).toBe(1);
+  });
+});
+
+describe("lotes interrompidos (deploy/reinício no meio da busca)", () => {
+  it("ao consultar o último lote, libera os que ficaram sem atividade por mais de 10 minutos", async () => {
+    lote.marcarInterrompidos.mockResolvedValue(1);
+    lote.ultimo.mockResolvedValue({ id: "l1", status: "FALHOU" } as never);
+    lote.contarOcorrenciasPorTipo.mockResolvedValue({});
+
+    const antes = Date.now();
+    await importacaoLegadoLoteService.ultimo();
+
+    const [motivo, limite] = lote.marcarInterrompidos.mock.calls[0];
+    expect(motivo).toMatch(/Rode novamente/);
+    expect(limite!.getTime()).toBeLessThanOrEqual(antes - 10 * 60_000 + 1000);
+    expect(limite!.getTime()).toBeGreaterThan(antes - 10 * 60_000 - 5000);
+  });
+
+  it("antes de iniciar outra busca, libera o lote preso — assim o botão não fica bloqueado", async () => {
+    lote.marcarInterrompidos.mockResolvedValue(1);
+    lote.emAndamento.mockResolvedValue(null);
+    lote.criar.mockResolvedValue({ id: "l2" } as never);
+
+    await importacaoLegadoLoteService.iniciar("u1");
+
+    expect(lote.marcarInterrompidos.mock.invocationCallOrder[0]).toBeLessThan(
+      lote.emAndamento.mock.invocationCallOrder[0],
+    );
+    expect(importacaoLegadoLoteQueue.add).toHaveBeenCalled();
+  });
+
+  it("ao subir/parar o worker, qualquer lote em andamento vira FALHOU na hora (sem esperar 10 min)", async () => {
+    lote.marcarInterrompidos.mockResolvedValue(2);
+    const n = await importacaoLegadoLoteService.marcarInterrompidosPorReinicio();
+    expect(n).toBe(2);
+    // Sem limite de inatividade: pega todos os que estão "rodando".
+    expect(lote.marcarInterrompidos).toHaveBeenCalledWith(expect.stringMatching(/reiniciado/));
+    expect(lote.marcarInterrompidos.mock.calls[0]).toHaveLength(1);
   });
 });
 

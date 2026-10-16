@@ -1,13 +1,38 @@
 name: CI
 
-# lint + testes em todo push/PR; o deploy só roda depois que eles passam, em push na main.
+# Fluxo: branch nova -> PR (este CI valida) -> revisão/aprovação -> merge na main ->
+# este CI roda de novo na main e, passando, publica em produção (job deploy).
+# Não há ambiente de homologação: a validação é o CI do PR + a revisão.
 on:
-  push:
-    branches: [main, dev]
   pull_request:
-    branches: [main, dev]
+    branches: [main]
+  push:
+    branches: [main]
+
+# Um CI por PR/branch: um push novo cancela o anterior. Na main nunca cancela (deploy em curso).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
 
 jobs:
+  # Padrão de nome: tipo/NN-descricao-curta (ex.: feat/12-dashboard-visao-geral).
+  branch-name:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Conferir nome da branch
+        env:
+          BRANCH: ${{ github.head_ref }}
+        run: |
+          padrao='^(feat|fix|chore|docs|refactor|test|ci|hotfix)/[0-9]+-[a-z0-9]+(-[a-z0-9]+)*$'
+          if ! printf '%s' "$BRANCH" | grep -Eq "$padrao"; then
+            echo "::error::Nome de branch inválido: '$BRANCH'. Use tipo/NN-descricao-curta, ex.: feat/12-dashboard-visao-geral (tipos: feat fix chore docs refactor test ci hotfix)."
+            exit 1
+          fi
+
   lint-and-test:
     runs-on: ubuntu-latest
 
@@ -36,6 +61,15 @@ jobs:
       - name: Run API tests
         run: npm run test:api
 
+      - name: Build API
+        run: npm run build --workspace=apps/api
+
+      - name: Build Web
+        run: npm run build --workspace=apps/web -- --configuration production
+        env:
+          NG_CLI_ANALYTICS: "false"
+
+  # Só no push na main (merge do PR aprovado) e só depois do CI passar.
   deploy:
     needs: lint-and-test
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'

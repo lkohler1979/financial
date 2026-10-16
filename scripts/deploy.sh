@@ -5,9 +5,10 @@
 #   ./scripts/deploy.sh
 #
 # O que faz, em ordem: git pull, instala dependencias (npm workspaces), build
-# do backend, migrations do Prisma, build do frontend, restart dos processos
-# no PM2 (api + worker; o frontend e servido estaticamente pelo Nginx - ver
-# DEPLOY.md). Para no primeiro erro.
+# do backend, backup do banco, migrations do Prisma, build do frontend, restart dos
+# processos no PM2 (api + worker; o frontend e servido estaticamente pelo Nginx - ver
+# DEPLOY.md) e health check da API. Para no primeiro erro - inclusive se a API nao
+# responder depois do restart.
 
 set -euo pipefail
 
@@ -21,6 +22,11 @@ ROOT_DIR="/opt/financial"
 API_DIR="$ROOT_DIR/apps/api"
 WEB_DIR="$ROOT_DIR/apps/web"
 LOCK_FILE="/tmp/ethos-deploy.lock"
+# Fora do repositorio: o deploy faz "git clean" em $ROOT_DIR e apagaria backups guardados la dentro.
+BACKUP_DIR="/opt/ethos-backups"
+BACKUPS_MANTIDOS=10
+HEALTH_URL="http://127.0.0.1:3070/api/health"
+HEALTH_TENTATIVAS=20
 
 log() {
   printf '\n\033[1;36m[deploy] %s\033[0m\n' "$1"
@@ -29,6 +35,39 @@ log() {
 fail() {
   printf '\n\033[1;31m[deploy] ERRO: %s\033[0m\n' "$1" >&2
   exit 1
+}
+
+# Backup do banco antes das migrations (o banco nao tem rollback). Le DATABASE_URL do .env, tira o
+# "?schema=..." que o pg_dump nao aceita e guarda os ultimos $BACKUPS_MANTIDOS arquivos.
+fazer_backup() {
+  local url
+  url="$(grep -E '^DATABASE_URL=' "$ROOT_DIR/.env" | head -n1 | cut -d= -f2- | tr -d "\"'")"
+  [ -n "$url" ] || fail "DATABASE_URL nao encontrado em $ROOT_DIR/.env - nao da para fazer o backup"
+  command -v pg_dump >/dev/null 2>&1 || fail "pg_dump nao instalado na VPS (apt install postgresql-client) - backup obrigatorio antes das migrations"
+
+  mkdir -p "$BACKUP_DIR"
+  local arquivo
+  arquivo="$BACKUP_DIR/pre-deploy-$(date +%Y%m%d-%H%M%S).dump"
+  pg_dump "${url%%\?*}" --format=custom --file="$arquivo" || fail "falha no backup do banco ($arquivo)"
+  log "Backup salvo em $arquivo ($(du -h "$arquivo" | cut -f1))"
+
+  # Mantem so os mais recentes.
+  ls -1t "$BACKUP_DIR"/pre-deploy-*.dump 2>/dev/null | tail -n +"$((BACKUPS_MANTIDOS + 1))" | xargs -r rm -f
+}
+
+# A API precisa responder depois do restart; senao o deploy FALHA (o PM2 pode estar "online" com a
+# aplicacao quebrada). Tenta por ate ~HEALTH_TENTATIVAS * 2s para dar tempo de subir.
+verificar_saude() {
+  local i
+  for i in $(seq 1 "$HEALTH_TENTATIVAS"); do
+    if curl -fsS -o /dev/null "$HEALTH_URL"; then
+      log "API respondendo ($HEALTH_URL) apos $i tentativa(s)"
+      return 0
+    fi
+    sleep 2
+  done
+  pm2 logs ethos-api --lines 40 --nostream || true
+  fail "a API nao respondeu em $HEALTH_URL apos o restart. O codigo novo esta no ar mas com problema: veja os logs acima. O backup anterior as migrations esta em $BACKUP_DIR; para voltar o codigo, 'git reset --hard <commit anterior>' e rode este script de novo."
 }
 
 exec 200>"$LOCK_FILE"
@@ -46,7 +85,7 @@ if ! git config --global --get-all safe.directory 2>/dev/null | grep -qx "$ROOT_
   git config --global --add safe.directory "$ROOT_DIR"
 fi
 
-log "1/6 - Atualizando o repositorio (git pull)"
+log "1/7 - Atualizando o repositorio (git pull)"
 cd "$ROOT_DIR"
 
 if [ -n "$(git status --porcelain)" ]; then
@@ -59,33 +98,37 @@ git fetch origin main
 git checkout main
 git reset --hard origin/main
 
-log "2/6 - Instalando dependencias (npm workspaces)"
+log "2/7 - Instalando dependencias (npm workspaces)"
 npm install --workspaces --include-workspace-root
 
-log "3/6 - Buildando o backend (prisma generate + tsc)"
+log "3/7 - Buildando o backend (prisma generate + tsc)"
 cd "$API_DIR"
 npx prisma generate
 npm run build
 
-log "4/6 - Rodando migrations do Prisma"
+log "4/7 - Backup do banco (antes das migrations)"
+fazer_backup
+
+log "5/7 - Rodando migrations do Prisma"
+cd "$API_DIR"
 npx prisma migrate deploy
 
-log "5/6 - Buildando o frontend (Angular, producao)"
+log "6/7 - Buildando o frontend (Angular, producao)"
 cd "$WEB_DIR"
 npm run build -- --configuration production
 
-log "6/6 - Reiniciando os processos no PM2 (api + worker)"
+log "7/7 - Reiniciando os processos no PM2 (api + worker)"
 cd "$ROOT_DIR"
 pm2 startOrRestart ecosystem.config.js --update-env
 pm2 save
 
-sleep 2
-
 log "Verificando os processos"
 pm2 status
 
-log "Checando as portas locais"
-curl -fsS -o /dev/null -w "api    (127.0.0.1:3070/api/health): %{http_code}\n" http://127.0.0.1:3070/api/health || echo "api    (127.0.0.1:3070/api/health): SEM RESPOSTA"
-curl -fsS -o /dev/null -w "web/nginx (127.0.0.1:80): %{http_code}\n" http://127.0.0.1:80/ || echo "web/nginx (127.0.0.1:80): SEM RESPOSTA"
+log "Health check da API"
+verificar_saude
+
+# O Nginx responde por host (server_name): 404 em 127.0.0.1 e normal, entao so informa.
+curl -sS -o /dev/null -w "web/nginx (127.0.0.1:80): %{http_code}\n" http://127.0.0.1:80/ || echo "web/nginx (127.0.0.1:80): SEM RESPOSTA"
 
 log "Deploy concluido"

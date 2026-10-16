@@ -16,6 +16,9 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Ambiente "production" do GitHub: aparece no histórico de deploys do repositório e permite, se
+    # um dia quiser, exigir uma aprovação extra antes de publicar (Settings > Environments).
+    environment: production
 
     steps:
       - name: Configurar SSH

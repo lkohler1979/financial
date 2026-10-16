@@ -11,6 +11,6 @@
 - [ ] A branch segue o padrão `tipo/NN-descricao-curta`
 - [ ] Lint, formatação e testes passam (o CI confirma)
 - [ ] Teste novo ou atualizado para o que mudou
-- [ ] Se há migration: foi gerada pelo Prisma, não edita migration já aplicada e é compatível com o código antigo (o deploy faz backup antes, mas o banco não tem rollback)
+- [ ] Se há migration: foi gerada pelo Prisma, não edita migration já aplicada e é compatível com o código antigo (o banco não tem rollback e o backup automático do deploy está desligado)
 - [ ] Se mexe em dinheiro, cobrança ou NFS-e: valores e arredondamentos conferidos
 - [ ] Sem segredos, senhas ou dados reais de alunos no código ou nos testes

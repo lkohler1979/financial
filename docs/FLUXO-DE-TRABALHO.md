@@ -48,11 +48,13 @@ npm run lint && npm run format:check && npm run test:api
 
 O merge é feito pelo botão do PR, **squash**, e a branch é apagada. Ninguém faz push direto na `main`.
 O push na `main` roda o CI de novo e, passando, o job `deploy` publica em produção
-(`scripts/deploy.sh` na VPS): atualiza o código, instala, builda, **faz backup do banco**, aplica
-migrations, builda o front, reinicia o PM2 e confere o **health check** da API — se a API não responder,
-o deploy falha e o GitHub avisa.
+(`scripts/deploy.sh` na VPS): atualiza o código, instala, builda, aplica migrations, builda o front,
+reinicia o PM2 e confere o **health check** da API — se a API não responder, o deploy falha e o
+GitHub avisa.
 
-Backups ficam em `/opt/ethos-backups` na VPS (os 10 últimos).
+**Backup do banco: desligado por padrão** (decisão de 2026-10-16, para o futuro). Para ligar, defina
+`DEPLOY_BACKUP=1` no `/opt/financial/.env` e instale `postgresql-client` na VPS (`pg_dump`); os backups
+vão para `/opt/ethos-backups` (os 10 últimos) antes das migrations.
 
 ## 5. Correção urgente (hotfix)
 
@@ -63,8 +65,9 @@ Settings → Branches e religar em seguida.
 ## 6. Voltar atrás
 
 - **Código:** abra um PR de _revert_ (`git revert <commit>`); ele passa pelo mesmo fluxo.
-- **Banco:** migrations não têm rollback. Restaure o backup de `/opt/ethos-backups`
-  (`pg_restore --clean --if-exists -d <banco> <arquivo>`) e depois volte o código.
+- **Banco:** migrations não têm rollback. Com o backup automático desligado, a única proteção é um
+  backup manual (`pg_dump`) antes de mudanças arriscadas; com ele ligado, restaure de
+  `/opt/ethos-backups` (`pg_restore --clean --if-exists -d <banco> <arquivo>`) e depois volte o código.
 
 ## Configuração do repositório (já aplicada)
 

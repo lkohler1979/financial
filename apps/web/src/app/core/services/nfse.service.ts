@@ -2,7 +2,12 @@ import { HttpClient, HttpParams } from "@angular/common/http";
 import { inject, Injectable } from "@angular/core";
 import { Observable } from "rxjs";
 import { environment } from "../../../environments/environment";
-import { NfsePagamento, NfsePrevia, NfseResultadoEmissao, NfseSituacaoNacional } from "../models/nfse.model";
+import {
+  NfsePagamento,
+  NfsePrevia,
+  NfseResultadoEmissao,
+  NfseSituacaoNacional,
+} from "../models/nfse.model";
 
 @Injectable({ providedIn: "root" })
 export class NfseService {
@@ -41,7 +46,10 @@ export class NfseService {
 
   /** Emite a nota de um pagamento; `competencia` (AAAA-MM-DD) opcional. */
   emitirIndividual(parcelaId: string, competencia?: string): Observable<unknown> {
-    return this.http.post(`${this.baseUrl}/parcelas/${parcelaId}/emitir-individual`, competencia ? { competencia } : {});
+    return this.http.post(
+      `${this.baseUrl}/parcelas/${parcelaId}/emitir-individual`,
+      competencia ? { competencia } : {},
+    );
   }
 
   /** PDF (DANFSe) da nota emitida direto na SEFIN. */
@@ -53,8 +61,14 @@ export class NfseService {
     return this.http.get<NfseSituacaoNacional>(`${this.baseUrl}/nacional/situacao`);
   }
 
-  salvarCertificado(pfxBase64: string, senha: string): Observable<{ titular: string; cnpj: string | null; validoAte: string }> {
-    return this.http.put<{ titular: string; cnpj: string | null; validoAte: string }>(`${this.baseUrl}/certificado`, { pfxBase64, senha });
+  salvarCertificado(
+    pfxBase64: string,
+    senha: string,
+  ): Observable<{ titular: string; cnpj: string | null; validoAte: string }> {
+    return this.http.put<{ titular: string; cnpj: string | null; validoAte: string }>(
+      `${this.baseUrl}/certificado`,
+      { pfxBase64, senha },
+    );
   }
 
   removerCertificado(): Observable<void> {

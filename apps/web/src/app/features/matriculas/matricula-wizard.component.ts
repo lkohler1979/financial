@@ -32,8 +32,33 @@ import { TiposCobrancaService } from "../../core/services/tipos-cobranca.service
 import { formatarCpf, normalizarCpf, validarCpf } from "../../shared/utils/cpf.util";
 
 const UFS = [
-  "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR",
-  "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO",
+  "AC",
+  "AL",
+  "AP",
+  "AM",
+  "BA",
+  "CE",
+  "DF",
+  "ES",
+  "GO",
+  "MA",
+  "MT",
+  "MS",
+  "MG",
+  "PA",
+  "PB",
+  "PR",
+  "PE",
+  "PI",
+  "RJ",
+  "RN",
+  "RS",
+  "RO",
+  "RR",
+  "SC",
+  "SP",
+  "SE",
+  "TO",
 ];
 const GENEROS = ["Feminino", "Masculino", "Outro", "Prefiro não informar"];
 
@@ -96,7 +121,9 @@ function hojeIso(): string {
       <mat-stepper [linear]="true" #stepper>
         <mat-step [stepControl]="pessoal" label="Dados pessoais">
           <form [formGroup]="pessoal" class="pt-3">
-            <p class="text-xs font-medium text-gray-600 border-b pb-1 mb-3">DADOS PESSOAIS DO ALUNO</p>
+            <p class="text-xs font-medium text-gray-600 border-b pb-1 mb-3">
+              DADOS PESSOAIS DO ALUNO
+            </p>
             <div class="grid grid-cols-1 md:grid-cols-4 gap-x-4">
               <mat-form-field appearance="outline">
                 <mat-label>CPF</mat-label>
@@ -119,8 +146,8 @@ function hojeIso(): string {
 
               @if (alunoExistente) {
                 <p class="md:col-span-4 text-sm text-blue-700 mt-0 mb-3">
-                  Aluno já cadastrado (código {{ alunoExistente.codigo }}) — dados carregados; o
-                  que você alterar aqui atualiza o cadastro.
+                  Aluno já cadastrado (código {{ alunoExistente.codigo }}) — dados carregados; o que
+                  você alterar aqui atualiza o cadastro.
                 </p>
               }
 
@@ -202,7 +229,12 @@ function hojeIso(): string {
                 <div class="grid grid-cols-3 gap-x-3">
                   <mat-form-field appearance="outline">
                     <mat-label>CEP</mat-label>
-                    <input matInput formControlName="cep" placeholder="00000-000" (blur)="buscarCep()" />
+                    <input
+                      matInput
+                      formControlName="cep"
+                      placeholder="00000-000"
+                      (blur)="buscarCep()"
+                    />
                   </mat-form-field>
                   <mat-form-field appearance="outline" class="col-span-2">
                     <mat-label>Endereço</mat-label>
@@ -251,7 +283,10 @@ function hojeIso(): string {
             <div class="grid grid-cols-1 md:grid-cols-3 gap-x-4">
               <mat-form-field appearance="outline">
                 <mat-label>Nível de ensino</mat-label>
-                <mat-select formControlName="nivel" (selectionChange)="cursoForm.controls.cursoId.setValue('')">
+                <mat-select
+                  formControlName="nivel"
+                  (selectionChange)="cursoForm.controls.cursoId.setValue('')"
+                >
                   <mat-option value="">Todos</mat-option>
                   @for (n of niveis; track n) {
                     <mat-option [value]="n">{{ n }}</mat-option>
@@ -279,7 +314,9 @@ function hojeIso(): string {
               <p class="text-sm text-gray-500">Selecione o curso para ver as cobranças.</p>
             }
             @for (linha of linhas; track linha.tipo.id) {
-              <div class="grid grid-cols-2 md:grid-cols-7 gap-3 items-center bg-gray-50 rounded p-3 mb-2">
+              <div
+                class="grid grid-cols-2 md:grid-cols-7 gap-3 items-center bg-gray-50 rounded p-3 mb-2"
+              >
                 <div>
                   <p class="text-xs text-gray-500 m-0">Gerar</p>
                   <mat-checkbox
@@ -290,7 +327,11 @@ function hojeIso(): string {
                 </div>
                 <div class="md:col-span-2">
                   <p class="text-xs text-gray-500 m-0">Título</p>
-                  <span>{{ linha.tipo.nome }} ({{ linha.tipo.obrigatorio ? "Obrigatório" : "Opcional" }})</span>
+                  <span
+                    >{{ linha.tipo.nome }} ({{
+                      linha.tipo.obrigatorio ? "Obrigatório" : "Opcional"
+                    }})</span
+                  >
                 </div>
                 <mat-form-field appearance="outline" subscriptSizing="dynamic">
                   <mat-label>Forma</mat-label>
@@ -379,15 +420,22 @@ function hojeIso(): string {
             }
             <app-sacado-matricula (alterado)="aoMudarSacado($event)"></app-sacado-matricula>
 
-            <p class="text-xs font-medium text-gray-600 border-b pb-1 mb-3 mt-4">CUPOM DE DESCONTO</p>
+            <p class="text-xs font-medium text-gray-600 border-b pb-1 mb-3 mt-4">
+              CUPOM DE DESCONTO
+            </p>
             <div class="flex flex-wrap items-center gap-3">
               @if (cupom) {
                 <span class="text-sm">
-                  Cupom <strong>{{ cupom.codigo }}</strong>
-                  ({{ cupom.tipoDesconto === "PERCENTUAL" ? cupom.valor + "%" : (cupom.valor | currency: "BRL") }}
+                  Cupom <strong>{{ cupom.codigo }}</strong> ({{
+                    cupom.tipoDesconto === "PERCENTUAL"
+                      ? cupom.valor + "%"
+                      : (cupom.valor | currency: "BRL")
+                  }}
                   de desconto) aplicado
                 </span>
-                <button mat-stroked-button type="button" (click)="removerCupom()">Remover cupom</button>
+                <button mat-stroked-button type="button" (click)="removerCupom()">
+                  Remover cupom
+                </button>
               } @else {
                 <mat-form-field appearance="outline" subscriptSizing="dynamic">
                   <mat-label>Digite aqui o seu cupom</mat-label>
@@ -459,7 +507,13 @@ export class MatriculaWizardComponent implements OnInit {
   linhas: LinhaCobranca[] = [];
 
   readonly pessoal = this.fb.nonNullable.group({
-    cpf: ["", [Validators.required, (c: { value: string }) => (!c.value || validarCpf(c.value) ? null : { cpf: true })]],
+    cpf: [
+      "",
+      [
+        Validators.required,
+        (c: { value: string }) => (!c.value || validarCpf(c.value) ? null : { cpf: true }),
+      ],
+    ],
     nome: ["", Validators.required],
     genero: [""],
     dataNascimento: [""],
@@ -503,27 +557,31 @@ export class MatriculaWizardComponent implements OnInit {
     this.matriculasService.listarAgentes().subscribe((a) => (this.agentes = a));
     this.cursosService.listar({ situacao: true, pageSize: 100 }).subscribe((res) => {
       this.cursos = res.data;
-      this.niveis = [...new Set(res.data.map((c) => c.grauEnsino).filter((g): g is string => !!g))].sort();
+      this.niveis = [
+        ...new Set(res.data.map((c) => c.grauEnsino).filter((g): g is string => !!g)),
+      ].sort();
     });
-    forkJoin([this.tiposService.listar(), this.tiposService.formasPagamento()]).subscribe(([todos, formas]) => {
-      this.formas = formas;
-      // Renegociação etc. nascem de outro fluxo — não aparecem no cadastro.
-      const tipos = todos.filter((t) => t.disponivelNoCadastro);
-      this.tipos = tipos;
-      this.linhas = tipos.map((tipo) => ({
-        tipo,
-        gerar: tipo.obrigatorio,
-        formaPagamento:
-          tipo.formaPagamentoPadrao && formas.includes(tipo.formaPagamentoPadrao)
-            ? tipo.formaPagamentoPadrao
-            : (formas[0] ?? null),
-        numeroParcelas: tipo.opcoesParcelas[0] ?? 1,
-        primeiroVencimento: hojeIso(),
-        valorEditado: null,
-        editandoValor: false,
-        observacoes: "",
-      }));
-    });
+    forkJoin([this.tiposService.listar(), this.tiposService.formasPagamento()]).subscribe(
+      ([todos, formas]) => {
+        this.formas = formas;
+        // Renegociação etc. nascem de outro fluxo — não aparecem no cadastro.
+        const tipos = todos.filter((t) => t.disponivelNoCadastro);
+        this.tipos = tipos;
+        this.linhas = tipos.map((tipo) => ({
+          tipo,
+          gerar: tipo.obrigatorio,
+          formaPagamento:
+            tipo.formaPagamentoPadrao && formas.includes(tipo.formaPagamentoPadrao)
+              ? tipo.formaPagamentoPadrao
+              : (formas[0] ?? null),
+          numeroParcelas: tipo.opcoesParcelas[0] ?? 1,
+          primeiroVencimento: hojeIso(),
+          valorEditado: null,
+          editandoValor: false,
+          observacoes: "",
+        }));
+      },
+    );
   }
 
   cursosFiltrados(): Curso[] {
@@ -558,7 +616,10 @@ export class MatriculaWizardComponent implements OnInit {
     const valor = this.valorEfetivo(linha);
     if (valor === null || !this.cupom || !linha.tipo.aceitaCupom) return valor;
     const c = this.cupom;
-    const final = c.tipoDesconto === "PERCENTUAL" ? valor * (1 - Number(c.valor) / 100) : valor - Number(c.valor);
+    const final =
+      c.tipoDesconto === "PERCENTUAL"
+        ? valor * (1 - Number(c.valor) / 100)
+        : valor - Number(c.valor);
     return Math.round(final * 100) / 100;
   }
 
@@ -633,7 +694,8 @@ export class MatriculaWizardComponent implements OnInit {
         estadoNascimento: aluno.estadoNascimento ?? "",
         cidadeNascimento: aluno.cidadeNascimento ?? "",
         nomeMae: aluno.nomeMae ?? "",
-        agenteEducacionalId: aluno.agenteEducacionalId ?? this.pessoal.controls.agenteEducacionalId.value,
+        agenteEducacionalId:
+          aluno.agenteEducacionalId ?? this.pessoal.controls.agenteEducacionalId.value,
       });
       this.contato.patchValue({
         telefone1: aluno.telefone1 ?? "",
@@ -685,7 +747,9 @@ export class MatriculaWizardComponent implements OnInit {
       return;
     }
     if (!this.sacadoValido) {
-      this.snackBar.open("Revise os dados do responsável financeiro (CPF/CNPJ e nome)", "Fechar", { duration: 5000 });
+      this.snackBar.open("Revise os dados do responsável financeiro (CPF/CNPJ e nome)", "Fechar", {
+        duration: 5000,
+      });
       return;
     }
     const geradas = this.linhas.filter((l) => l.gerar);

@@ -12,7 +12,11 @@ sincronizacaoLegadoRouter.post(
   requireRole("ADMINISTRADOR", "FINANCEIRO"),
   sincronizacaoLegadoController.sincronizarMatricula,
 );
-sincronizacaoLegadoRouter.post("/lote", requireRole("ADMINISTRADOR"), sincronizacaoLegadoController.dispararLote);
+sincronizacaoLegadoRouter.post(
+  "/lote",
+  requireRole("ADMINISTRADOR"),
+  sincronizacaoLegadoController.dispararLote,
+);
 sincronizacaoLegadoRouter.get(
   "/lote/:jobId/status",
   requireRole("ADMINISTRADOR"),

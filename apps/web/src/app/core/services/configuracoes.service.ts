@@ -24,6 +24,14 @@ export class ConfiguracoesService {
   /** Apaga alunos, cursos, matrículas, parcelas, cobrança e histórico de
    * relatórios — usado para zerar dados de teste antes de importar uma
    * planilha real. Exige a frase de confirmação exata (validada no backend). */
+  /** Apaga só alunos, matrículas e parcelas (e dependentes), mantendo cursos — para reimportar do
+   * legado. Exige a frase de confirmação exata (validada no backend). */
+  limparAlunos(confirmacao: string): Observable<{ contagens: Record<string, number> }> {
+    return this.http.post<{ contagens: Record<string, number> }>(`${this.baseUrl}/limpar-alunos`, {
+      confirmacao,
+    });
+  }
+
   limparBase(confirmacao: string): Observable<{ contagens: ContagensLimpezaBase }> {
     return this.http.post<{ contagens: ContagensLimpezaBase }>(`${this.baseUrl}/limpar-base`, {
       confirmacao,

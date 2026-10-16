@@ -20,7 +20,15 @@ export interface ListarMatriculasParams {
 
 const incluiAlunoCurso = {
   aluno: {
-    select: { id: true, codigo: true, cpf: true, nome: true, email: true, telefone1: true, telefone2: true },
+    select: {
+      id: true,
+      codigo: true,
+      cpf: true,
+      nome: true,
+      email: true,
+      telefone1: true,
+      telefone2: true,
+    },
   },
   agenteEducacional: { select: { id: true, nome: true } },
   sacado: { select: { id: true, tipoPessoa: true, cpfCnpj: true, nome: true, email: true } },
@@ -112,8 +120,14 @@ export const matriculasRepository = {
   async create(data: Prisma.MatriculaCreateInput) {
     const numeroMatricula =
       data.numeroMatricula ??
-      (await proximoCodigoSequencial("MATRICULA", (data.dataMatricula as Date | undefined) ?? new Date()));
-    return prisma.matricula.create({ data: { ...data, numeroMatricula }, include: incluiAlunoCurso });
+      (await proximoCodigoSequencial(
+        "MATRICULA",
+        (data.dataMatricula as Date | undefined) ?? new Date(),
+      ));
+    return prisma.matricula.create({
+      data: { ...data, numeroMatricula },
+      include: incluiAlunoCurso,
+    });
   },
 
   update(id: string, data: Prisma.MatriculaUpdateInput) {

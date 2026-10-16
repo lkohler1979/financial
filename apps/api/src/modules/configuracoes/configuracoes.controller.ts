@@ -1,7 +1,11 @@
 import { Request, Response } from "express";
 import { asyncHandler } from "../../shared/utils/async-handler";
 import { usuarioAtual } from "../../shared/utils/http";
-import { atualizarConfiguracaoSchema, limparBaseSchema } from "./configuracoes.schema";
+import {
+  atualizarConfiguracaoSchema,
+  limparAlunosSchema,
+  limparBaseSchema,
+} from "./configuracoes.schema";
 import { configuracoesService } from "./configuracoes.service";
 
 export const configuracoesController = {
@@ -14,6 +18,12 @@ export const configuracoesController = {
     const input = atualizarConfiguracaoSchema.parse(req.body);
     const configuracao = await configuracoesService.atualizar(input, usuarioAtual(req));
     res.json(configuracao);
+  }),
+
+  limparAlunos: asyncHandler(async (req: Request, res: Response) => {
+    limparAlunosSchema.parse(req.body);
+    const contagens = await configuracoesService.limparAlunos(usuarioAtual(req));
+    res.json({ contagens });
   }),
 
   limparBase: asyncHandler(async (req: Request, res: Response) => {

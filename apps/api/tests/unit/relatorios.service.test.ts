@@ -210,7 +210,8 @@ describe("relatoriosService.buscarUltimoDocumentoGeradoPorMatricula", () => {
   it("repassa o resultado do repository (null quando nunca foi gerado)", async () => {
     repo.buscarUltimoDocumentoGeradoPorMatricula.mockResolvedValue(null);
 
-    const resultado = await relatoriosService.buscarUltimoDocumentoGeradoPorMatricula("matricula-1");
+    const resultado =
+      await relatoriosService.buscarUltimoDocumentoGeradoPorMatricula("matricula-1");
 
     expect(resultado).toBeNull();
     expect(repo.buscarUltimoDocumentoGeradoPorMatricula).toHaveBeenCalledWith("matricula-1");
@@ -223,7 +224,8 @@ describe("relatoriosService.buscarUltimoDocumentoGeradoPorMatricula", () => {
       temPdf: true,
     });
 
-    const resultado = await relatoriosService.buscarUltimoDocumentoGeradoPorMatricula("matricula-1");
+    const resultado =
+      await relatoriosService.buscarUltimoDocumentoGeradoPorMatricula("matricula-1");
 
     expect(resultado).toEqual({ relatorioId: "relatorio-9", temDocx: true, temPdf: true });
   });

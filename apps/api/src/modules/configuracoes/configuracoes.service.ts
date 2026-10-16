@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { PagamentoProvedor, Prisma } from "@prisma/client";
 import { registrarAuditoria } from "../auditoria/auditoria.service";
+import { armazenamento } from "../../shared/armazenamento/armazenamento";
 import { criptografar } from "../../shared/utils/criptografia";
 import { reprogramarSincronizacaoAgendada } from "../../jobs/queues/sincronizacao-legado.queue";
 import { configuracoesRepository } from "./configuracoes.repository";
@@ -99,7 +100,9 @@ function serializarConfiguracao(configuracao: {
     asaasApiKeyConfigurada: Boolean(asaasApiKeyCriptografada),
     asaasWebhookTokenConfigurado: Boolean(asaasWebhookTokenCriptografado),
     redePvConfigurado: Boolean(redePvCriptografado),
-    nfseCertificadoConfigurado: Boolean(nfseCertificadoCriptografado && nfseCertificadoSenhaCriptografada),
+    nfseCertificadoConfigurado: Boolean(
+      nfseCertificadoCriptografado && nfseCertificadoSenhaCriptografada,
+    ),
     nfseAliquotaSimples: Number(configuracao.nfseAliquotaSimples),
     redeChaveIntegracaoConfigurada: Boolean(redeChaveIntegracaoCriptografada),
     redeWebhookTokenConfigurado: Boolean(redeWebhookTokenCriptografado),
@@ -176,31 +179,53 @@ export const configuracoesService = {
         : {}),
       ...(input.nfseAtiva !== undefined ? { nfseAtiva: input.nfseAtiva } : {}),
       ...(input.nfseDiaLimite !== undefined ? { nfseDiaLimite: input.nfseDiaLimite } : {}),
-      ...(input.nfseServicoCodigo !== undefined ? { nfseServicoCodigo: input.nfseServicoCodigo } : {}),
+      ...(input.nfseServicoCodigo !== undefined
+        ? { nfseServicoCodigo: input.nfseServicoCodigo }
+        : {}),
       ...(input.nfseServicoNome !== undefined ? { nfseServicoNome: input.nfseServicoNome } : {}),
-      ...(input.nfseServicoDescricao !== undefined ? { nfseServicoDescricao: input.nfseServicoDescricao } : {}),
+      ...(input.nfseServicoDescricao !== undefined
+        ? { nfseServicoDescricao: input.nfseServicoDescricao }
+        : {}),
       ...(input.nfseMunicipalServiceId !== undefined
         ? { nfseMunicipalServiceId: input.nfseMunicipalServiceId || null }
         : {}),
-      ...(input.nfseIssPercentual !== undefined ? { nfseIssPercentual: input.nfseIssPercentual } : {}),
+      ...(input.nfseIssPercentual !== undefined
+        ? { nfseIssPercentual: input.nfseIssPercentual }
+        : {}),
       ...(input.nfseProvedor !== undefined ? { nfseProvedor: input.nfseProvedor } : {}),
       ...(input.nfseAmbiente !== undefined ? { nfseAmbiente: input.nfseAmbiente } : {}),
-      ...(input.nfsePrestadorCnpj !== undefined ? { nfsePrestadorCnpj: input.nfsePrestadorCnpj || null } : {}),
+      ...(input.nfsePrestadorCnpj !== undefined
+        ? { nfsePrestadorCnpj: input.nfsePrestadorCnpj || null }
+        : {}),
       ...(input.nfsePrestadorInscricaoMunicipal !== undefined
         ? { nfsePrestadorInscricaoMunicipal: input.nfsePrestadorInscricaoMunicipal || null }
         : {}),
-      ...(input.nfsePrestadorTelefone !== undefined ? { nfsePrestadorTelefone: input.nfsePrestadorTelefone || null } : {}),
-      ...(input.nfsePrestadorEmail !== undefined ? { nfsePrestadorEmail: input.nfsePrestadorEmail || null } : {}),
-      ...(input.nfseMunicipioIbge !== undefined ? { nfseMunicipioIbge: input.nfseMunicipioIbge || null } : {}),
+      ...(input.nfsePrestadorTelefone !== undefined
+        ? { nfsePrestadorTelefone: input.nfsePrestadorTelefone || null }
+        : {}),
+      ...(input.nfsePrestadorEmail !== undefined
+        ? { nfsePrestadorEmail: input.nfsePrestadorEmail || null }
+        : {}),
+      ...(input.nfseMunicipioIbge !== undefined
+        ? { nfseMunicipioIbge: input.nfseMunicipioIbge || null }
+        : {}),
       ...(input.nfseOpcaoSimples !== undefined ? { nfseOpcaoSimples: input.nfseOpcaoSimples } : {}),
-      ...(input.nfseRegimeApuracaoSn !== undefined ? { nfseRegimeApuracaoSn: input.nfseRegimeApuracaoSn } : {}),
-      ...(input.nfseRegimeEspecial !== undefined ? { nfseRegimeEspecial: input.nfseRegimeEspecial } : {}),
-      ...(input.nfseAliquotaSimples !== undefined ? { nfseAliquotaSimples: input.nfseAliquotaSimples } : {}),
+      ...(input.nfseRegimeApuracaoSn !== undefined
+        ? { nfseRegimeApuracaoSn: input.nfseRegimeApuracaoSn }
+        : {}),
+      ...(input.nfseRegimeEspecial !== undefined
+        ? { nfseRegimeEspecial: input.nfseRegimeEspecial }
+        : {}),
+      ...(input.nfseAliquotaSimples !== undefined
+        ? { nfseAliquotaSimples: input.nfseAliquotaSimples }
+        : {}),
       ...(input.nfseCodigoTributacaoMunicipal !== undefined
         ? { nfseCodigoTributacaoMunicipal: input.nfseCodigoTributacaoMunicipal || null }
         : {}),
       ...(input.nfseSerieDps !== undefined ? { nfseSerieDps: input.nfseSerieDps } : {}),
-      ...(input.nfseProximoNumeroDps !== undefined ? { nfseProximoNumeroDps: input.nfseProximoNumeroDps } : {}),
+      ...(input.nfseProximoNumeroDps !== undefined
+        ? { nfseProximoNumeroDps: input.nfseProximoNumeroDps }
+        : {}),
       ...(input.redeCartaoMaxParcelas !== undefined
         ? { redeCartaoMaxParcelas: input.redeCartaoMaxParcelas }
         : {}),
@@ -241,6 +266,34 @@ export const configuracoesService = {
     }
 
     return serializarConfiguracao(configuracao);
+  },
+
+  /**
+   * Apaga alunos, matrículas e parcelas (e o que depende deles) para reimportar do legado.
+   * Os cursos ficam. A frase de confirmação já foi validada pelo Zod (controller). Os arquivos
+   * dos documentos são removidos do armazenamento em seguida (best-effort).
+   */
+  async limparAlunos(usuarioId: string) {
+    const { chavesArquivos, contagens } =
+      await configuracoesRepository.limparAlunosMatriculasParcelas();
+
+    for (const chave of chavesArquivos) {
+      try {
+        await armazenamento.remover(chave);
+      } catch {
+        // Arquivo já removido/indisponível — não impede a limpeza.
+      }
+    }
+
+    await registrarAuditoria({
+      usuarioId,
+      entidade: "BaseDados",
+      entidadeId: "limpeza-alunos",
+      acao: "EXCLUSAO",
+      detalhes: contagens as unknown as Prisma.InputJsonValue,
+    });
+
+    return contagens;
   },
 
   /**

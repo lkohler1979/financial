@@ -10,9 +10,9 @@ export class UsuariosService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiUrl}/usuarios`;
 
-  listar(opcoes: { busca?: string; page?: number; pageSize?: number } = {}): Observable<
-    Paginado<Usuario>
-  > {
+  listar(
+    opcoes: { busca?: string; page?: number; pageSize?: number } = {},
+  ): Observable<Paginado<Usuario>> {
     let params = new HttpParams();
     if (opcoes.busca) params = params.set("busca", opcoes.busca);
     if (opcoes.page) params = params.set("page", opcoes.page);

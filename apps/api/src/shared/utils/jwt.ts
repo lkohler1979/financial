@@ -33,9 +33,13 @@ export function verificarToken(token: string): TokenPayload {
 
 /** Token da área do aluno (`tipo` ALUNO, sub = id do aluno) ou do sacado
  * (`tipo` SACADO, sub = id do sacado — vê só os títulos que paga). */
-export function gerarTokenAluno(payload: Omit<TokenAlunoPayload, "tipo"> & { tipo?: "ALUNO" | "SACADO" }): string {
+export function gerarTokenAluno(
+  payload: Omit<TokenAlunoPayload, "tipo"> & { tipo?: "ALUNO" | "SACADO" },
+): string {
   const expiresIn = process.env.JWT_ALUNO_EXPIRES_IN ?? "2h";
-  return jwt.sign({ ...payload, tipo: payload.tipo ?? "ALUNO" }, segredo(), { expiresIn } as jwt.SignOptions);
+  return jwt.sign({ ...payload, tipo: payload.tipo ?? "ALUNO" }, segredo(), {
+    expiresIn,
+  } as jwt.SignOptions);
 }
 
 /** Retorna o payload só se for token da área do aluno/sacado; null para token de usuário. */

@@ -36,6 +36,10 @@ export interface LegadoPessoaCurso {
   alunocursoSituacao: string;
   cursoId: string;
   cursoNome: string;
+  /** Sigla do curso no legado (pode vir vazia). */
+  cursoSigla: string;
+  /** Oferta do curso (`cursocampus_id`): é o que os títulos trazem para identificar o curso. */
+  cursocampusId: string;
 }
 
 /**
@@ -75,6 +79,10 @@ export interface LegadoTituloResumo {
   tipoTituloId: number | null;
   tipoTituloNome: string | null;
   tituloObservacoes: string | null;
+  /** Oferta/nome/sigla do curso do título — a busca por pessoa só traz o 1º curso do aluno; os
+   * demais só aparecem aqui. */
+  cursocampusId: string;
+  cursoSigla: string;
 }
 
 export interface LegadoTituloDetalhe {
@@ -167,7 +175,11 @@ export class LegadoClient {
     this.cookie = cookie;
   }
 
-  private async requisitar(caminho: string, init: RequestInit = {}, tentouRelogar = false): Promise<Response> {
+  private async requisitar(
+    caminho: string,
+    init: RequestInit = {},
+    tentouRelogar = false,
+  ): Promise<Response> {
     if (!this.cookie) await this.login();
 
     const resposta = await fetch(`${this.config.baseUrl}${caminho}`, {
@@ -241,6 +253,8 @@ export class LegadoClient {
       alunocursoSituacao: String(d.alunocurso_situacao ?? d.alunocursoSituacao ?? ""),
       cursoId: String(d.curso_id ?? d.cursoId ?? ""),
       cursoNome: String(d.curso_nome ?? d.cursoNome ?? ""),
+      cursoSigla: String(d.cursoSigla ?? d.curso_sigla ?? ""),
+      cursocampusId: String(d.cursocampus_id ?? d.cursocampusId ?? ""),
     }));
   }
 
@@ -307,6 +321,8 @@ export class LegadoClient {
           tipoTituloId: d.tipotitulo_id != null ? Number(d.tipotitulo_id) : null,
           tipoTituloNome: d.tipotitulo_nome != null ? String(d.tipotitulo_nome) : null,
           tituloObservacoes: d.titulo_observacoes != null ? String(d.titulo_observacoes) : null,
+          cursocampusId: String(d.cursocampus_id ?? ""),
+          cursoSigla: String(d.curso_sigla ?? ""),
         });
       }
 

@@ -1,10 +1,11 @@
 import { CurrencyPipe, DatePipe, DecimalPipe } from "@angular/common";
-import { Component, inject, OnInit } from "@angular/core";
+import { Component, inject, OnInit, viewChild } from "@angular/core";
 import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressBarModule } from "@angular/material/progress-bar";
 import { MatTabsModule } from "@angular/material/tabs";
 import { DashboardService } from "../../core/services/dashboard.service";
+import { DashboardVisaoGeralComponent } from "./dashboard-visao-geral.component";
 import { DashboardCobranca, DashboardGeral } from "../../core/models/dashboard.model";
 
 @Component({
@@ -14,6 +15,7 @@ import { DashboardCobranca, DashboardGeral } from "../../core/models/dashboard.m
     CurrencyPipe,
     DatePipe,
     DecimalPipe,
+    DashboardVisaoGeralComponent,
     MatButtonModule,
     MatIconModule,
     MatProgressBarModule,
@@ -32,7 +34,11 @@ import { DashboardCobranca, DashboardGeral } from "../../core/models/dashboard.m
     }
 
     <mat-tab-group>
-      <mat-tab label="Geral">
+      <mat-tab label="Visão geral">
+        <app-dashboard-visao-geral></app-dashboard-visao-geral>
+      </mat-tab>
+
+      <mat-tab label="Inadimplência">
         @if (geral; as d) {
           <div class="pt-4">
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
@@ -344,7 +350,11 @@ export class DashboardComponent implements OnInit {
     this.carregar();
   }
 
+  /** Aba "Visão geral" (carrega os próprios dados; o botão Atualizar também a recarrega). */
+  private readonly visao = viewChild(DashboardVisaoGeralComponent);
+
   carregar(): void {
+    this.visao()?.carregar();
     this.carregandoGeral = true;
     this.carregandoCobranca = true;
 

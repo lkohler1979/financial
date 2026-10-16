@@ -21,7 +21,9 @@ export async function municipioPorCep(cep: string): Promise<string | null> {
   const digitos = apenasDigitos(cep);
   if (digitos.length !== 8) return null;
   try {
-    const resposta = await fetch(`https://viacep.com.br/ws/${digitos}/json/`, { signal: AbortSignal.timeout(5000) });
+    const resposta = await fetch(`https://viacep.com.br/ws/${digitos}/json/`, {
+      signal: AbortSignal.timeout(5000),
+    });
     const dados = (await resposta.json()) as { ibge?: string; erro?: boolean };
     return !dados.erro && dados.ibge && /^\d{7}$/.test(dados.ibge) ? dados.ibge : null;
   } catch {
@@ -34,19 +36,26 @@ export function pendenciasDaConfiguracao(config: Config): string[] {
   const pendencias: string[] = [];
   if (!config.nfseCertificadoCriptografado || !config.nfseCertificadoSenhaCriptografada) {
     pendencias.push("certificado digital A1 não cadastrado");
-  } else if (config.nfseCertificadoValidoAte && config.nfseCertificadoValidoAte.getTime() < Date.now()) {
+  } else if (
+    config.nfseCertificadoValidoAte &&
+    config.nfseCertificadoValidoAte.getTime() < Date.now()
+  ) {
     pendencias.push("certificado digital vencido");
   }
-  if (apenasDigitos(config.nfsePrestadorCnpj ?? config.nfseCertificadoCnpj).length !== 14) pendencias.push("CNPJ do prestador");
-  if (!/^\d{7}$/.test(config.nfseMunicipioIbge ?? "")) pendencias.push("código IBGE do município (7 dígitos)");
-  if (codigoTributacaoNacional(config.nfseServicoCodigo).length !== 6) pendencias.push("código do serviço (ex.: 08.01.01)");
+  if (apenasDigitos(config.nfsePrestadorCnpj ?? config.nfseCertificadoCnpj).length !== 14)
+    pendencias.push("CNPJ do prestador");
+  if (!/^\d{7}$/.test(config.nfseMunicipioIbge ?? ""))
+    pendencias.push("código IBGE do município (7 dígitos)");
+  if (codigoTributacaoNacional(config.nfseServicoCodigo).length !== 6)
+    pendencias.push("código do serviço (ex.: 08.01.01)");
   return pendencias;
 }
 
 /** Abre o certificado guardado (decifra o .pfx e a senha). */
 export function certificadoDaConfiguracao(config: Config): CertificadoA1 {
   const pendencias = pendenciasDaConfiguracao(config);
-  if (pendencias.length) throw new ValidationError(`Emissão direta não configurada: ${pendencias.join("; ")}`);
+  if (pendencias.length)
+    throw new ValidationError(`Emissão direta não configurada: ${pendencias.join("; ")}`);
   return lerCertificadoA1(
     Buffer.from(decifrar(config.nfseCertificadoCriptografado as string), "base64"),
     decifrar(config.nfseCertificadoSenhaCriptografada as string),
@@ -87,16 +96,26 @@ export const nfseNacionalService = {
       nfseCertificadoCnpj: certificado.cnpj,
       nfseCertificadoValidoAte: certificado.validoAte,
       // Primeira vez: já sugere o CNPJ do certificado como prestador.
-      ...(!atual.nfsePrestadorCnpj && certificado.cnpj ? { nfsePrestadorCnpj: certificado.cnpj } : {}),
+      ...(!atual.nfsePrestadorCnpj && certificado.cnpj
+        ? { nfsePrestadorCnpj: certificado.cnpj }
+        : {}),
     });
     await registrarAuditoria({
       usuarioId,
       entidade: "Configuracao",
       entidadeId: atual.id,
       acao: "ATUALIZACAO",
-      detalhes: { acao: "nfse_certificado_cadastrado", titular: certificado.titular, validoAte: certificado.validoAte.toISOString() },
+      detalhes: {
+        acao: "nfse_certificado_cadastrado",
+        titular: certificado.titular,
+        validoAte: certificado.validoAte.toISOString(),
+      },
     });
-    return { titular: certificado.titular, cnpj: certificado.cnpj, validoAte: certificado.validoAte };
+    return {
+      titular: certificado.titular,
+      cnpj: certificado.cnpj,
+      validoAte: certificado.validoAte,
+    };
   },
 
   async removerCertificado(usuarioId: string) {
@@ -129,10 +148,14 @@ export const nfseNacionalService = {
         cnpj: config.nfsePrestadorCnpj ?? config.nfseCertificadoCnpj ?? "",
       });
       await sefin.consultarDps(id);
-      return { ok: true, mensagem: `Conexão com a SEFIN (${config.nfseAmbiente === "PRODUCAO" ? "produção" : "homologação"}) funcionando.` };
+      return {
+        ok: true,
+        mensagem: `Conexão com a SEFIN (${config.nfseAmbiente === "PRODUCAO" ? "produção" : "homologação"}) funcionando.`,
+      };
     } catch (erro) {
       // Uma rejeição de regra significa que a SEFIN respondeu e aceitou o certificado.
-      if (erro instanceof NfseRejeitadaError) return { ok: true, mensagem: `A SEFIN respondeu: ${erro.message}` };
+      if (erro instanceof NfseRejeitadaError)
+        return { ok: true, mensagem: `A SEFIN respondeu: ${erro.message}` };
       return { ok: false, mensagem: mensagem(erro) };
     }
   },
@@ -164,8 +187,16 @@ export const nfseNacionalService = {
 
     try {
       if (jaTinhaNumero) {
-        const chave = await cliente.consultarDps(montarIdDps({ serie, numero, municipioIbge, cnpj }));
-        if (chave) return await this.gravarNota(parcela.id, chave, await cliente.consultarNfse(chave), competencia);
+        const chave = await cliente.consultarDps(
+          montarIdDps({ serie, numero, municipioIbge, cnpj }),
+        );
+        if (chave)
+          return await this.gravarNota(
+            parcela.id,
+            chave,
+            await cliente.consultarNfse(chave),
+            competencia,
+          );
       }
 
       let endereco: EnderecoTomadorDps | null = null;
@@ -200,7 +231,12 @@ export const nfseNacionalService = {
           regimeEspecial: config.nfseRegimeEspecial,
           municipioIbge,
         },
-        tomador: { documento: tomador.documento, nome: tomador.nome, email: tomador.email, endereco },
+        tomador: {
+          documento: tomador.documento,
+          nome: tomador.nome,
+          email: tomador.email,
+          endereco,
+        },
         servico: {
           codigoTributacaoNacional: codigoTributacaoNacional(config.nfseServicoCodigo),
           codigoTributacaoMunicipal: config.nfseCodigoTributacaoMunicipal,
@@ -221,7 +257,12 @@ export const nfseNacionalService = {
     }
   },
 
-  async gravarNota(parcelaId: string, chaveAcesso: string, xml: string, competencia: string): Promise<string> {
+  async gravarNota(
+    parcelaId: string,
+    chaveAcesso: string,
+    xml: string,
+    competencia: string,
+  ): Promise<string> {
     await nfseRepository.update(parcelaId, {
       nfseChaveAcesso: chaveAcesso,
       nfseStatus: "AUTORIZADA",
@@ -235,10 +276,14 @@ export const nfseNacionalService = {
   },
 
   /** PDF (DANFSe) de uma nota emitida direto na SEFIN. */
-  async baixarDanfse(parcelaId: string, cliente?: SefinClient): Promise<{ pdf: Buffer; nomeArquivo: string }> {
+  async baixarDanfse(
+    parcelaId: string,
+    cliente?: SefinClient,
+  ): Promise<{ pdf: Buffer; nomeArquivo: string }> {
     const parcela = await nfseRepository.findById(parcelaId);
     if (!parcela) throw new NotFoundError("Parcela não encontrada");
-    if (!parcela.nfseChaveAcesso) throw new ValidationError("Esta nota não foi emitida direto na SEFIN — use o PDF do Asaas");
+    if (!parcela.nfseChaveAcesso)
+      throw new ValidationError("Esta nota não foi emitida direto na SEFIN — use o PDF do Asaas");
     const config = await configuracoesRepository.obterOuCriar();
     const pdf = await (cliente ?? criarClienteSefin(config)).baixarDanfse(parcela.nfseChaveAcesso);
     return { pdf, nomeArquivo: `NFSe-${parcela.nfseNumero ?? parcela.nfseChaveAcesso}.pdf` };

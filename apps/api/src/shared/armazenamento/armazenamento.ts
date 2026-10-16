@@ -16,11 +16,17 @@ export interface Armazenamento {
   remover(chave: string): Promise<void>;
 }
 
-const RAIZ = path.resolve(process.cwd(), process.env.ARMAZENAMENTO_DIR ?? "output/documentos-alunos");
+const RAIZ = path.resolve(
+  process.cwd(),
+  process.env.ARMAZENAMENTO_DIR ?? "output/documentos-alunos",
+);
 
 export const armazenamentoLocal: Armazenamento = {
   async salvar(pasta, nomeOriginal, conteudo) {
-    const chave = path.posix.join(pasta, `${randomUUID()}${path.extname(nomeOriginal).toLowerCase()}`);
+    const chave = path.posix.join(
+      pasta,
+      `${randomUUID()}${path.extname(nomeOriginal).toLowerCase()}`,
+    );
     const destino = path.join(RAIZ, chave);
     await fs.promises.mkdir(path.dirname(destino), { recursive: true });
     await fs.promises.writeFile(destino, conteudo);

@@ -43,7 +43,10 @@ export class AlunoAuthService {
     segundoFator: { dataNascimento?: string; numeroMatricula?: string },
   ): Observable<LoginAlunoResposta> {
     return this.http
-      .post<LoginAlunoResposta>(`${environment.apiUrl}/portal/login`, { documento, ...segundoFator })
+      .post<LoginAlunoResposta>(`${environment.apiUrl}/portal/login`, {
+        documento,
+        ...segundoFator,
+      })
       .pipe(
         tap((r) => {
           localStorage.setItem(CHAVE_TOKEN, r.token);

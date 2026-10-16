@@ -1,10 +1,6 @@
 import path from "node:path";
 import type { StatusSolicitacao } from "@prisma/client";
-import {
-  ConflictError,
-  NotFoundError,
-  ValidationError,
-} from "../../shared/errors/app-error";
+import { ConflictError, NotFoundError, ValidationError } from "../../shared/errors/app-error";
 import { armazenamento } from "../../shared/armazenamento/armazenamento";
 import { registrarAuditoria } from "../auditoria/auditoria.service";
 import { solicitacoesRepository } from "./solicitacoes.repository";
@@ -36,7 +32,9 @@ export const solicitacoesService = {
 
   async criarTipo(input: CriarTipoSolicitacaoInput, usuarioId: string) {
     if (await solicitacoesRepository.findTipoPorNome(input.nome)) {
-      throw new ConflictError("Já existe um tipo de solicitação com este nome", { nome: input.nome });
+      throw new ConflictError("Já existe um tipo de solicitação com este nome", {
+        nome: input.nome,
+      });
     }
     const tipo = await solicitacoesRepository.criarTipo(input);
     await registrarAuditoria({
@@ -57,7 +55,9 @@ export const solicitacoesService = {
       input.nome !== atual.nome &&
       (await solicitacoesRepository.findTipoPorNome(input.nome))
     ) {
-      throw new ConflictError("Já existe um tipo de solicitação com este nome", { nome: input.nome });
+      throw new ConflictError("Já existe um tipo de solicitação com este nome", {
+        nome: input.nome,
+      });
     }
     const tipo = await solicitacoesRepository.atualizarTipo(id, input);
     await registrarAuditoria({

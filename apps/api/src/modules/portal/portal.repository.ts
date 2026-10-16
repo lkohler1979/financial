@@ -27,7 +27,10 @@ export const portalRepository = {
 
   /** Segundo fator do CNPJ: o número de uma matrícula que o sacado paga. */
   findMatriculaDoSacadoPorNumero(sacadoId: string, numeroMatricula: string) {
-    return prisma.matricula.findFirst({ where: { sacadoId, numeroMatricula }, select: { id: true } });
+    return prisma.matricula.findFirst({
+      where: { sacadoId, numeroMatricula },
+      select: { id: true },
+    });
   },
 
   findAluno(id: string) {
@@ -51,7 +54,10 @@ export const portalRepository = {
   },
 
   findMatriculaDoAluno(matriculaId: string, alunoId: string) {
-    return prisma.matricula.findFirst({ where: { id: matriculaId, alunoId }, select: { id: true } });
+    return prisma.matricula.findFirst({
+      where: { id: matriculaId, alunoId },
+      select: { id: true },
+    });
   },
 
   listarParcelas(sessao: SessaoPortal) {

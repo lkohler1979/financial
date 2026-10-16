@@ -10,7 +10,9 @@ describe("proximoCodigoSequencial", () => {
       sequencial: { upsert },
     } as never);
     expect(codigo).toBe("202600007");
-    expect(upsert).toHaveBeenCalledWith(expect.objectContaining({ where: { chave: "ALUNO-2026" } }));
+    expect(upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { chave: "ALUNO-2026" } }),
+    );
   });
 
   it("reinicia por ano (chave diferente) e usa chave por tipo", async () => {

@@ -61,7 +61,11 @@ import { CursoPayload } from "../../core/models/curso.model";
 
         <mat-form-field appearance="outline">
           <mat-label>Nível de ensino</mat-label>
-          <input matInput formControlName="grauEnsino" placeholder="Lato Sensu, Aperfeiçoamento..." />
+          <input
+            matInput
+            formControlName="grauEnsino"
+            placeholder="Lato Sensu, Aperfeiçoamento..."
+          />
           <mat-hint>Sugestão ao criar uma matrícula — ajustável por aluno</mat-hint>
         </mat-form-field>
       </div>

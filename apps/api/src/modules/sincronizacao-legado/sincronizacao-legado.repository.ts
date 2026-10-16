@@ -19,7 +19,10 @@ export const sincronizacaoLegadoRepository = {
         totalConsultados: input.totalConsultados,
         parcelasAtualizadas: input.parcelasAtualizadas,
         naoEncontrados: input.naoEncontrados,
-        erros: input.erros && input.erros.length > 0 ? (input.erros as unknown as Prisma.InputJsonValue) : undefined,
+        erros:
+          input.erros && input.erros.length > 0
+            ? (input.erros as unknown as Prisma.InputJsonValue)
+            : undefined,
       },
     });
   },

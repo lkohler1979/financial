@@ -63,7 +63,11 @@ export const redeService = {
    *   "estorno em processamento" até `conferirEstorno` confirmar com a Rede.
    * Só ADMINISTRADOR (ver rota). Fica na Auditoria com o motivo.
    */
-  async estornarCartao(parcelaId: string, motivo: string, usuarioId: string): Promise<ResultadoEstorno> {
+  async estornarCartao(
+    parcelaId: string,
+    motivo: string,
+    usuarioId: string,
+  ): Promise<ResultadoEstorno> {
     const parcela = await financeiroRepository.findById(parcelaId);
     if (!parcela) throw new NotFoundError("Parcela não encontrada");
     exigirPagaNoCartaoRede(parcela);
@@ -107,7 +111,10 @@ export const redeService = {
    * Confere na Rede um estorno em processamento: concluído → parcela reabre;
    * negado → some a marcação de "em processamento" (a parcela segue paga).
    */
-  async conferirEstorno(parcelaId: string, usuarioId: string | null): Promise<"CONCLUIDO" | "NEGADO" | "PROCESSANDO"> {
+  async conferirEstorno(
+    parcelaId: string,
+    usuarioId: string | null,
+  ): Promise<"CONCLUIDO" | "NEGADO" | "PROCESSANDO"> {
     const parcela = await financeiroRepository.findById(parcelaId);
     if (!parcela) throw new NotFoundError("Parcela não encontrada");
     if (!parcela.cartaoEstornoId || !parcela.asaasPaymentId) {
@@ -130,14 +137,22 @@ export const redeService = {
         entidade: "Parcela",
         entidadeId: parcela.id,
         acao: "ATUALIZACAO",
-        detalhes: { acao: "estorno_cartao_negado", tid: parcela.asaasPaymentId, refundId: parcela.cartaoEstornoId },
+        detalhes: {
+          acao: "estorno_cartao_negado",
+          tid: parcela.asaasPaymentId,
+          refundId: parcela.cartaoEstornoId,
+        },
       });
     }
     return "NEGADO";
   },
 
   /** Job diário: confere todos os estornos que a Rede ainda estava processando. */
-  async conferirEstornosPendentes(): Promise<{ conferidos: number; concluidos: number; negados: number }> {
+  async conferirEstornosPendentes(): Promise<{
+    conferidos: number;
+    concluidos: number;
+    negados: number;
+  }> {
     const pendentes = await financeiroRepository.listarComEstornoPendente();
     const usuarioSistema = await sincronizacaoLegadoRepository.obterUsuarioSistema();
     const resumo = { conferidos: 0, concluidos: 0, negados: 0 };
@@ -148,7 +163,10 @@ export const redeService = {
         if (r === "CONCLUIDO") resumo.concluidos += 1;
         if (r === "NEGADO") resumo.negados += 1;
       } catch (erro) {
-        console.error(`[rede] falha ao conferir estorno da parcela ${parcela.id}`, erro instanceof Error ? erro.message : erro);
+        console.error(
+          `[rede] falha ao conferir estorno da parcela ${parcela.id}`,
+          erro instanceof Error ? erro.message : erro,
+        );
       }
     }
     return resumo;
@@ -190,7 +208,10 @@ export const redeService = {
    * Quem chama (portal do aluno) já garantiu que a parcela é de quem está
    * pagando e aplicou o limite de tentativas.
    */
-  async pagarComCartao(parcelaId: string, cartao: PagamentoCartaoInput): Promise<ResultadoPagamentoCartao> {
+  async pagarComCartao(
+    parcelaId: string,
+    cartao: PagamentoCartaoInput,
+  ): Promise<ResultadoPagamentoCartao> {
     const parcela = await financeiroRepository.findById(parcelaId);
     if (!parcela) throw new NotFoundError("Parcela não encontrada");
     if (parcela.status !== "EM_ABERTO") {
@@ -208,7 +229,9 @@ export const redeService = {
       throw new ValidationError("O pagamento por cartão da Rede não está habilitado");
     }
     if (!configuracao.redePvCriptografado || !configuracao.redeChaveIntegracaoCriptografada) {
-      throw new ValidationError("Integração com a Rede não está configurada (tela de Configurações)");
+      throw new ValidationError(
+        "Integração com a Rede não está configurada (tela de Configurações)",
+      );
     }
     if (cartao.parcelas > configuracao.redeCartaoMaxParcelas) {
       throw new ValidationError(

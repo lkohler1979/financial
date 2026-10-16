@@ -1,9 +1,13 @@
 import { Request, Response } from "express";
 import { asyncHandler } from "../../shared/utils/async-handler";
-import { usuarioAtual } from "../../shared/utils/http";
+import { paramString, usuarioAtual } from "../../shared/utils/http";
 import { importacaoLegadoService } from "./importacao-legado.service";
 import { importacaoLegadoLoteService } from "./importacao-legado-lote.service";
-import { buscarPorCpfSchema, confirmarImportacaoSchema, iniciarLoteSchema } from "./importacao-legado.schema";
+import {
+  buscarPorCpfSchema,
+  confirmarImportacaoSchema,
+  iniciarLoteSchema,
+} from "./importacao-legado.schema";
 
 export const importacaoLegadoController = {
   buscarPorCpf: asyncHandler(async (req: Request, res: Response) => {
@@ -23,6 +27,19 @@ export const importacaoLegadoController = {
     const { limite } = iniciarLoteSchema.parse(req.body ?? {});
     const lote = await importacaoLegadoLoteService.iniciar(usuarioAtual(req), limite);
     res.status(202).json(lote);
+  }),
+
+  /** Planilha com o relatório de ocorrências do lote (`atual` = o último). */
+  relatorioLote: asyncHandler(async (req: Request, res: Response) => {
+    const { arquivo, nome } = await importacaoLegadoLoteService.relatorio(
+      paramString(req, "loteId"),
+    );
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
+    res.setHeader("Content-Disposition", `attachment; filename="${nome}"`);
+    res.send(arquivo);
   }),
 
   /** Andamento do último lote (ou null se nunca rodou). */

@@ -79,7 +79,11 @@ describe("reconciliarMatricula", () => {
 
     const resultado = await reconciliarMatricula("matricula-1", buscarInformacoesTitulo);
 
-    expect(resultado).toEqual({ tituloConsultados: 1, parcelasAtualizadas: 1, naoEncontradosNoLegado: 0 });
+    expect(resultado).toEqual({
+      tituloConsultados: 1,
+      parcelasAtualizadas: 1,
+      naoEncontradosNoLegado: 0,
+    });
     expect(financeiro.update).toHaveBeenCalledWith("parcela-1", {
       status: "PAGO",
       valorPago: 150,
@@ -106,7 +110,9 @@ describe("reconciliarMatricula", () => {
   });
 
   it("nunca rebaixa uma parcela já PROTESTADO de volta para EM_ABERTO só porque o legado mostra 'Aberto'", async () => {
-    financeiro.listarTodasPorMatricula.mockResolvedValue([parcela({ status: "PROTESTADO" })] as never);
+    financeiro.listarTodasPorMatricula.mockResolvedValue([
+      parcela({ status: "PROTESTADO" }),
+    ] as never);
     const buscarInformacoesTitulo = vi.fn().mockResolvedValue(detalhe());
 
     const resultado = await reconciliarMatricula("matricula-1", buscarInformacoesTitulo);
@@ -118,8 +124,12 @@ describe("reconciliarMatricula", () => {
   });
 
   it("marca como RENEGOCIADO quando o legado mostra 'Alteracao' (título substituído por renegociação)", async () => {
-    financeiro.listarTodasPorMatricula.mockResolvedValue([parcela({ status: "EM_ABERTO" })] as never);
-    const buscarInformacoesTitulo = vi.fn().mockResolvedValue(detalhe({ tituloEstado: "Alteracao" }));
+    financeiro.listarTodasPorMatricula.mockResolvedValue([
+      parcela({ status: "EM_ABERTO" }),
+    ] as never);
+    const buscarInformacoesTitulo = vi
+      .fn()
+      .mockResolvedValue(detalhe({ tituloEstado: "Alteracao" }));
 
     const resultado = await reconciliarMatricula("matricula-1", buscarInformacoesTitulo);
 

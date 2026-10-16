@@ -1,4 +1,8 @@
-import { EscopoDocumento, SituacaoDeferimentoDocumento, SituacaoEntregaDocumento } from "./documento.model";
+import {
+  EscopoDocumento,
+  SituacaoDeferimentoDocumento,
+  SituacaoEntregaDocumento,
+} from "./documento.model";
 import { FormaPagamento } from "./tipo-cobranca.model";
 
 export interface PortalMatricula {
@@ -33,12 +37,7 @@ export interface PortalDocumentos {
 }
 
 export type StatusParcelaPortal =
-  | "EM_ABERTO"
-  | "PAGO"
-  | "CANCELADO"
-  | "PROTESTO_ENVIADO"
-  | "PROTESTADO"
-  | "RENEGOCIADO";
+  "EM_ABERTO" | "PAGO" | "CANCELADO" | "PROTESTO_ENVIADO" | "PROTESTADO" | "RENEGOCIADO";
 
 export interface PortalParcela {
   id: string;

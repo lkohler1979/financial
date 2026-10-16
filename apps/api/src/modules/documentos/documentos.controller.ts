@@ -20,7 +20,9 @@ export const documentosController = {
 
   atualizarTipo: asyncHandler(async (req: Request, res: Response) => {
     const input = atualizarTipoDocumentoSchema.parse(req.body);
-    res.json(await documentosService.atualizarTipo(paramString(req, "id"), input, usuarioAtual(req)));
+    res.json(
+      await documentosService.atualizarTipo(paramString(req, "id"), input, usuarioAtual(req)),
+    );
   }),
 
   aguardandoConferencia: asyncHandler(async (_req: Request, res: Response) => {

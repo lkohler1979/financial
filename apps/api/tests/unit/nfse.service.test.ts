@@ -48,8 +48,29 @@ const CONFIG = {
   nfseIssPercentual: "0",
 };
 
-const aluno = { id: "a1", nome: "Anderson Sousa", cpf: "52998224725", email: "a@x.com", cep: "58200062", endereco: "Rua X", numero: "172", complemento: null, bairro: "Centro" };
-const sacadoPj = { id: "s1", tipoPessoa: "JURIDICA", nome: "Empresa Ltda", cpfCnpj: "11222333000181", email: null, cep: "29056922", endereco: "Av Y", numero: "595", complemento: null, bairro: "Santa Lúcia" };
+const aluno = {
+  id: "a1",
+  nome: "Anderson Sousa",
+  cpf: "52998224725",
+  email: "a@x.com",
+  cep: "58200062",
+  endereco: "Rua X",
+  numero: "172",
+  complemento: null,
+  bairro: "Centro",
+};
+const sacadoPj = {
+  id: "s1",
+  tipoPessoa: "JURIDICA",
+  nome: "Empresa Ltda",
+  cpfCnpj: "11222333000181",
+  email: null,
+  cep: "29056922",
+  endereco: "Av Y",
+  numero: "595",
+  complemento: null,
+  bairro: "Santa Lúcia",
+};
 
 function parcela(extra: Record<string, unknown> = {}, sacado: unknown = null) {
   return {
@@ -62,7 +83,13 @@ function parcela(extra: Record<string, unknown> = {}, sacado: unknown = null) {
     nfseAsaasId: null,
     nfseStatus: null,
     nfseErro: null,
-    matricula: { id: "m1", numeroMatricula: "202600001", curso: { nome: "MBA em Dados" }, aluno, sacado },
+    matricula: {
+      id: "m1",
+      numeroMatricula: "202600001",
+      curso: { nome: "MBA em Dados" },
+      aluno,
+      sacado,
+    },
     ...extra,
   } as never;
 }
@@ -108,7 +135,11 @@ describe("datas da competência", () => {
 
 describe("tomador e valor", () => {
   it("sacado quando houver; senão o aluno", () => {
-    expect(tomadorDe(parcela({}, sacadoPj))).toMatchObject({ origem: "SACADO", documento: "11222333000181", nome: "Empresa Ltda" });
+    expect(tomadorDe(parcela({}, sacadoPj))).toMatchObject({
+      origem: "SACADO",
+      documento: "11222333000181",
+      nome: "Empresa Ltda",
+    });
     expect(tomadorDe(parcela())).toMatchObject({ origem: "ALUNO", documento: "52998224725" });
   });
 
@@ -123,8 +154,13 @@ describe("tomador e valor", () => {
     expect(avisosDaNota(semDoc).erros).toContain("Tomador sem CPF/CNPJ válido");
     const semCep = parcela();
     (semCep as unknown as ComAluno).matricula.aluno = { ...aluno, cep: null };
-    expect(avisosDaNota(semCep)).toMatchObject({ erros: [], avisos: [expect.stringContaining("CEP")] });
-    expect(avisosDaNota(parcela({ valorPago: "0", valor: "0" })).erros).toContain("Valor da nota inválido");
+    expect(avisosDaNota(semCep)).toMatchObject({
+      erros: [],
+      avisos: [expect.stringContaining("CEP")],
+    });
+    expect(avisosDaNota(parcela({ valorPago: "0", valor: "0" })).erros).toContain(
+      "Valor da nota inválido",
+    );
   });
 });
 
@@ -134,7 +170,12 @@ describe("nfseService.emitirPendentes", () => {
   it("agenda e emite uma nota por parcela com os dados do exemplo (competência, serviço, sem retenções)", async () => {
     repo.listarPendentes.mockResolvedValue([parcela()]);
     cliente.agendarNota.mockResolvedValue({ id: "inv_1", status: "SCHEDULED" });
-    cliente.emitirNota.mockResolvedValue({ id: "inv_1", status: "AUTHORIZED", number: "785", pdfUrl: "http://pdf" });
+    cliente.emitirNota.mockResolvedValue({
+      id: "inv_1",
+      status: "AUTHORIZED",
+      number: "785",
+      pdfUrl: "http://pdf",
+    });
 
     const r = await nfseService.emitirPendentes(ref, "u1", { cliente: cliente as never });
 
@@ -150,7 +191,14 @@ describe("nfseService.emitirPendentes", () => {
       }),
     );
     expect(cliente.emitirNota).toHaveBeenCalledWith("inv_1");
-    expect(repo.update).toHaveBeenLastCalledWith("p1", expect.objectContaining({ nfseStatus: "AUTORIZADA", nfseNumero: "785", nfsePdfUrl: "http://pdf" }));
+    expect(repo.update).toHaveBeenLastCalledWith(
+      "p1",
+      expect.objectContaining({
+        nfseStatus: "AUTORIZADA",
+        nfseNumero: "785",
+        nfsePdfUrl: "http://pdf",
+      }),
+    );
     expect(r).toMatchObject({ emitidas: 1, agendadas: 0, erros: [], restantes: 0 });
   });
 
@@ -159,10 +207,15 @@ describe("nfseService.emitirPendentes", () => {
     cliente.agendarNota.mockResolvedValue({ id: "inv_2", status: "SCHEDULED" });
     cliente.emitirNota.mockResolvedValue({ id: "inv_2", status: "AUTHORIZED" });
     await nfseService.emitirPendentes(ref, null, { cliente: cliente as never });
-    expect(cliente.agendarNota).toHaveBeenCalledWith(expect.objectContaining({ customer: "cus_sacado" }));
+    expect(cliente.agendarNota).toHaveBeenCalledWith(
+      expect.objectContaining({ customer: "cus_sacado" }),
+    );
     expect(asaas.obterOuCriarClienteAluno).not.toHaveBeenCalled();
     // endereço do tomador é enviado ao cliente Asaas antes da nota
-    expect(cliente.atualizarCliente).toHaveBeenCalledWith("cus_sacado", expect.objectContaining({ postalCode: "29056922" }));
+    expect(cliente.atualizarCliente).toHaveBeenCalledWith(
+      "cus_sacado",
+      expect.objectContaining({ postalCode: "29056922" }),
+    );
   });
 
   it("tomador inválido: marca erro na parcela sem chamar o Asaas, e as demais seguem", async () => {
@@ -175,7 +228,13 @@ describe("nfseService.emitirPendentes", () => {
 
     const r = await nfseService.emitirPendentes(ref, null, { cliente: cliente as never });
 
-    expect(repo.update).toHaveBeenCalledWith("ruim", expect.objectContaining({ nfseStatus: "ERRO", nfseErro: expect.stringContaining("CPF/CNPJ") }));
+    expect(repo.update).toHaveBeenCalledWith(
+      "ruim",
+      expect.objectContaining({
+        nfseStatus: "ERRO",
+        nfseErro: expect.stringContaining("CPF/CNPJ"),
+      }),
+    );
     expect(cliente.agendarNota).toHaveBeenCalledTimes(1);
     expect(r.emitidas).toBe(1);
     expect(r.erros).toHaveLength(1);
@@ -185,7 +244,10 @@ describe("nfseService.emitirPendentes", () => {
     repo.listarPendentes.mockResolvedValue([parcela()]);
     cliente.agendarNota.mockRejectedValue(new Error("Município não configurado"));
     const r = await nfseService.emitirPendentes(ref, null, { cliente: cliente as never });
-    expect(repo.update).toHaveBeenLastCalledWith("p1", { nfseStatus: "ERRO", nfseErro: "Município não configurado" });
+    expect(repo.update).toHaveBeenLastCalledWith("p1", {
+      nfseStatus: "ERRO",
+      nfseErro: "Município não configurado",
+    });
     expect(r.erros[0]).toEqual({ parcelaId: "p1", erro: "Município não configurado" });
   });
 
@@ -194,12 +256,17 @@ describe("nfseService.emitirPendentes", () => {
     cliente.agendarNota.mockResolvedValue({ id: "inv_4", status: "SCHEDULED" });
     cliente.emitirNota.mockRejectedValue(new Error("Prefeitura fora do ar"));
     await nfseService.emitirPendentes(ref, null, { cliente: cliente as never });
-    expect(repo.update).toHaveBeenLastCalledWith("p1", { nfseStatus: "AGENDADA", nfseErro: "Prefeitura fora do ar" });
+    expect(repo.update).toHaveBeenLastCalledWith("p1", {
+      nfseStatus: "AGENDADA",
+      nfseErro: "Prefeitura fora do ar",
+    });
 
     // próxima execução: a parcela já tem nfseAsaasId — não agenda de novo
     cliente.agendarNota.mockClear();
     cliente.emitirNota.mockReset().mockResolvedValue({ id: "inv_4", status: "AUTHORIZED" });
-    repo.listarPendentes.mockResolvedValue([parcela({ nfseAsaasId: "inv_4", nfseStatus: "AGENDADA" })]);
+    repo.listarPendentes.mockResolvedValue([
+      parcela({ nfseAsaasId: "inv_4", nfseStatus: "AGENDADA" }),
+    ]);
     await nfseService.emitirPendentes(ref, null, { cliente: cliente as never });
     expect(cliente.agendarNota).not.toHaveBeenCalled();
     expect(cliente.emitirNota).toHaveBeenCalledWith("inv_4");
@@ -210,7 +277,10 @@ describe("nfseService.emitirPendentes", () => {
     repo.listarPendentes.mockResolvedValue([parcela()]);
     cliente.agendarNota.mockResolvedValue({ id: "inv_5", status: "SCHEDULED" });
     cliente.emitirNota.mockResolvedValue({ id: "inv_5", status: "SCHEDULED" });
-    const r = await nfseService.emitirPendentes(ref, null, { cliente: cliente as never, limite: 1 });
+    const r = await nfseService.emitirPendentes(ref, null, {
+      cliente: cliente as never,
+      limite: 1,
+    });
     expect(r).toMatchObject({ emitidas: 0, agendadas: 1, restantes: 149 });
     expect(repo.listarPendentes).toHaveBeenCalledWith(expect.any(Date), expect.any(Date), 1);
   });
@@ -242,7 +312,11 @@ describe("nfseService.executarAutomatico (janela até o dia limite)", () => {
     const r = await nfseService.executarAutomatico(new Date(2026, 7, 10));
     expect(r.executou).toBe(true);
     // Busca as pagas em julho/2026: [01/07, 01/08)
-    expect(repo.listarPendentes).toHaveBeenCalledWith(new Date(2026, 6, 1), new Date(2026, 7, 1), expect.any(Number));
+    expect(repo.listarPendentes).toHaveBeenCalledWith(
+      new Date(2026, 6, 1),
+      new Date(2026, 7, 1),
+      expect.any(Number),
+    );
   });
 
   it("dia limite configurável (ex.: 5)", async () => {
@@ -254,12 +328,27 @@ describe("nfseService.executarAutomatico (janela até o dia limite)", () => {
 
 describe("nfseService.atualizarStatus", () => {
   it("nota autorizada ganha número e PDF; recusada vira ERRO com o motivo", async () => {
-    repo.listarAgendadas.mockResolvedValue([parcela({ id: "a", nfseAsaasId: "inv_a" }), parcela({ id: "b", nfseAsaasId: "inv_b" })]);
+    repo.listarAgendadas.mockResolvedValue([
+      parcela({ id: "a", nfseAsaasId: "inv_a" }),
+      parcela({ id: "b", nfseAsaasId: "inv_b" }),
+    ]);
     cliente.consultarNota
-      .mockResolvedValueOnce({ id: "inv_a", status: "AUTHORIZED", number: "786", pdfUrl: "http://pdf" })
-      .mockResolvedValueOnce({ id: "inv_b", status: "ERROR", statusDescription: "CNPJ do tomador inválido" });
+      .mockResolvedValueOnce({
+        id: "inv_a",
+        status: "AUTHORIZED",
+        number: "786",
+        pdfUrl: "http://pdf",
+      })
+      .mockResolvedValueOnce({
+        id: "inv_b",
+        status: "ERROR",
+        statusDescription: "CNPJ do tomador inválido",
+      });
     const r = await nfseService.atualizarStatus(cliente as never);
     expect(r).toEqual({ conferidas: 2, autorizadas: 1, erros: 1 });
-    expect(repo.update).toHaveBeenCalledWith("b", expect.objectContaining({ nfseStatus: "ERRO", nfseErro: "CNPJ do tomador inválido" }));
+    expect(repo.update).toHaveBeenCalledWith(
+      "b",
+      expect.objectContaining({ nfseStatus: "ERRO", nfseErro: "CNPJ do tomador inválido" }),
+    );
   });
 });

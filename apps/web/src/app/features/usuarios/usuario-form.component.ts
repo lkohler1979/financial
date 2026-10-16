@@ -17,7 +17,10 @@ const SENHA_REGEX = /^[a-zA-Z0-9]{6,}$/;
 
 const PERFIS: { valor: Perfil; rotulo: string }[] = [
   { valor: "ADMINISTRADOR", rotulo: "Administrador — acesso irrestrito" },
-  { valor: "FINANCEIRO", rotulo: "Financeiro — cursos, alunos, matrículas, importação e relatórios" },
+  {
+    valor: "FINANCEIRO",
+    rotulo: "Financeiro — cursos, alunos, matrículas, importação e relatórios",
+  },
   { valor: "USUARIO", rotulo: "Usuário — alunos, matrículas e relatórios" },
 ];
 
@@ -136,7 +139,10 @@ export class UsuarioFormComponent implements OnInit {
       this.form.controls.senha.setValidators([Validators.pattern(SENHA_REGEX)]);
       this.form.controls.senha.updateValueAndValidity();
     } else {
-      this.form.controls.senha.setValidators([Validators.required, Validators.pattern(SENHA_REGEX)]);
+      this.form.controls.senha.setValidators([
+        Validators.required,
+        Validators.pattern(SENHA_REGEX),
+      ]);
     }
 
     if (this.editando && this.id) {

@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { detectarBandeira, luhnValido, normalizarNomePortador, validadeNaoVencida } from "../../src/shared/utils/cartao";
+import {
+  detectarBandeira,
+  luhnValido,
+  normalizarNomePortador,
+  validadeNaoVencida,
+} from "../../src/shared/utils/cartao";
 import { LimitadorTentativas } from "../../src/shared/utils/limitador";
 import { pagamentoCartaoSchema } from "../../src/modules/rede/rede.schema";
 import { RedeClient } from "../../src/modules/rede/rede-client";
@@ -7,7 +12,12 @@ import { AppError } from "../../src/shared/errors/app-error";
 
 describe("utilitários de cartão", () => {
   it("Luhn: aceita os cartões de teste da Rede e recusa número errado", () => {
-    for (const n of ["5448280000000007", "4235647728025682", "371341553758128", "4389351648020055"]) {
+    for (const n of [
+      "5448280000000007",
+      "4235647728025682",
+      "371341553758128",
+      "4389351648020055",
+    ]) {
       expect(luhnValido(n)).toBe(true);
     }
     expect(luhnValido("5448280000000008")).toBe(false);
@@ -43,7 +53,13 @@ describe("detectarBandeira", () => {
 });
 
 describe("pagamentoCartaoSchema", () => {
-  const base = { numero: "5448 2800 0000 0007", nome: "Maria da Silva", mes: "01", ano: "35", cvv: "123" };
+  const base = {
+    numero: "5448 2800 0000 0007",
+    nome: "Maria da Silva",
+    mes: "01",
+    ano: "35",
+    cvv: "123",
+  };
 
   it("normaliza número, ano de 2 dígitos e parcelas padrão", () => {
     const r = pagamentoCartaoSchema.parse(base);
@@ -51,7 +67,9 @@ describe("pagamentoCartaoSchema", () => {
   });
 
   it("recusa cartão inválido, vencido, CVV ruim e parcelas fora de 1–12", () => {
-    expect(pagamentoCartaoSchema.safeParse({ ...base, numero: "5448280000000008" }).success).toBe(false);
+    expect(pagamentoCartaoSchema.safeParse({ ...base, numero: "5448280000000008" }).success).toBe(
+      false,
+    );
     expect(pagamentoCartaoSchema.safeParse({ ...base, ano: "2020" }).success).toBe(false);
     expect(pagamentoCartaoSchema.safeParse({ ...base, cvv: "12" }).success).toBe(false);
     expect(pagamentoCartaoSchema.safeParse({ ...base, parcelas: 13 }).success).toBe(false);
@@ -104,7 +122,9 @@ describe("RedeClient.criarCobrancaCartao", () => {
   // O token OAuth fica em cache entre chamadas: roteia o mock por URL em vez de por ordem.
   const rotear = (transacao: () => Promise<unknown>) =>
     fetchMock.mockImplementation((url: string) =>
-      url.includes("oauth2/token") ? resp(200, { access_token: "tok", expires_in: 1440 }) : transacao(),
+      url.includes("oauth2/token")
+        ? resp(200, { access_token: "tok", expires_in: 1440 })
+        : transacao(),
     );
   const chamadaTransacao = () => fetchMock.mock.calls.find(([u]) => !String(u).includes("oauth2"))!;
 
@@ -127,10 +147,21 @@ describe("RedeClient.criarCobrancaCartao", () => {
     const [url, init] = chamadaTransacao();
     expect(url).toBe("https://sandbox-erede.useredecloud.com.br/v2/transactions");
     const corpo = JSON.parse(init.body);
-    expect(corpo).toMatchObject({ capture: true, kind: "credit", amount: 12345, cardNumber: "5448280000000007", expirationYear: 2035 });
+    expect(corpo).toMatchObject({
+      capture: true,
+      kind: "credit",
+      amount: 12345,
+      cardNumber: "5448280000000007",
+      expirationYear: 2035,
+    });
     expect(corpo).not.toHaveProperty("installments"); // à vista não envia o campo
     expect(init.headers.authorization).toBe("Bearer tok");
-    expect(r).toMatchObject({ aprovado: true, tid: "8345000363484052380", bandeira: "Mastercard", final: "0007" });
+    expect(r).toMatchObject({
+      aprovado: true,
+      tid: "8345000363484052380",
+      bandeira: "Mastercard",
+      final: "0007",
+    });
   });
 
   it("parcelado envia installments (2 a 12)", async () => {
@@ -141,7 +172,11 @@ describe("RedeClient.criarCobrancaCartao", () => {
 
   it("recusa do emissor volta aprovado:false sem lançar erro", async () => {
     rotear(() =>
-      resp(200, { returnCode: "101", returnMessage: "Unauthorized. Problems on the card, contact the issuer.", tid: "9" }),
+      resp(200, {
+        returnCode: "101",
+        returnMessage: "Unauthorized. Problems on the card, contact the issuer.",
+        tid: "9",
+      }),
     );
     const r = await cliente.criarCobrancaCartao(dados);
     expect(r.aprovado).toBe(false);

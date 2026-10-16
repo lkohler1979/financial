@@ -29,3 +29,8 @@ importacaoLegadoRouter.get(
   requireRole("ADMINISTRADOR", "FINANCEIRO"),
   importacaoLegadoController.ultimoLote,
 );
+importacaoLegadoRouter.get(
+  "/lote/:loteId/relatorio",
+  requireRole("ADMINISTRADOR", "FINANCEIRO"),
+  importacaoLegadoController.relatorioLote,
+);

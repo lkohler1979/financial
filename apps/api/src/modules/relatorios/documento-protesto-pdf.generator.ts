@@ -47,7 +47,10 @@ export async function gerarDocumentoProtestoPdf(dados: DadosDocumentoProtesto): 
     doc.on("error", reject);
   });
 
-  doc.font(FONTE_NEGRITO).fontSize(TAMANHO + 3).text("PLANILHA PARA PROTESTO DE CONTRATO");
+  doc
+    .font(FONTE_NEGRITO)
+    .fontSize(TAMANHO + 3)
+    .text("PLANILHA PARA PROTESTO DE CONTRATO");
   doc.moveDown();
 
   doc.font(FONTE_NEGRITO).fontSize(TAMANHO).text("NOME DO CREDOR: ", { continued: true });
@@ -114,10 +117,13 @@ export async function gerarDocumentoProtestoPdf(dados: DadosDocumentoProtesto): 
   );
   y += 32;
 
-  doc.font(FONTE).fontSize(TAMANHO).text(`Vitória-ES, ${formatarData(new Date())}.`, inicioX, y, {
-    width: larguraTabela,
-    align: "right",
-  });
+  doc
+    .font(FONTE)
+    .fontSize(TAMANHO)
+    .text(`Vitória-ES, ${formatarData(new Date())}.`, inicioX, y, {
+      width: larguraTabela,
+      align: "right",
+    });
 
   doc.text("________________________________________", inicioX, y + 48, {
     width: larguraTabela,

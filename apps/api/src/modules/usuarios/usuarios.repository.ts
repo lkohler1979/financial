@@ -38,7 +38,13 @@ export const usuariosRepository = {
       : {};
 
     const [data, total] = await Promise.all([
-      prisma.usuario.findMany({ where, skip, take, orderBy: { nome: "asc" }, select: SELECAO_SEGURA }),
+      prisma.usuario.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { nome: "asc" },
+        select: SELECAO_SEGURA,
+      }),
       prisma.usuario.count({ where }),
     ]);
 

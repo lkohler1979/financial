@@ -68,12 +68,12 @@ export interface LoteLegado {
   semCpf: number;
   alunosCriados: number;
   matriculasNovas: number;
+  cursosCriados: number;
   parcelasNovas: number;
   parcelasAtualizadas: number;
   erros: number;
-  /** Nome do curso no legado → quantidade de matrículas ignoradas (curso não existe no Ethos). */
-  cursosSemCorrespondencia: Record<string, number> | null;
-  detalhes: { erros?: string[]; prefixosTruncados?: string[] } | null;
+  /** Quantidade de linhas do relatório por tipo (ALUNO_SEM_CPF, CURSO_CRIADO, ERRO…). */
+  ocorrenciasPorTipo: Record<string, number>;
   mensagemFalha: string | null;
   criadoEm: string;
   finalizadoEm: string | null;
@@ -97,6 +97,11 @@ export class ImportacaoLegadoService {
   /** Último lote (em andamento ou concluído); null se nunca rodou. */
   ultimoLote(): Observable<LoteLegado | null> {
     return this.http.get<LoteLegado | null>(`${this.baseUrl}/lote/atual`);
+  }
+
+  /** Planilha (.xlsx) com tudo que não entrou ou entrou com ressalva no último lote. */
+  baixarRelatorioLote(): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/lote/atual/relatorio`, { responseType: "blob" });
   }
 
   confirmar(payload: ConfirmarImportacaoLegadoPayload): Observable<ResultadoImportacaoLegado> {

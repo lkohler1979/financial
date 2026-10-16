@@ -7,7 +7,9 @@ import { emissaoCobrancaRepository } from "../../src/modules/asaas/emissao-cobra
 import { asaasService } from "../../src/modules/asaas/asaas.service";
 import { configuracoesRepository } from "../../src/modules/configuracoes/configuracoes.repository";
 
-vi.mock("../../src/modules/asaas/asaas.service", () => ({ asaasService: { gerarCobrancaParcela: vi.fn() } }));
+vi.mock("../../src/modules/asaas/asaas.service", () => ({
+  asaasService: { gerarCobrancaParcela: vi.fn() },
+}));
 vi.mock("../../src/modules/asaas/emissao-cobranca.repository", () => ({
   emissaoCobrancaRepository: { listarTipos: vi.fn(), listarSemCobrancaVencendo: vi.fn() },
 }));
@@ -31,7 +33,10 @@ describe("emiteNaMatricula", () => {
 
 describe("emissaoCobrancaService.emitir", () => {
   it("usa a forma da parcela, senão a padrão, senão boleto; falha não derruba as demais", async () => {
-    gerar.mockResolvedValueOnce({} as never).mockRejectedValueOnce(new Error("Asaas fora")).mockResolvedValueOnce({} as never);
+    gerar
+      .mockResolvedValueOnce({} as never)
+      .mockRejectedValueOnce(new Error("Asaas fora"))
+      .mockResolvedValueOnce({} as never);
     const r = await emissaoCobrancaService.emitir(
       [
         { id: "a", formaPagamento: "PIX" },

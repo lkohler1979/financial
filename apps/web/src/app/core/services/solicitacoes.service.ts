@@ -30,7 +30,9 @@ export class SolicitacoesService {
   }
 
   listarTipos(incluirInativos = false): Observable<TipoSolicitacao[]> {
-    return this.http.get<TipoSolicitacao[]>(`${this.baseUrl}/tipos`, { params: { incluirInativos } });
+    return this.http.get<TipoSolicitacao[]>(`${this.baseUrl}/tipos`, {
+      params: { incluirInativos },
+    });
   }
 
   criarTipo(payload: Partial<TipoSolicitacao>): Observable<TipoSolicitacao> {

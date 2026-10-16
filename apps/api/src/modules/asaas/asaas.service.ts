@@ -188,7 +188,11 @@ export const asaasService = {
    * coleta número/CVV (evita assumir escopo de PCI-DSS); o cliente paga pela
    * `asaasInvoiceUrl`, a página segura hospedada pelo próprio Asaas.
    */
-  async gerarCobrancaParcela(parcelaId: string, billingType: AsaasBillingType, usuarioId: string | null) {
+  async gerarCobrancaParcela(
+    parcelaId: string,
+    billingType: AsaasBillingType,
+    usuarioId: string | null,
+  ) {
     const parcela = await financeiroRepository.findById(parcelaId);
     if (!parcela) throw new NotFoundError("Parcela não encontrada");
 
@@ -322,7 +326,9 @@ export const asaasService = {
       provedorPagamento: "REDE",
       asaasPixQrCodeImagem: cobranca.qrCodeImagem,
       asaasPixCopiaECola: cobranca.qrCodeCopiaECola,
-      asaasPixQrCodeExpiracao: cobranca.dataExpiracao ? new Date(cobranca.dataExpiracao) : expiracao,
+      asaasPixQrCodeExpiracao: cobranca.dataExpiracao
+        ? new Date(cobranca.dataExpiracao)
+        : expiracao,
       asaasStatus: "PENDING",
       asaasDataGeracao: new Date(),
     });
@@ -333,7 +339,12 @@ export const asaasService = {
         entidade: ENTIDADE_PARCELA,
         entidadeId: parcela.id,
         acao: "ATUALIZACAO",
-        detalhes: { acao: "cobranca_gerada", billingType: "PIX", provedor: "REDE", tid: cobranca.tid },
+        detalhes: {
+          acao: "cobranca_gerada",
+          billingType: "PIX",
+          provedor: "REDE",
+          tid: cobranca.tid,
+        },
       });
     }
 
@@ -377,7 +388,9 @@ export const asaasService = {
       parcela.id,
       {
         status: "PAGO",
-        dataPagamento: payload.payment.paymentDate ? new Date(payload.payment.paymentDate) : new Date(),
+        dataPagamento: payload.payment.paymentDate
+          ? new Date(payload.payment.paymentDate)
+          : new Date(),
         valorPago: payload.payment.value ?? Number(parcela.valor),
       },
       usuarioSistema,

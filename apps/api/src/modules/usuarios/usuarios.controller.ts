@@ -29,7 +29,11 @@ export const usuariosController = {
 
   atualizar: asyncHandler(async (req: Request, res: Response) => {
     const input = atualizarUsuarioSchema.parse(req.body);
-    const usuario = await usuariosService.atualizar(paramString(req, "id"), input, usuarioAtual(req));
+    const usuario = await usuariosService.atualizar(
+      paramString(req, "id"),
+      input,
+      usuarioAtual(req),
+    );
     res.json(usuario);
   }),
 

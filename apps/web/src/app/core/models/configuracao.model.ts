@@ -126,6 +126,9 @@ export type AtualizarConfiguracaoPayload = Omit<
 /** Frase que precisa ser digitada exatamente para confirmar a limpeza da base (backend valida). */
 export const FRASE_CONFIRMACAO_LIMPAR_BASE = "LIMPAR DADOS";
 
+/** Frase para apagar só alunos, matrículas e parcelas (backend valida). */
+export const FRASE_CONFIRMACAO_LIMPAR_ALUNOS = "APAGAR ALUNOS";
+
 export interface ContagensLimpezaBase {
   historicoCobranca: number;
   observacoesCobranca: number;

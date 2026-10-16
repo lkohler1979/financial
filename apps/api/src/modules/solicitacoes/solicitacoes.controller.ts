@@ -37,7 +37,12 @@ export const solicitacoesController = {
   atender: asyncHandler(async (req: Request, res: Response) => {
     const { resposta } = atenderSolicitacaoSchema.parse(req.body ?? {});
     res.json(
-      await solicitacoesService.atender(paramString(req, "id"), req.file, resposta, usuarioAtual(req)),
+      await solicitacoesService.atender(
+        paramString(req, "id"),
+        req.file,
+        resposta,
+        usuarioAtual(req),
+      ),
     );
   }),
 

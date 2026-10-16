@@ -6,7 +6,10 @@ import { MatIconModule } from "@angular/material/icon";
 import { MatPaginatorModule, PageEvent } from "@angular/material/paginator";
 import { MatSnackBar } from "@angular/material/snack-bar";
 import { AuthService } from "../../core/auth/auth.service";
-import { classeSituacaoMatricula, rotuloSituacaoMatricula } from "../../core/models/matricula.model";
+import {
+  classeSituacaoMatricula,
+  rotuloSituacaoMatricula,
+} from "../../core/models/matricula.model";
 import { SacadoFicha, SacadoListado } from "../../core/models/sacado.model";
 import { SacadosService } from "../../core/services/sacados.service";
 import { formatarCnpj, formatarCpf } from "../../shared/utils/cpf.util";
@@ -27,8 +30,8 @@ import { formatarCnpj, formatarCpf } from "../../shared/utils/cpf.util";
       />
     </div>
     <p class="text-xs text-gray-500 mb-3">
-      Responsável financeiro de matrículas quando não é o próprio aluno (mãe, empresa...). O cadastro nasce
-      no passo de pagamento da matrícula; CPF/CNPJ não mudam depois.
+      Responsável financeiro de matrículas quando não é o próprio aluno (mãe, empresa...). O
+      cadastro nasce no passo de pagamento da matrícula; CPF/CNPJ não mudam depois.
     </p>
 
     <div class="bg-white rounded shadow-sm overflow-x-auto">
@@ -60,7 +63,9 @@ import { formatarCnpj, formatarCpf } from "../../shared/utils/cpf.util";
               </td>
             </tr>
           } @empty {
-            <tr><td class="p-4 text-gray-500" colspan="7">Nenhum sacado encontrado.</td></tr>
+            <tr>
+              <td class="p-4 text-gray-500" colspan="7">Nenhum sacado encontrado.</td>
+            </tr>
           }
         </tbody>
       </table>
@@ -80,7 +85,9 @@ import { formatarCnpj, formatarCpf } from "../../shared/utils/cpf.util";
         </p>
         <div class="grid gap-3 md:grid-cols-4">
           <label class="text-sm md:col-span-2">
-            <span class="block text-xs text-gray-500">{{ s.tipoPessoa === "FISICA" ? "Nome" : "Razão social" }}</span>
+            <span class="block text-xs text-gray-500">{{
+              s.tipoPessoa === "FISICA" ? "Nome" : "Razão social"
+            }}</span>
             <input class="border rounded px-2 py-1 w-full" [(ngModel)]="nome" />
           </label>
           <label class="text-sm">
@@ -93,8 +100,14 @@ import { formatarCnpj, formatarCpf } from "../../shared/utils/cpf.util";
           </label>
           @if (s.tipoPessoa === "FISICA") {
             <label class="text-sm">
-              <span class="block text-xs text-gray-500">Data de nascimento (acesso à área do aluno)</span>
-              <input class="border rounded px-2 py-1 w-full" type="date" [(ngModel)]="dataNascimento" />
+              <span class="block text-xs text-gray-500"
+                >Data de nascimento (acesso à área do aluno)</span
+              >
+              <input
+                class="border rounded px-2 py-1 w-full"
+                type="date"
+                [(ngModel)]="dataNascimento"
+              />
             </label>
           }
           <label class="text-sm">
@@ -119,18 +132,32 @@ import { formatarCnpj, formatarCpf } from "../../shared/utils/cpf.util";
           </label>
         </div>
         <div class="flex gap-2 mt-3">
-          <button mat-flat-button color="primary" type="button" [disabled]="!nome.trim() || salvando()" (click)="salvar(s)">
+          <button
+            mat-flat-button
+            color="primary"
+            type="button"
+            [disabled]="!nome.trim() || salvando()"
+            (click)="salvar(s)"
+          >
             Salvar
           </button>
           @if (podeRemover()) {
-            <button mat-button color="warn" type="button" [disabled]="s.matriculas.length > 0" (click)="remover(s)">
+            <button
+              mat-button
+              color="warn"
+              type="button"
+              [disabled]="s.matriculas.length > 0"
+              (click)="remover(s)"
+            >
               Remover sacado
             </button>
           }
           <button mat-button type="button" (click)="selecionado.set(null)">Fechar</button>
         </div>
 
-        <p class="text-xs text-gray-500 mt-4 mb-1">Matrículas que ele paga ({{ s.matriculas.length }})</p>
+        <p class="text-xs text-gray-500 mt-4 mb-1">
+          Matrículas que ele paga ({{ s.matriculas.length }})
+        </p>
         <table class="w-full text-sm">
           <tbody>
             @for (m of s.matriculas; track m.id) {
@@ -139,16 +166,26 @@ import { formatarCnpj, formatarCpf } from "../../shared/utils/cpf.util";
                 <td class="pr-2">{{ m.aluno.nome }}</td>
                 <td class="pr-2">{{ m.curso.nome }}</td>
                 <td class="pr-2">
-                  <span class="px-2 py-0.5 rounded text-xs whitespace-nowrap" [class]="classeSituacao(m.situacao)">{{ rotuloSituacao(m.situacao) }}</span>
+                  <span
+                    class="px-2 py-0.5 rounded text-xs whitespace-nowrap"
+                    [class]="classeSituacao(m.situacao)"
+                    >{{ rotuloSituacao(m.situacao) }}</span
+                  >
                 </td>
                 <td class="text-right">
-                  <a mat-icon-button [routerLink]="['/matriculas', m.id]" aria-label="Abrir matrícula">
+                  <a
+                    mat-icon-button
+                    [routerLink]="['/matriculas', m.id]"
+                    aria-label="Abrir matrícula"
+                  >
                     <mat-icon>open_in_new</mat-icon>
                   </a>
                 </td>
               </tr>
             } @empty {
-              <tr><td class="py-2 text-gray-500">Sem matrículas — pode ser removido.</td></tr>
+              <tr>
+                <td class="py-2 text-gray-500">Sem matrículas — pode ser removido.</td>
+              </tr>
             }
           </tbody>
         </table>
@@ -240,7 +277,9 @@ export class SacadosListComponent implements OnInit {
         nome: this.nome.trim(),
         email: this.email.trim() || null,
         telefone: this.telefone.trim() || null,
-        ...(s.tipoPessoa === "FISICA" && this.dataNascimento ? { dataNascimento: this.dataNascimento } : {}),
+        ...(s.tipoPessoa === "FISICA" && this.dataNascimento
+          ? { dataNascimento: this.dataNascimento }
+          : {}),
         cep: this.cep.trim() || null,
         endereco: this.endereco.trim() || null,
         numero: this.numero.trim() || null,

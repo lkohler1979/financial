@@ -61,7 +61,9 @@ export const emissaoCobrancaService = {
    * boleto de parcela que talvez nunca seja usada (decisão do usuário,
    * 2026-10-07). Tipos "sob demanda" e parcelas sem tipo (importadas) ficam de fora.
    */
-  async executarEmissaoAntecipada(agora = new Date()): Promise<ResultadoEmissao & { dias: number }> {
+  async executarEmissaoAntecipada(
+    agora = new Date(),
+  ): Promise<ResultadoEmissao & { dias: number }> {
     const { emissaoAntecipadaDias: dias } = await configuracoesRepository.obterOuCriar();
     if (dias <= 0) return { dias, emitidas: 0, falhas: [] };
 

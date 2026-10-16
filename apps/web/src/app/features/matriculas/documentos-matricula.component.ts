@@ -95,7 +95,12 @@ interface Edicao {
               accept=".pdf,.jpg,.jpeg,.png"
               (change)="anexar(item, arquivo)"
             />
-            <button mat-stroked-button type="button" [disabled]="enviando === item.tipo.id" (click)="arquivo.click()">
+            <button
+              mat-stroked-button
+              type="button"
+              [disabled]="enviando === item.tipo.id"
+              (click)="arquivo.click()"
+            >
               <mat-icon>upload_file</mat-icon>
               {{ item.documento?.arquivoNome ? "Trocar arquivo" : "Anexar arquivo" }}
             </button>
@@ -103,7 +108,12 @@ interface Edicao {
               <button mat-button type="button" (click)="baixar(item.documento!)">
                 <mat-icon>download</mat-icon> {{ item.documento!.arquivoNome }}
               </button>
-              <button mat-icon-button type="button" aria-label="Remover arquivo" (click)="remover(item.documento!)">
+              <button
+                mat-icon-button
+                type="button"
+                aria-label="Remover arquivo"
+                (click)="remover(item.documento!)"
+              >
                 <mat-icon>delete</mat-icon>
               </button>
             }
@@ -111,12 +121,15 @@ interface Edicao {
               <span class="text-xs text-gray-500">
                 Anexado {{ item.documento!.anexadoPorAluno ? "pelo aluno " : "" }}em
                 {{ item.documento!.anexadoEm | date: "dd/MM/yyyy HH:mm:ss" }}
-                @if (item.documento!.anexadoIp) { · IP {{ item.documento!.anexadoIp }} }
+                @if (item.documento!.anexadoIp) {
+                  · IP {{ item.documento!.anexadoIp }}
+                }
               </span>
             }
             @if (item.documento?.deferidoEm) {
               <span class="text-xs text-gray-500">
-                · {{ item.documento!.situacaoDeferimento === "DEFERIDO" ? "Deferido" : "Indeferido" }}
+                ·
+                {{ item.documento!.situacaoDeferimento === "DEFERIDO" ? "Deferido" : "Indeferido" }}
                 em {{ item.documento!.deferidoEm | date: "dd/MM/yyyy HH:mm" }}
                 @if (item.documento!.validadoPor) {
                   por {{ item.documento!.validadoPor!.nome }}
@@ -152,11 +165,19 @@ interface Edicao {
                 <input matInput type="date" [(ngModel)]="e.vencimento" />
               </mat-form-field>
 
-              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="md:col-span-3 mt-2">
+              <mat-form-field
+                appearance="outline"
+                subscriptSizing="dynamic"
+                class="md:col-span-3 mt-2"
+              >
                 <mat-label>Observação interna</mat-label>
                 <textarea matInput rows="2" [(ngModel)]="e.observacaoInterna"></textarea>
               </mat-form-field>
-              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="md:col-span-3 mt-2">
+              <mat-form-field
+                appearance="outline"
+                subscriptSizing="dynamic"
+                class="md:col-span-3 mt-2"
+              >
                 <mat-label>Observação para o aluno</mat-label>
                 <textarea matInput rows="2" [(ngModel)]="e.observacaoAluno"></textarea>
               </mat-form-field>
@@ -271,7 +292,7 @@ export class DocumentosMatriculaComponent implements OnChanges {
   }
 
   remover(documento: Documento): void {
-    if (!window.confirm("Remover o arquivo anexado? O documento volta para \"não enviado\".")) return;
+    if (!window.confirm('Remover o arquivo anexado? O documento volta para "não enviado".')) return;
     this.service.removerArquivo(documento.id).subscribe(() => this.carregar());
   }
 

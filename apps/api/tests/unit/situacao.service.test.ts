@@ -19,19 +19,29 @@ beforeEach(() => vi.clearAllMocks());
 describe("situacaoService.alterar", () => {
   it("matrícula inexistente", async () => {
     repo.findMatricula.mockResolvedValue(null);
-    await expect(situacaoService.alterar("m", { situacao: "ATIVA" }, "u")).rejects.toBeInstanceOf(NotFoundError);
+    await expect(situacaoService.alterar("m", { situacao: "ATIVA" }, "u")).rejects.toBeInstanceOf(
+      NotFoundError,
+    );
   });
 
   it("recusa situação inválida e a mesma situação", async () => {
     repo.findMatricula.mockResolvedValue({ id: "m", situacao: "ATIVA" } as never);
-    await expect(situacaoService.alterar("m", { situacao: "XPTO" }, "u")).rejects.toBeInstanceOf(ValidationError);
-    await expect(situacaoService.alterar("m", { situacao: "ATIVA" }, "u")).rejects.toBeInstanceOf(ValidationError);
+    await expect(situacaoService.alterar("m", { situacao: "XPTO" }, "u")).rejects.toBeInstanceOf(
+      ValidationError,
+    );
+    await expect(situacaoService.alterar("m", { situacao: "ATIVA" }, "u")).rejects.toBeInstanceOf(
+      ValidationError,
+    );
   });
 
   it("trancar/cancelar exige motivo", async () => {
     repo.findMatricula.mockResolvedValue({ id: "m", situacao: "ATIVA" } as never);
-    await expect(situacaoService.alterar("m", { situacao: "TRANCADA" }, "u")).rejects.toBeInstanceOf(ValidationError);
-    await expect(situacaoService.alterar("m", { situacao: "CANCELADA", motivo: "  " }, "u")).rejects.toBeInstanceOf(ValidationError);
+    await expect(
+      situacaoService.alterar("m", { situacao: "TRANCADA" }, "u"),
+    ).rejects.toBeInstanceOf(ValidationError);
+    await expect(
+      situacaoService.alterar("m", { situacao: "CANCELADA", motivo: "  " }, "u"),
+    ).rejects.toBeInstanceOf(ValidationError);
     expect(repo.trocar).not.toHaveBeenCalled();
   });
 
@@ -39,7 +49,12 @@ describe("situacaoService.alterar", () => {
     repo.findMatricula.mockResolvedValue({ id: "m", situacao: "ATIVA" } as never);
     await situacaoService.alterar(
       "m",
-      { situacao: "TRANCADA", motivo: "Questões financeiras", periodoLetivo: "2026/2", observacoes: "Volta em 2027" },
+      {
+        situacao: "TRANCADA",
+        motivo: "Questões financeiras",
+        periodoLetivo: "2026/2",
+        observacoes: "Volta em 2027",
+      },
       "u1",
     );
     expect(repo.trocar).toHaveBeenCalledWith("m", {
@@ -57,7 +72,10 @@ describe("situacaoService.ativarPorPagamento", () => {
   it("ativa só quem aguarda pagamento, como mudança do sistema", async () => {
     repo.findMatricula.mockResolvedValue({ id: "m", situacao: "AGUARDANDO_PAGAMENTO" } as never);
     expect(await situacaoService.ativarPorPagamento("m")).toBe(true);
-    expect(repo.trocar).toHaveBeenCalledWith("m", expect.objectContaining({ situacaoNova: "ATIVA", usuarioId: null }));
+    expect(repo.trocar).toHaveBeenCalledWith(
+      "m",
+      expect.objectContaining({ situacaoNova: "ATIVA", usuarioId: null }),
+    );
   });
 
   it("não reativa matrícula trancada/cancelada", async () => {

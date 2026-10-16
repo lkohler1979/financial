@@ -47,7 +47,10 @@ describe("redeService.processarWebhook", () => {
 
   it("rejeita token inválido", async () => {
     await expect(
-      redeService.processarWebhook({ events: ["PV.UPDATE_TRANSACTION_PIX"] }, "Bearer token-errado"),
+      redeService.processarWebhook(
+        { events: ["PV.UPDATE_TRANSACTION_PIX"] },
+        "Bearer token-errado",
+      ),
     ).rejects.toBeInstanceOf(AppError);
     expect(financeiroSvc.atualizar).not.toHaveBeenCalled();
   });
@@ -65,7 +68,10 @@ describe("redeService.processarWebhook", () => {
     legado.obterUsuarioSistema.mockResolvedValue("admin-1");
 
     await redeService.processarWebhook(
-      { events: ["PV.UPDATE_TRANSACTION_PIX"], data: { id: "tid-1", txid: "x", endToEndId: "e2e" } },
+      {
+        events: ["PV.UPDATE_TRANSACTION_PIX"],
+        data: { id: "tid-1", txid: "x", endToEndId: "e2e" },
+      },
       "Bearer token-rede",
     );
 

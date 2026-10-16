@@ -33,6 +33,9 @@ export function decifrar(valor: string): string {
 
   const decifra = crypto.createDecipheriv(ALGORITMO, obterChave(), Buffer.from(ivHex, "hex"));
   decifra.setAuthTag(Buffer.from(authTagHex, "hex"));
-  const decifrado = Buffer.concat([decifra.update(Buffer.from(cifradoHex, "hex")), decifra.final()]);
+  const decifrado = Buffer.concat([
+    decifra.update(Buffer.from(cifradoHex, "hex")),
+    decifra.final(),
+  ]);
   return decifrado.toString("utf8");
 }

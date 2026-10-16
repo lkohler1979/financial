@@ -18,14 +18,23 @@ export const situacaoRepository = {
   /** Troca a situação e grava o histórico na mesma transação. */
   trocar(matriculaId: string, dados: TrocaSituacao) {
     return prisma.$transaction([
-      prisma.matricula.update({ where: { id: matriculaId }, data: { situacao: dados.situacaoNova } }),
+      prisma.matricula.update({
+        where: { id: matriculaId },
+        data: { situacao: dados.situacaoNova },
+      }),
       prisma.historicoSituacaoMatricula.create({ data: { matriculaId, ...dados } }),
     ]);
   },
 
   registrarInicial(matriculaId: string, situacaoNova: string, usuarioId: string | null) {
     return prisma.historicoSituacaoMatricula.create({
-      data: { matriculaId, situacaoAnterior: null, situacaoNova, motivo: "Matrícula criada", usuarioId },
+      data: {
+        matriculaId,
+        situacaoAnterior: null,
+        situacaoNova,
+        motivo: "Matrícula criada",
+        usuarioId,
+      },
     });
   },
 

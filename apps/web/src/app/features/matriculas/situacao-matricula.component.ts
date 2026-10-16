@@ -20,7 +20,9 @@ import { MatriculasService } from "../../core/services/matriculas.service";
     <section class="bg-white rounded-lg border p-4 mb-4">
       <div class="flex flex-wrap items-center gap-3">
         <p class="text-sm font-medium text-gray-700 m-0">Situação da matrícula</p>
-        <span class="px-2 py-0.5 rounded text-xs" [class]="classe(situacao())">{{ rotulo(situacao()) }}</span>
+        <span class="px-2 py-0.5 rounded text-xs" [class]="classe(situacao())">{{
+          rotulo(situacao())
+        }}</span>
         <button mat-stroked-button type="button" class="ml-auto" (click)="aberto.set(!aberto())">
           {{ aberto() ? "Fechar" : "Alterar situação" }}
         </button>
@@ -41,19 +43,37 @@ import { MatriculasService } from "../../core/services/matriculas.service";
           </label>
           <label class="text-sm">
             <span class="block text-xs text-gray-500">Período letivo</span>
-            <input class="border rounded px-2 py-1 w-full" placeholder="Ex.: 2026/2" maxlength="50" [(ngModel)]="periodoLetivo" />
+            <input
+              class="border rounded px-2 py-1 w-full"
+              placeholder="Ex.: 2026/2"
+              maxlength="50"
+              [(ngModel)]="periodoLetivo"
+            />
           </label>
           <label class="text-sm">
-            <span class="block text-xs text-gray-500">Motivo {{ exigeMotivo() ? "(obrigatório)" : "" }}</span>
+            <span class="block text-xs text-gray-500"
+              >Motivo {{ exigeMotivo() ? "(obrigatório)" : "" }}</span
+            >
             <input class="border rounded px-2 py-1 w-full" maxlength="500" [(ngModel)]="motivo" />
           </label>
           <label class="text-sm md:col-span-3">
             <span class="block text-xs text-gray-500">Observações sobre a mudança</span>
-            <textarea class="border rounded px-2 py-1 w-full" rows="2" maxlength="1000" [(ngModel)]="observacoes"></textarea>
+            <textarea
+              class="border rounded px-2 py-1 w-full"
+              rows="2"
+              maxlength="1000"
+              [(ngModel)]="observacoes"
+            ></textarea>
           </label>
         </div>
         <div class="mt-3">
-          <button mat-flat-button color="primary" type="button" [disabled]="!pode() || salvando()" (click)="salvar()">
+          <button
+            mat-flat-button
+            color="primary"
+            type="button"
+            [disabled]="!pode() || salvando()"
+            (click)="salvar()"
+          >
             Salvar alteração
           </button>
         </div>
@@ -74,14 +94,19 @@ import { MatriculasService } from "../../core/services/matriculas.service";
           <tbody>
             @for (h of historico(); track h.id) {
               <tr class="border-t align-top">
-                <td class="py-1 pr-2 whitespace-nowrap">{{ h.criadoEm | date: "dd/MM/yyyy HH:mm" }}</td>
+                <td class="py-1 pr-2 whitespace-nowrap">
+                  {{ h.criadoEm | date: "dd/MM/yyyy HH:mm" }}
+                </td>
                 <td class="pr-2 whitespace-nowrap">
-                  {{ h.situacaoAnterior ? rotulo(h.situacaoAnterior) + " → " : "" }}{{ rotulo(h.situacaoNova) }}
+                  {{ h.situacaoAnterior ? rotulo(h.situacaoAnterior) + " → " : ""
+                  }}{{ rotulo(h.situacaoNova) }}
                 </td>
                 <td class="pr-2">{{ h.periodoLetivo || "—" }}</td>
                 <td class="pr-2">
                   {{ h.motivo || "—" }}
-                  @if (h.observacoes) { <span class="block text-xs text-gray-500">{{ h.observacoes }}</span> }
+                  @if (h.observacoes) {
+                    <span class="block text-xs text-gray-500">{{ h.observacoes }}</span>
+                  }
                 </td>
                 <td>{{ h.usuario?.nome ?? "Sistema" }}</td>
               </tr>

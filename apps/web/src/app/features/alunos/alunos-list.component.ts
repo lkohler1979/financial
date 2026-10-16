@@ -70,7 +70,9 @@ import { ImportarLegadoLoteDialogComponent } from "./importar-legado-lote-dialog
         </ng-container>
         <ng-container matColumnDef="celular">
           <th mat-header-cell *matHeaderCellDef>Celular</th>
-          <td mat-cell *matCellDef="let a" class="whitespace-nowrap">{{ a.telefone1 || a.telefone2 || "—" }}</td>
+          <td mat-cell *matCellDef="let a" class="whitespace-nowrap">
+            {{ a.telefone1 || a.telefone2 || "—" }}
+          </td>
         </ng-container>
         <ng-container matColumnDef="nome">
           <th mat-header-cell *matHeaderCellDef>Nome</th>
@@ -174,7 +176,11 @@ export class AlunosListComponent implements OnInit {
   /** Busca em lote: todos os alunos do legado (varredura + importação em segundo plano). */
   buscarTodosLegado(): void {
     this.dialog
-      .open(ImportarLegadoLoteDialogComponent, { width: "720px", maxHeight: "90vh", disableClose: false })
+      .open(ImportarLegadoLoteDialogComponent, {
+        width: "720px",
+        maxHeight: "90vh",
+        disableClose: false,
+      })
       .afterClosed()
       .subscribe(() => this.carregar());
   }

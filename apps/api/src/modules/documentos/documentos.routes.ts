@@ -11,7 +11,11 @@ export const documentosRouter = Router();
 
 documentosRouter.get("/tipos", documentosController.listarTipos);
 documentosRouter.post("/tipos", requireRole("ADMINISTRADOR"), documentosController.criarTipo);
-documentosRouter.put("/tipos/:id", requireRole("ADMINISTRADOR"), documentosController.atualizarTipo);
+documentosRouter.put(
+  "/tipos/:id",
+  requireRole("ADMINISTRADOR"),
+  documentosController.atualizarTipo,
+);
 documentosRouter.get("/aguardando-conferencia", documentosController.aguardandoConferencia);
 documentosRouter.get("/matriculas/:matriculaId", documentosController.listarDaMatricula);
 documentosRouter.post(

@@ -1,5 +1,17 @@
-import { Prisma, StatusLoteLegado } from "@prisma/client";
+import { Prisma, StatusLoteLegado, TipoOcorrenciaLote } from "@prisma/client";
 import { prisma } from "../../database/prisma";
+
+export interface NovaOcorrencia {
+  tipo: TipoOcorrenciaLote;
+  pessoaNome?: string | null;
+  cpf?: string | null;
+  pesId?: string | null;
+  curso?: string | null;
+  titulo?: string | null;
+  motivo: string;
+}
+
+const TAMANHO_LOTE_INSERT = 500;
 
 export const importacaoLegadoLoteRepository = {
   criar(usuarioId: string, limite?: number) {
@@ -26,6 +38,32 @@ export const importacaoLegadoLoteRepository = {
         status: { in: [StatusLoteLegado.ENUMERANDO, StatusLoteLegado.IMPORTANDO] },
         atualizadoEm: { gte: desde },
       },
+    });
+  },
+
+  async registrarOcorrencias(loteId: string, ocorrencias: NovaOcorrencia[]) {
+    for (let i = 0; i < ocorrencias.length; i += TAMANHO_LOTE_INSERT) {
+      await prisma.importacaoLegadoOcorrencia.createMany({
+        data: ocorrencias.slice(i, i + TAMANHO_LOTE_INSERT).map((o) => ({ ...o, loteId })),
+      });
+    }
+  },
+
+  async contarOcorrenciasPorTipo(
+    loteId: string,
+  ): Promise<Partial<Record<TipoOcorrenciaLote, number>>> {
+    const grupos = await prisma.importacaoLegadoOcorrencia.groupBy({
+      by: ["tipo"],
+      where: { loteId },
+      _count: { _all: true },
+    });
+    return Object.fromEntries(grupos.map((g) => [g.tipo, g._count._all]));
+  },
+
+  listarOcorrencias(loteId: string) {
+    return prisma.importacaoLegadoOcorrencia.findMany({
+      where: { loteId },
+      orderBy: [{ tipo: "asc" }, { pessoaNome: "asc" }, { criadoEm: "asc" }],
     });
   },
 };

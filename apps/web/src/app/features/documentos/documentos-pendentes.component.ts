@@ -47,7 +47,9 @@ import { formatarCpf } from "../../shared/utils/cpf.util";
               <td class="py-2 pr-3">{{ d.aluno.codigo || "—" }}</td>
               <td class="pr-3">{{ d.aluno.nome }}</td>
               <td class="pr-3">{{ formatarCpf(d.aluno.cpf) }}</td>
-              <td class="pr-3">{{ (d.matricula ?? d.aluno.matriculas[0])?.numeroMatricula || "—" }}</td>
+              <td class="pr-3">
+                {{ (d.matricula ?? d.aluno.matriculas[0])?.numeroMatricula || "—" }}
+              </td>
               <td class="pr-3">{{ d.tipo.nome }}</td>
               <td class="pr-3">{{ d.anexadoEm | date: "dd/MM/yyyy HH:mm" }}</td>
               <td>
@@ -59,7 +61,9 @@ import { formatarCpf } from "../../shared/utils/cpf.util";
           } @empty {
             @if (!carregando) {
               <tr>
-                <td colspan="7" class="py-4 text-gray-400">Nenhum documento aguardando conferência.</td>
+                <td colspan="7" class="py-4 text-gray-400">
+                  Nenhum documento aguardando conferência.
+                </td>
               </tr>
             }
           }

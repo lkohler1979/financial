@@ -10,18 +10,18 @@ A especificação completa do produto está em `docs/especificacao/EthosFinancia
 
 ## 2. Stack tecnológico (não alterar sem justificativa explícita)
 
-| Camada                        | Tecnologia                                                         |
-| ----------------------------- | ------------------------------------------------------------------ |
-| Backend runtime               | Node.js 20                                                         |
-| Framework HTTP                | Express 5                                                          |
-| Linguagem                     | TypeScript (strict mode)                                           |
-| ORM                           | Prisma ORM                                                         |
-| Banco de dados                | PostgreSQL 16                                                      |
-| Filas / background jobs       | BullMQ + Redis 7                                                   |
-| Frontend                      | Angular 17+ (Standalone Components)                                |
-| UI                            | Angular Material + Tailwind                                        |
-| Geração de documentos         | biblioteca `docx` (Node)                                           |
-| Containerização               | Docker + Docker Compose                                            |
+| Camada                  | Tecnologia                          |
+| ----------------------- | ----------------------------------- |
+| Backend runtime         | Node.js 20                          |
+| Framework HTTP          | Express 5                           |
+| Linguagem               | TypeScript (strict mode)            |
+| ORM                     | Prisma ORM                          |
+| Banco de dados          | PostgreSQL 16                       |
+| Filas / background jobs | BullMQ + Redis 7                    |
+| Frontend                | Angular 17+ (Standalone Components) |
+| UI                      | Angular Material + Tailwind         |
+| Geração de documentos   | biblioteca `docx` (Node)            |
+| Containerização         | Docker + Docker Compose             |
 
 ## 3. Estrutura do monorepo
 

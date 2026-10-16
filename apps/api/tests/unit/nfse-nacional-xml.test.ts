@@ -25,7 +25,14 @@ const DADOS: DadosDps = {
     documento: "100.521.534-01",
     nome: "Anderson Oliveira de Sousa & Filhos",
     email: null,
-    endereco: { municipioIbge: "2506301", cep: "58200-062", logradouro: "Deodoro da Fonseca", numero: "172", complemento: "Primeiro Andar", bairro: "CENTRO" },
+    endereco: {
+      municipioIbge: "2506301",
+      cep: "58200-062",
+      logradouro: "Deodoro da Fonseca",
+      numero: "172",
+      complemento: "Primeiro Andar",
+      bairro: "CENTRO",
+    },
   },
   servico: {
     codigoTributacaoNacional: "080101",
@@ -38,7 +45,12 @@ const DADOS: DadosDps = {
 
 describe("montarIdDps", () => {
   it("compõe DPS + município + tipo + CNPJ + série(5) + número(15) = 45 caracteres", () => {
-    const id = montarIdDps({ serie: 1, numero: 1035, municipioIbge: "3205309", cnpj: "39.279.631/0001-27" });
+    const id = montarIdDps({
+      serie: 1,
+      numero: 1035,
+      municipioIbge: "3205309",
+      cnpj: "39.279.631/0001-27",
+    });
     expect(id).toBe("DPS320530923927963100012700001000000000001035");
     expect(id).toHaveLength(45);
   });
@@ -50,22 +62,51 @@ describe("montarDpsXml", () => {
     expect(xml).toContain('<DPS xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.01">');
     expect(xml).toContain('<infDPS Id="DPS320530923927963100012700001000000000001036">');
     expect(xml).toContain("<dhEmi>2026-08-11T18:18:17-03:00</dhEmi>");
-    expect(xml).toContain("<dCompet>2026-07-31</dCompet><tpEmit>1</tpEmit><cLocEmi>3205309</cLocEmi>");
+    expect(xml).toContain(
+      "<dCompet>2026-07-31</dCompet><tpEmit>1</tpEmit><cLocEmi>3205309</cLocEmi>",
+    );
     expect(xml).toContain("<nDPS>1036</nDPS>");
     // prestador: só CNPJ, contato e regime
-    expect(xml).toContain("<prest><CNPJ>39279631000127</CNPJ><fone>27998276190</fone><email>contato@ethos.com.br</email>");
-    expect(xml).toContain("<regTrib><opSimpNac>3</opSimpNac><regApTribSN>1</regApTribSN><regEspTrib>0</regEspTrib></regTrib>");
+    expect(xml).toContain(
+      "<prest><CNPJ>39279631000127</CNPJ><fone>27998276190</fone><email>contato@ethos.com.br</email>",
+    );
+    expect(xml).toContain(
+      "<regTrib><opSimpNac>3</opSimpNac><regApTribSN>1</regApTribSN><regEspTrib>0</regEspTrib></regTrib>",
+    );
     expect(xml).not.toContain("<xNome>INSTITUTO");
     // tomador pessoa física, com endereço nacional e nome escapado
-    expect(xml).toContain("<toma><CPF>10052153401</CPF><xNome>Anderson Oliveira de Sousa &amp; Filhos</xNome>");
-    expect(xml).toContain("<end><endNac><cMun>2506301</cMun><CEP>58200062</CEP></endNac><xLgr>Deodoro da Fonseca</xLgr><nro>172</nro><xCpl>Primeiro Andar</xCpl><xBairro>CENTRO</xBairro></end>");
+    expect(xml).toContain(
+      "<toma><CPF>10052153401</CPF><xNome>Anderson Oliveira de Sousa &amp; Filhos</xNome>",
+    );
+    expect(xml).toContain(
+      "<end><endNac><cMun>2506301</cMun><CEP>58200062</CEP></endNac><xLgr>Deodoro da Fonseca</xLgr><nro>172</nro><xCpl>Primeiro Andar</xCpl><xBairro>CENTRO</xBairro></end>",
+    );
     // serviço e valores
-    expect(xml).toContain("<serv><locPrest><cLocPrestacao>3205309</cLocPrestacao></locPrest><cServ><cTribNac>080101</cTribNac><xDescServ>PRESTAÇÃO DE SERVIÇOS EDUCACIONAIS</xDescServ></cServ>");
-    expect(xml).toContain("<infoCompl><xInfComp>Parcela 3/12 (Mensalidade) — Curso X.</xInfComp></infoCompl></serv>");
+    expect(xml).toContain(
+      "<serv><locPrest><cLocPrestacao>3205309</cLocPrestacao></locPrest><cServ><cTribNac>080101</cTribNac><xDescServ>PRESTAÇÃO DE SERVIÇOS EDUCACIONAIS</xDescServ></cServ>",
+    );
+    expect(xml).toContain(
+      "<infoCompl><xInfComp>Parcela 3/12 (Mensalidade) — Curso X.</xInfComp></infoCompl></serv>",
+    );
     expect(xml).toContain("<vServPrest><vServ>251.49</vServ></vServPrest>");
-    expect(xml).toContain("<tribMun><tribISSQN>1</tribISSQN><tpRetISSQN>1</tpRetISSQN></tribMun><totTrib><pTotTribSN>0.00</pTotTribSN></totTrib>");
+    expect(xml).toContain(
+      "<tribMun><tribISSQN>1</tribISSQN><tpRetISSQN>1</tpRetISSQN></tribMun><totTrib><pTotTribSN>0.00</pTotTribSN></totTrib>",
+    );
     // ordem dos grupos
-    const ordem = ["<tpAmb>", "<dhEmi>", "<verAplic>", "<serie>", "<nDPS>", "<dCompet>", "<tpEmit>", "<cLocEmi>", "<prest>", "<toma>", "<serv>", "<valores>"];
+    const ordem = [
+      "<tpAmb>",
+      "<dhEmi>",
+      "<verAplic>",
+      "<serie>",
+      "<nDPS>",
+      "<dCompet>",
+      "<tpEmit>",
+      "<cLocEmi>",
+      "<prest>",
+      "<toma>",
+      "<serv>",
+      "<valores>",
+    ];
     const posicoes = ordem.map((t) => xml.indexOf(t));
     expect(posicoes).toEqual([...posicoes].sort((a, b) => a - b));
     expect(posicoes.every((p) => p > 0)).toBe(true);
@@ -86,8 +127,12 @@ describe("montarDpsXml", () => {
   it("rejeita o que a SEFIN recusaria: competência futura, valor zero, código do serviço", () => {
     expect(() => montarDpsXml({ ...DADOS, competencia: "2026-08-12" })).toThrow(/posterior/);
     expect(() => montarDpsXml({ ...DADOS, valor: 0 })).toThrow(/Valor/);
-    expect(() => montarDpsXml({ ...DADOS, servico: { ...DADOS.servico, codigoTributacaoNacional: "0801" } })).toThrow(/6 dígitos/);
-    expect(() => montarDpsXml({ ...DADOS, prestador: { ...DADOS.prestador, municipioIbge: "123" } })).toThrow(/IBGE/);
+    expect(() =>
+      montarDpsXml({ ...DADOS, servico: { ...DADOS.servico, codigoTributacaoNacional: "0801" } }),
+    ).toThrow(/6 dígitos/);
+    expect(() =>
+      montarDpsXml({ ...DADOS, prestador: { ...DADOS.prestador, municipioIbge: "123" } }),
+    ).toThrow(/IBGE/);
   });
 });
 
@@ -101,8 +146,13 @@ describe("certificado A1 e assinatura", () => {
     expect(cert.keyPem).toContain("PRIVATE KEY");
 
     expect(() => lerCertificadoA1(pfx, "errada")).toThrow(/senha/);
-    expect(() => lerCertificadoA1(Buffer.from("não é um pfx"), senha)).toThrow(/abrir o certificado/);
-    const vencido = gerarPfxTeste({ inicio: new Date(Date.now() - 400 * 86_400_000), diasDeValidade: 30 });
+    expect(() => lerCertificadoA1(Buffer.from("não é um pfx"), senha)).toThrow(
+      /abrir o certificado/,
+    );
+    const vencido = gerarPfxTeste({
+      inicio: new Date(Date.now() - 400 * 86_400_000),
+      diasDeValidade: 30,
+    });
     expect(() => lerCertificadoA1(vencido.pfx, vencido.senha)).toThrow(/vencido/);
   });
 
@@ -111,7 +161,9 @@ describe("certificado A1 e assinatura", () => {
     const certificado = lerCertificadoA1(pfx, senha);
     const assinado = assinarDps(montarDpsXml(DADOS), certificado);
 
-    expect(assinado).toMatch(/<\/infDPS><Signature xmlns="http:\/\/www\.w3\.org\/2000\/09\/xmldsig#">/);
+    expect(assinado).toMatch(
+      /<\/infDPS><Signature xmlns="http:\/\/www\.w3\.org\/2000\/09\/xmldsig#">/,
+    );
     expect(assinado.endsWith("</Signature></DPS>")).toBe(true);
     expect(assinado).toContain('URI="#DPS320530923927963100012700001000000000001036"');
     expect(assinado).toContain("http://www.w3.org/2001/04/xmldsig-more#rsa-sha256");

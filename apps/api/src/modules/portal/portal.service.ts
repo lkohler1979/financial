@@ -131,7 +131,11 @@ export const portalService = {
     if (sessao.sacadoId) {
       const sacado = await portalRepository.findSacado(sessao.sacadoId);
       if (!sacado) throw new NotFoundError("Sacado não encontrado");
-      return { tipoAcesso: "SACADO" as const, aluno: { ...sacado, codigo: null, cpf: sacado.cpfCnpj }, matriculas };
+      return {
+        tipoAcesso: "SACADO" as const,
+        aluno: { ...sacado, codigo: null, cpf: sacado.cpfCnpj },
+        matriculas,
+      };
     }
     const aluno = await portalRepository.findAluno(sessao.alunoId as string);
     if (!aluno) throw new NotFoundError("Aluno não encontrado");
@@ -242,7 +246,10 @@ export const portalService = {
 
     const chaveParcela = `parcela:${parcelaId}`;
     const chaveIp = `ip:${ip}`;
-    if (limiteCartaoParcela.bloqueado(chaveParcela, agora) || limiteCartaoIp.bloqueado(chaveIp, agora)) {
+    if (
+      limiteCartaoParcela.bloqueado(chaveParcela, agora) ||
+      limiteCartaoIp.bloqueado(chaveIp, agora)
+    ) {
       throw new AppError(
         "Muitas tentativas de pagamento. Aguarde alguns minutos e tente novamente.",
         429,

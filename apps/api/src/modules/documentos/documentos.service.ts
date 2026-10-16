@@ -77,7 +77,11 @@ export const documentosService = {
   async atualizarTipo(id: string, input: AtualizarTipoDocumentoInput, usuarioId: string) {
     const atual = await documentosRepository.findTipo(id);
     if (!atual) throw new NotFoundError("Tipo de documento não encontrado");
-    if (input.nome && input.nome !== atual.nome && (await documentosRepository.findTipoPorNome(input.nome))) {
+    if (
+      input.nome &&
+      input.nome !== atual.nome &&
+      (await documentosRepository.findTipoPorNome(input.nome))
+    ) {
       throw new ConflictError("Já existe um tipo de documento com este nome", { nome: input.nome });
     }
     const tipo = await documentosRepository.atualizarTipo(id, input);
@@ -140,7 +144,11 @@ export const documentosService = {
     }
 
     const documento = await obterOuCriar(matriculaId, tipoDocumentoId);
-    const chave = await armazenamento.salvar(documento.alunoId, arquivo.originalname, arquivo.buffer);
+    const chave = await armazenamento.salvar(
+      documento.alunoId,
+      arquivo.originalname,
+      arquivo.buffer,
+    );
     if (documento.arquivoChave) await armazenamento.remover(documento.arquivoChave);
 
     // Novo arquivo sempre volta a conferência pro início — o deferimento
@@ -167,7 +175,11 @@ export const documentosService = {
         entidade: ENTIDADE,
         entidadeId: documento.id,
         acao: "ATUALIZACAO",
-        detalhes: { acao: "arquivo_anexado", tipo: documento.tipo.nome, arquivo: arquivo.originalname },
+        detalhes: {
+          acao: "arquivo_anexado",
+          tipo: documento.tipo.nome,
+          arquivo: arquivo.originalname,
+        },
       });
     }
     return atualizado;

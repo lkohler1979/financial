@@ -950,6 +950,7 @@ model ImportacaoLegadoLote {
   semCpf                   Int              @default(0) @map("sem_cpf")
   alunosCriados            Int              @default(0) @map("alunos_criados")
   matriculasNovas          Int              @default(0) @map("matriculas_novas")
+  cursosCriados            Int              @default(0) @map("cursos_criados")
   parcelasNovas            Int              @default(0) @map("parcelas_novas")
   parcelasAtualizadas      Int              @default(0) @map("parcelas_atualizadas")
   erros                    Int              @default(0)
@@ -962,7 +963,8 @@ model ImportacaoLegadoLote {
   atualizadoEm             DateTime         @updatedAt @map("atualizado_em")
   finalizadoEm             DateTime?        @map("finalizado_em")
 
-  usuario Usuario @relation(fields: [usuarioId], references: [id])
+  usuario     Usuario                      @relation(fields: [usuarioId], references: [id])
+  ocorrencias ImportacaoLegadoOcorrencia[]
 
   @@map("importacoes_legado_lote")
 }
@@ -972,4 +974,35 @@ enum StatusLoteLegado {
   IMPORTANDO
   CONCLUIDO
   FALHOU
+}
+
+/// Linha do relatório de uma importação em lote do legado: tudo que não entrou (ou entrou com
+/// ressalva) para ser analisado depois — alunos sem CPF, matrículas e parcelas não importadas,
+/// cursos criados automaticamente e erros.
+model ImportacaoLegadoOcorrencia {
+  id         String             @id @default(uuid())
+  loteId     String             @map("lote_id")
+  tipo       TipoOcorrenciaLote
+  pessoaNome String?            @map("pessoa_nome")
+  cpf        String?
+  pesId      String?            @map("pes_id")
+  curso      String?
+  titulo     String?
+  motivo     String
+  criadoEm   DateTime           @default(now()) @map("criado_em")
+
+  lote ImportacaoLegadoLote @relation(fields: [loteId], references: [id], onDelete: Cascade)
+
+  @@index([loteId, tipo])
+  @@map("importacoes_legado_ocorrencias")
+}
+
+enum TipoOcorrenciaLote {
+  ALUNO_SEM_CPF
+  ALUNO_SEM_MATRICULA
+  CURSO_CRIADO
+  MATRICULA_NAO_REALIZADA
+  PARCELA_NAO_IMPORTADA
+  ERRO
+  VARREDURA_INCOMPLETA
 }

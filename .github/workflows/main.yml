@@ -27,11 +27,8 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      # Ainda há arquivos antigos fora do padrão do Prettier (rode `npm run format` para
-      # corrigir tudo de uma vez); enquanto isso o aviso não bloqueia o deploy.
       - name: Format check
         run: npm run format:check
-        continue-on-error: true
 
       - name: Generate Prisma Client
         run: npm run prisma:generate

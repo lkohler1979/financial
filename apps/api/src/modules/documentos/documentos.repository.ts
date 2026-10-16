@@ -40,7 +40,10 @@ export const documentosRepository = {
             codigo: true,
             nome: true,
             cpf: true,
-            matriculas: { select: { id: true, numeroMatricula: true }, orderBy: { dataMatricula: "desc" } },
+            matriculas: {
+              select: { id: true, numeroMatricula: true },
+              orderBy: { dataMatricula: "desc" },
+            },
           },
         },
         matricula: { select: { id: true, numeroMatricula: true } },

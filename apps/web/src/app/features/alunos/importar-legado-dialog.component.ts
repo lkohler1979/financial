@@ -119,14 +119,21 @@ function cursoHabilitado(curso: CursoSelecao): boolean {
                 <div class="flex items-center gap-2 text-sm">
                   <mat-icon class="text-green-700" inline>link</mat-icon>
                   <span>
-                    Associado a <strong>{{ curso.cursoEthosSugerido.codigo }} — {{ curso.cursoEthosSugerido.nome }}</strong>
+                    Associado a
+                    <strong
+                      >{{ curso.cursoEthosSugerido.codigo }} —
+                      {{ curso.cursoEthosSugerido.nome }}</strong
+                    >
                   </span>
                   <button mat-button (click)="curso.editandoAssociacao = true">Trocar</button>
                 </div>
               } @else {
                 <mat-form-field appearance="outline" class="w-full max-w-md">
                   <mat-label>Curso correspondente no Ethos</mat-label>
-                  <mat-select [(ngModel)]="curso.cursoEthosId" [ngModelOptions]="{ standalone: true }">
+                  <mat-select
+                    [(ngModel)]="curso.cursoEthosId"
+                    [ngModelOptions]="{ standalone: true }"
+                  >
                     @for (c of cursosEthos; track c.id) {
                       <mat-option [value]="c.id">{{ c.codigo }} — {{ c.nome }}</mat-option>
                     }
@@ -183,7 +190,9 @@ function cursoHabilitado(curso: CursoSelecao): boolean {
                 </p>
               }
             } @else {
-              <p class="text-sm text-gray-500 m-0">Nenhuma parcela encontrada no legado para este curso.</p>
+              <p class="text-sm text-gray-500 m-0">
+                Nenhuma parcela encontrada no legado para este curso.
+              </p>
             }
           </div>
         }
@@ -258,7 +267,9 @@ export class ImportarLegadoDialogComponent {
 
   podeConfirmar(): boolean {
     const cursosComAcao = this.cursosSelecao.filter(
-      (c) => (c.matriculaJaExiste || c.importarMatricula) && (c.importarMatricula || c.parcelas.some((p) => p.selecionada)),
+      (c) =>
+        (c.matriculaJaExiste || c.importarMatricula) &&
+        (c.importarMatricula || c.parcelas.some((p) => p.selecionada)),
     );
     if (cursosComAcao.length === 0) return false;
     // Todo curso com alguma ação precisa de um curso do Ethos escolhido.

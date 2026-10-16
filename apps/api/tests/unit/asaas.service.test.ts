@@ -8,14 +8,13 @@ import { sincronizacaoLegadoRepository } from "../../src/modules/sincronizacao-l
 import { registrarAuditoria } from "../../src/modules/auditoria/auditoria.service";
 import { AppError, NotFoundError } from "../../src/shared/errors/app-error";
 
-const { criarClienteMock, criarCobrancaMock, obterLinhaDigitavelMock, obterQrCodePixMock } = vi.hoisted(
-  () => ({
+const { criarClienteMock, criarCobrancaMock, obterLinhaDigitavelMock, obterQrCodePixMock } =
+  vi.hoisted(() => ({
     criarClienteMock: vi.fn(),
     criarCobrancaMock: vi.fn(),
     obterLinhaDigitavelMock: vi.fn(),
     obterQrCodePixMock: vi.fn(),
-  }),
-);
+  }));
 
 const { criarCobrancaPixRedeMock } = vi.hoisted(() => ({
   criarCobrancaPixRedeMock: vi.fn(),
@@ -201,7 +200,10 @@ describe("asaasService.gerarCobrancaParcela", () => {
     expect(criarClienteMock).not.toHaveBeenCalled();
     expect(criarCobrancaPixRedeMock).toHaveBeenCalledWith(
       // Referência curta (limite de 16 da Rede), nunca o UUID da parcela; vínculo é o TID gravado.
-      expect.objectContaining({ reference: expect.stringMatching(/^[A-Z0-9]{1,16}$/), amount: 10000 }),
+      expect.objectContaining({
+        reference: expect.stringMatching(/^[A-Z0-9]{1,16}$/),
+        amount: 10000,
+      }),
     );
     // Expiração em horário local (sem "Z") e dentro do limite de 15 dias da Rede.
     const { dateTimeExpiration } = criarCobrancaPixRedeMock.mock.calls[0][0];
@@ -246,7 +248,10 @@ describe("asaasService.gerarCobrancaParcela", () => {
       bankSlipUrl: "https://asaas/boleto/pay_novo",
       invoiceUrl: "https://asaas/fatura/pay_novo",
     });
-    obterLinhaDigitavelMock.mockResolvedValue({ identificationField: "00190.00009...", barCode: "x" });
+    obterLinhaDigitavelMock.mockResolvedValue({
+      identificationField: "00190.00009...",
+      barCode: "x",
+    });
     financeiro.update.mockResolvedValue(parcelaFake as never);
 
     await asaasService.gerarCobrancaParcela("parcela-1", "BOLETO", USUARIO);
@@ -289,7 +294,10 @@ describe("asaasService.gerarCobrancaParcela", () => {
       bankSlipUrl: "https://asaas/boleto/pay_novo",
       invoiceUrl: "https://asaas/fatura/pay_novo",
     });
-    obterLinhaDigitavelMock.mockResolvedValue({ identificationField: "00190.00009...", barCode: "x" });
+    obterLinhaDigitavelMock.mockResolvedValue({
+      identificationField: "00190.00009...",
+      barCode: "x",
+    });
     financeiro.update.mockResolvedValue({
       ...parcelaFake,
       asaasPaymentId: "pay_novo",
@@ -428,7 +436,10 @@ describe("asaasService.processarWebhook", () => {
   });
 
   it("marca a Parcela como PAGO quando o pagamento é confirmado", async () => {
-    financeiro.findByAsaasPaymentId.mockResolvedValue({ ...parcelaFake, asaasPaymentId: "pay_novo" } as never);
+    financeiro.findByAsaasPaymentId.mockResolvedValue({
+      ...parcelaFake,
+      asaasPaymentId: "pay_novo",
+    } as never);
     legado.obterUsuarioSistema.mockResolvedValue("admin-1");
 
     await asaasService.processarWebhook(payloadConfirmado, "token-webhook");
@@ -441,7 +452,10 @@ describe("asaasService.processarWebhook", () => {
   });
 
   it("não falha (só não registra) quando não há nenhum usuário administrador cadastrado", async () => {
-    financeiro.findByAsaasPaymentId.mockResolvedValue({ ...parcelaFake, asaasPaymentId: "pay_novo" } as never);
+    financeiro.findByAsaasPaymentId.mockResolvedValue({
+      ...parcelaFake,
+      asaasPaymentId: "pay_novo",
+    } as never);
     legado.obterUsuarioSistema.mockResolvedValue(null);
 
     await expect(
@@ -454,7 +468,10 @@ describe("asaasService.processarWebhook", () => {
 describe("asaasService.gerarCobrancaParcela — cartão pela Rede", () => {
   it("não gera link: o pagador usa o formulário de cartão (código próprio para a emissão automática ignorar)", async () => {
     financeiro.findById.mockResolvedValue(parcelaFake as never);
-    configRepo.obterOuCriar.mockResolvedValue({ ...CONFIG_COM_ASAAS, provedorCartao: "REDE" } as never);
+    configRepo.obterOuCriar.mockResolvedValue({
+      ...CONFIG_COM_ASAAS,
+      provedorCartao: "REDE",
+    } as never);
 
     await expect(
       asaasService.gerarCobrancaParcela("parcela-1", "CREDIT_CARD", USUARIO),

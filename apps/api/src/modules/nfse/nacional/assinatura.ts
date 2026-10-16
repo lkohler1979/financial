@@ -19,7 +19,12 @@ export function assinarElemento(
   elementoAssinado: string,
 ): string {
   const id = new RegExp(`<${elementoAssinado}\\b[^>]*\\bId="([^"]+)"`).exec(xml)?.[1];
-  if (!id) throw new AppError(`Elemento <${elementoAssinado}> sem atributo Id — não dá para assinar`, 500, "NFSE_XML_SEM_ID");
+  if (!id)
+    throw new AppError(
+      `Elemento <${elementoAssinado}> sem atributo Id — não dá para assinar`,
+      500,
+      "NFSE_XML_SEM_ID",
+    );
 
   const assinatura = new SignedXml({
     privateKey: certificado.keyPem,
@@ -39,4 +44,5 @@ export function assinarElemento(
   return assinatura.getSignedXml();
 }
 
-export const assinarDps = (xml: string, certificado: CertificadoA1) => assinarElemento(xml, certificado, "DPS", "infDPS");
+export const assinarDps = (xml: string, certificado: CertificadoA1) =>
+  assinarElemento(xml, certificado, "DPS", "infDPS");

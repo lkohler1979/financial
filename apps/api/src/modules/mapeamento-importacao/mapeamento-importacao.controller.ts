@@ -1,10 +1,7 @@
 import { Request, Response } from "express";
 import { asyncHandler } from "../../shared/utils/async-handler";
 import { paramString, usuarioAtual } from "../../shared/utils/http";
-import {
-  atualizarMapeamentoSchema,
-  criarMapeamentoSchema,
-} from "./mapeamento-importacao.schema";
+import { atualizarMapeamentoSchema, criarMapeamentoSchema } from "./mapeamento-importacao.schema";
 import { mapeamentoImportacaoService } from "./mapeamento-importacao.service";
 
 export const mapeamentoImportacaoController = {

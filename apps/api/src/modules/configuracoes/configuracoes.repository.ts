@@ -40,6 +40,64 @@ export const configuracoesRepository = {
   },
 
   /**
+   * Apaga alunos, matrículas e parcelas com tudo que depende deles (histórico e observações de
+   * cobrança, tags, histórico de situação, documentos e solicitações). Mantém cursos, usuários,
+   * configurações, sacados, cupons, relatórios e importações. Devolve também as chaves dos
+   * arquivos de documentos para o serviço removê-los do armazenamento.
+   */
+  async limparAlunosMatriculasParcelas() {
+    const [documentos, solicitacoes] = await Promise.all([
+      prisma.documento.findMany({
+        where: { arquivoChave: { not: null } },
+        select: { arquivoChave: true },
+      }),
+      prisma.solicitacaoDocumento.findMany({
+        where: { arquivoChave: { not: null } },
+        select: { arquivoChave: true },
+      }),
+    ]);
+
+    const [
+      historicoCobranca,
+      observacoesCobranca,
+      matriculaTags,
+      parcelas,
+      historicoSituacoes,
+      solicitacoesRemovidas,
+      documentosRemovidos,
+      matriculas,
+      alunos,
+    ] = await prisma.$transaction([
+      prisma.historicoCobranca.deleteMany({}),
+      prisma.observacaoCobranca.deleteMany({}),
+      prisma.matriculaTag.deleteMany({}),
+      prisma.parcela.deleteMany({}),
+      prisma.historicoSituacaoMatricula.deleteMany({}),
+      prisma.solicitacaoDocumento.deleteMany({}),
+      prisma.documento.deleteMany({}),
+      prisma.matricula.deleteMany({}),
+      prisma.aluno.deleteMany({}),
+    ]);
+
+    return {
+      chavesArquivos: [...documentos, ...solicitacoes]
+        .map((d) => d.arquivoChave)
+        .filter((c): c is string => Boolean(c)),
+      contagens: {
+        historicoCobranca: historicoCobranca.count,
+        observacoesCobranca: observacoesCobranca.count,
+        matriculaTags: matriculaTags.count,
+        parcelas: parcelas.count,
+        historicoSituacoes: historicoSituacoes.count,
+        solicitacoes: solicitacoesRemovidas.count,
+        documentos: documentosRemovidos.count,
+        matriculas: matriculas.count,
+        alunos: alunos.count,
+      },
+    };
+  },
+
+  /**
    * Apaga todos os dados transacionais (alunos, cursos, matrículas, parcelas,
    * cobrança e histórico de relatórios) para permitir uma importação real do
    * zero — pedido do usuário, 2026-07-08. Mantém intactos Usuario,

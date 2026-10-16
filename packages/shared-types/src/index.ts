@@ -35,12 +35,7 @@ export interface MatriculaDTO {
 }
 
 export type StatusParcela =
-  | "EM_ABERTO"
-  | "PAGO"
-  | "CANCELADO"
-  | "PROTESTO_ENVIADO"
-  | "PROTESTADO"
-  | "RENEGOCIADO";
+  "EM_ABERTO" | "PAGO" | "CANCELADO" | "PROTESTO_ENVIADO" | "PROTESTADO" | "RENEGOCIADO";
 
 export interface ParcelaDTO {
   id: string;

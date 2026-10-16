@@ -23,7 +23,10 @@ export const nfseController = {
   /** Emissão manual: não depende da janela nem do interruptor da emissão automática. */
   emitir: asyncHandler(async (req: Request, res: Response) => {
     const { mes } = emitirNfseSchema.parse(req.body ?? {});
-    const resultado = await nfseService.emitirPendentes(mes ?? mesAnterior(new Date()), usuarioAtual(req));
+    const resultado = await nfseService.emitirPendentes(
+      mes ?? mesAnterior(new Date()),
+      usuarioAtual(req),
+    );
     res.json(resultado);
   }),
 
@@ -40,18 +43,26 @@ export const nfseController = {
     const { busca, de, ate } = buscaPagamentosSchema.parse(req.query);
     const fim = ate ? dataLocal(ate) : undefined;
     fim?.setDate(fim.getDate() + 1);
-    res.json(await nfseService.buscarPagamentos({ busca, inicio: de ? dataLocal(de) : undefined, fim }));
+    res.json(
+      await nfseService.buscarPagamentos({ busca, inicio: de ? dataLocal(de) : undefined, fim }),
+    );
   }),
 
   /** Emite a nota de UM pagamento (qualquer parcela paga), com competência opcional. */
   emitirIndividual: asyncHandler(async (req: Request, res: Response) => {
     const { competencia } = emitirIndividualSchema.parse(req.body ?? {});
-    res.json(await nfseService.emitirParaParcela(paramString(req, "parcelaId"), usuarioAtual(req), { competencia }));
+    res.json(
+      await nfseService.emitirParaParcela(paramString(req, "parcelaId"), usuarioAtual(req), {
+        competencia,
+      }),
+    );
   }),
 
   /** PDF (DANFSe) de uma nota emitida direto na SEFIN Nacional. */
   danfse: asyncHandler(async (req: Request, res: Response) => {
-    const { pdf, nomeArquivo } = await nfseNacionalService.baixarDanfse(paramString(req, "parcelaId"));
+    const { pdf, nomeArquivo } = await nfseNacionalService.baixarDanfse(
+      paramString(req, "parcelaId"),
+    );
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `inline; filename="${nomeArquivo}"`);
     res.send(pdf);

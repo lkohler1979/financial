@@ -16,6 +16,7 @@ import {
   AsaasAmbiente,
   AtualizarConfiguracaoPayload,
   Configuracao,
+  FRASE_CONFIRMACAO_LIMPAR_ALUNOS,
   FRASE_CONFIRMACAO_LIMPAR_BASE,
   FrequenciaImportacao,
   NfseAmbiente,
@@ -141,7 +142,9 @@ import {
       </section>
 
       <section class="bg-white rounded-lg border p-5">
-        <p class="text-sm font-medium text-gray-700 mb-1">Integração com sistema legado (Universa)</p>
+        <p class="text-sm font-medium text-gray-700 mb-1">
+          Integração com sistema legado (Universa)
+        </p>
         <p class="text-xs text-gray-500 mb-4">
           Credenciais usadas pelo botão "Sincronizar com sistema legado" (Ficha de Cobrança) e pela
           sincronização automática em lote. Deixe a senha em branco para manter a atual.
@@ -149,7 +152,11 @@ import {
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
           <mat-form-field appearance="outline">
             <mat-label>URL do sistema legado</mat-label>
-            <input matInput formControlName="legadoUrl" placeholder="https://ethoson.universaeducacional.com.br" />
+            <input
+              matInput
+              formControlName="legadoUrl"
+              placeholder="https://ethoson.universaeducacional.com.br"
+            />
           </mat-form-field>
 
           <mat-form-field appearance="outline">
@@ -159,7 +166,12 @@ import {
 
           <mat-form-field appearance="outline">
             <mat-label>{{ legadoSenhaConfigurada ? "Nova senha (opcional)" : "Senha" }}</mat-label>
-            <input matInput type="password" [formControl]="legadoSenhaControl" autocomplete="new-password" />
+            <input
+              matInput
+              type="password"
+              [formControl]="legadoSenhaControl"
+              autocomplete="new-password"
+            />
             @if (legadoSenhaConfigurada) {
               <mat-hint>Senha já configurada — preencha só para trocar.</mat-hint>
             }
@@ -182,8 +194,8 @@ import {
       <section class="bg-white rounded-lg border p-5">
         <p class="text-sm font-medium text-gray-700 mb-1">Integração Asaas</p>
         <p class="text-xs text-gray-500 mb-4">
-          Credenciais usadas para gerar cobranças (boleto/Pix/cartão) na Ficha de Cobrança.
-          Deixe a chave/token em branco para manter os atuais.
+          Credenciais usadas para gerar cobranças (boleto/Pix/cartão) na Ficha de Cobrança. Deixe a
+          chave/token em branco para manter os atuais.
         </p>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
           <mat-form-field appearance="outline">
@@ -195,16 +207,30 @@ import {
           </mat-form-field>
 
           <mat-form-field appearance="outline">
-            <mat-label>{{ asaasApiKeyConfigurada ? "Nova chave (opcional)" : "Chave de API" }}</mat-label>
-            <input matInput type="password" [formControl]="asaasApiKeyControl" autocomplete="new-password" />
+            <mat-label>{{
+              asaasApiKeyConfigurada ? "Nova chave (opcional)" : "Chave de API"
+            }}</mat-label>
+            <input
+              matInput
+              type="password"
+              [formControl]="asaasApiKeyControl"
+              autocomplete="new-password"
+            />
             @if (asaasApiKeyConfigurada) {
               <mat-hint>Chave já configurada — preencha só para trocar.</mat-hint>
             }
           </mat-form-field>
 
           <mat-form-field appearance="outline">
-            <mat-label>{{ asaasWebhookTokenConfigurado ? "Novo token (opcional)" : "Token do webhook" }}</mat-label>
-            <input matInput type="password" [formControl]="asaasWebhookTokenControl" autocomplete="new-password" />
+            <mat-label>{{
+              asaasWebhookTokenConfigurado ? "Novo token (opcional)" : "Token do webhook"
+            }}</mat-label>
+            <input
+              matInput
+              type="password"
+              [formControl]="asaasWebhookTokenControl"
+              autocomplete="new-password"
+            />
             @if (asaasWebhookTokenConfigurado) {
               <mat-hint>Token já configurado — preencha só para trocar.</mat-hint>
             }
@@ -215,8 +241,8 @@ import {
           <p class="text-sm text-gray-700 mb-1">Provedor por forma de pagamento</p>
           <p class="text-xs text-gray-500 mb-2">
             Qual integração processa cada forma de cobrança no menu "Gerar cobrança" da Ficha de
-            Cobrança. "Desabilitado" remove a opção do menu. Cada forma só pode ter um provedor
-            por vez.
+            Cobrança. "Desabilitado" remove a opção do menu. Cada forma só pode ter um provedor por
+            vez.
           </p>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
             <mat-form-field appearance="outline" subscriptSizing="dynamic">
@@ -256,7 +282,13 @@ import {
             @if (form.controls.provedorCartao.value === "REDE") {
               <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Máx. de parcelas no cartão (Rede)</mat-label>
-                <input matInput type="number" min="1" max="12" formControlName="redeCartaoMaxParcelas" />
+                <input
+                  matInput
+                  type="number"
+                  min="1"
+                  max="12"
+                  formControlName="redeCartaoMaxParcelas"
+                />
                 <mat-hint>1 = só à vista (a Rede aceita até 12x)</mat-hint>
               </mat-form-field>
             }
@@ -266,13 +298,20 @@ import {
         <div class="mt-4 pt-4 border-t">
           <p class="text-sm text-gray-700 mb-1">Multa, juros e desconto por antecipação</p>
           <p class="text-xs text-gray-500 mb-2">
-            Aplicados pelo Asaas em toda cobrança gerada. Deixe em branco para não enviar (mantém
-            a configuração padrão da conta Asaas, se houver).
+            Aplicados pelo Asaas em toda cobrança gerada. Deixe em branco para não enviar (mantém a
+            configuração padrão da conta Asaas, se houver).
           </p>
           <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
             <mat-form-field appearance="outline" subscriptSizing="dynamic">
               <mat-label>Multa (%) após o vencimento</mat-label>
-              <input matInput type="number" min="0" max="100" step="0.01" formControlName="asaasMultaPercentual" />
+              <input
+                matInput
+                type="number"
+                min="0"
+                max="100"
+                step="0.01"
+                formControlName="asaasMultaPercentual"
+              />
             </mat-form-field>
             <mat-form-field appearance="outline" subscriptSizing="dynamic">
               <mat-label>Juros (% ao mês) após o vencimento</mat-label>
@@ -309,7 +348,13 @@ import {
             </mat-form-field>
             <mat-form-field appearance="outline" subscriptSizing="dynamic">
               <mat-label>Emitir cobrança automaticamente (dias antes do vencimento)</mat-label>
-              <input matInput type="number" min="0" max="60" formControlName="emissaoAntecipadaDias" />
+              <input
+                matInput
+                type="number"
+                min="0"
+                max="60"
+                formControlName="emissaoAntecipadaDias"
+              />
               <mat-hint>
                 Todo dia, emite boleto/Pix das parcelas que vencem em até X dias e ainda não têm
                 cobrança. 0 = desligado (só a pedido).
@@ -327,11 +372,12 @@ import {
       <section class="bg-white rounded-lg border p-5">
         <p class="text-sm font-medium text-gray-700 mb-1">Nota fiscal de serviço (NFS-e)</p>
         <p class="text-xs text-gray-500 mb-4">
-          Pode ser emitida pelo Asaas (a conta precisa ter as informações fiscais da empresa cadastradas lá) ou
-          direto no Portal Nacional da NFS-e, com o certificado digital A1 da empresa. Com a emissão
-          automática ligada, o sistema emite, no mês corrente e até o dia limite, a nota de cada mensalidade e
-          renegociação paga no mês anterior — uma por parcela, no nome do sacado (se houver) ou do aluno. Taxa de
-          matrícula não gera nota. Use a tela Notas fiscais para conferir antes e emitir manualmente.
+          Pode ser emitida pelo Asaas (a conta precisa ter as informações fiscais da empresa
+          cadastradas lá) ou direto no Portal Nacional da NFS-e, com o certificado digital A1 da
+          empresa. Com a emissão automática ligada, o sistema emite, no mês corrente e até o dia
+          limite, a nota de cada mensalidade e renegociação paga no mês anterior — uma por parcela,
+          no nome do sacado (se houver) ou do aluno. Taxa de matrícula não gera nota. Use a tela
+          Notas fiscais para conferir antes e emitir manualmente.
         </p>
         <mat-checkbox formControlName="nfseAtiva">Emissão automática ligada</mat-checkbox>
         <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mt-3">
@@ -371,7 +417,14 @@ import {
           </mat-form-field>
           <mat-form-field appearance="outline" subscriptSizing="dynamic">
             <mat-label>ISS (%)</mat-label>
-            <input matInput type="number" min="0" max="5" step="0.01" formControlName="nfseIssPercentual" />
+            <input
+              matInput
+              type="number"
+              min="0"
+              max="5"
+              step="0.01"
+              formControlName="nfseIssPercentual"
+            />
             <mat-hint>0 no Simples Nacional</mat-hint>
           </mat-form-field>
           <mat-form-field appearance="outline" subscriptSizing="dynamic">
@@ -385,40 +438,79 @@ import {
           <div class="border rounded-lg p-4 mt-5 bg-gray-50">
             <p class="text-sm font-medium text-gray-700 mb-1">Certificado digital A1 (e-CNPJ)</p>
             <p class="text-xs text-gray-500 mb-3">
-              Arquivo .pfx/.p12 da empresa. Fica guardado criptografado no servidor e é usado só para assinar as
-              notas e autenticar na SEFIN. O arquivo e a senha nunca voltam para a tela.
+              Arquivo .pfx/.p12 da empresa. Fica guardado criptografado no servidor e é usado só
+              para assinar as notas e autenticar na SEFIN. O arquivo e a senha nunca voltam para a
+              tela.
             </p>
             @if (nfseCertificado.configurado) {
               <p class="text-sm m-0 mb-2">
-                <mat-icon class="!text-base !w-4 !h-4 align-middle text-green-600">verified</mat-icon>
+                <mat-icon class="!text-base !w-4 !h-4 align-middle text-green-600"
+                  >verified</mat-icon
+                >
                 <strong>{{ nfseCertificado.titular }}</strong>
-                @if (nfseCertificado.cnpj) { · CNPJ {{ nfseCertificado.cnpj }} }
+                @if (nfseCertificado.cnpj) {
+                  · CNPJ {{ nfseCertificado.cnpj }}
+                }
                 · válido até {{ nfseCertificado.validoAte }}
               </p>
             }
             <div class="flex flex-wrap items-center gap-3">
-              <input type="file" accept=".pfx,.p12" class="text-sm" (change)="escolherCertificado($event)" />
+              <input
+                type="file"
+                accept=".pfx,.p12"
+                class="text-sm"
+                (change)="escolherCertificado($event)"
+              />
               <mat-form-field appearance="outline" subscriptSizing="dynamic" class="!w-64">
                 <mat-label>Senha do certificado</mat-label>
-                <input matInput type="password" autocomplete="new-password" [formControl]="certificadoSenha" />
+                <input
+                  matInput
+                  type="password"
+                  autocomplete="new-password"
+                  [formControl]="certificadoSenha"
+                />
               </mat-form-field>
-              <button mat-flat-button color="primary" type="button" [disabled]="!certificadoArquivo || !certificadoSenha.value || enviandoCertificado" (click)="enviarCertificado()">
+              <button
+                mat-flat-button
+                color="primary"
+                type="button"
+                [disabled]="!certificadoArquivo || !certificadoSenha.value || enviandoCertificado"
+                (click)="enviarCertificado()"
+              >
                 {{ nfseCertificado.configurado ? "Substituir certificado" : "Enviar certificado" }}
               </button>
               @if (nfseCertificado.configurado) {
-                <button mat-stroked-button type="button" [disabled]="testandoNfse" (click)="testarNfse()">Testar conexão com a SEFIN</button>
-                <button mat-button color="warn" type="button" (click)="removerCertificado()">Remover</button>
+                <button
+                  mat-stroked-button
+                  type="button"
+                  [disabled]="testandoNfse"
+                  (click)="testarNfse()"
+                >
+                  Testar conexão com a SEFIN
+                </button>
+                <button mat-button color="warn" type="button" (click)="removerCertificado()">
+                  Remover
+                </button>
               }
             </div>
             @if (resultadoTesteNfse) {
-              <p class="text-xs mt-2 mb-0" [class]="resultadoTesteNfse.ok ? 'text-green-700' : 'text-red-600'">{{ resultadoTesteNfse.mensagem }}</p>
+              <p
+                class="text-xs mt-2 mb-0"
+                [class]="resultadoTesteNfse.ok ? 'text-green-700' : 'text-red-600'"
+              >
+                {{ resultadoTesteNfse.mensagem }}
+              </p>
             }
             @if (pendenciasNfse.length) {
-              <p class="text-xs text-amber-700 mt-2 mb-0">Falta para emitir direto: {{ pendenciasNfse.join("; ") }}.</p>
+              <p class="text-xs text-amber-700 mt-2 mb-0">
+                Falta para emitir direto: {{ pendenciasNfse.join("; ") }}.
+              </p>
             }
           </div>
 
-          <p class="text-sm font-medium text-gray-700 mt-5 mb-2">Dados do prestador (a empresa que emite a nota)</p>
+          <p class="text-sm font-medium text-gray-700 mt-5 mb-2">
+            Dados do prestador (a empresa que emite a nota)
+          </p>
           <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
             <mat-form-field appearance="outline" subscriptSizing="dynamic">
               <mat-label>CNPJ</mat-label>
@@ -432,7 +524,12 @@ import {
             </mat-form-field>
             <mat-form-field appearance="outline" subscriptSizing="dynamic">
               <mat-label>Código IBGE do município</mat-label>
-              <input matInput inputmode="numeric" maxlength="7" formControlName="nfseMunicipioIbge" />
+              <input
+                matInput
+                inputmode="numeric"
+                maxlength="7"
+                formControlName="nfseMunicipioIbge"
+              />
               <mat-hint>7 dígitos (Vitória/ES = 3205309)</mat-hint>
             </mat-form-field>
             <mat-form-field appearance="outline" subscriptSizing="dynamic">
@@ -453,7 +550,14 @@ import {
             </mat-form-field>
             <mat-form-field appearance="outline" subscriptSizing="dynamic">
               <mat-label>Alíquota aproximada do Simples (%)</mat-label>
-              <input matInput type="number" min="0" max="100" step="0.01" formControlName="nfseAliquotaSimples" />
+              <input
+                matInput
+                type="number"
+                min="0"
+                max="100"
+                step="0.01"
+                formControlName="nfseAliquotaSimples"
+              />
               <mat-hint>Total aproximado de tributos na nota</mat-hint>
             </mat-form-field>
             <mat-form-field appearance="outline" subscriptSizing="dynamic">
@@ -497,8 +601,8 @@ import {
       <section class="bg-white rounded-lg border p-5">
         <p class="text-sm font-medium text-gray-700 mb-1">Integração Rede (e.Rede/Itaú)</p>
         <p class="text-xs text-gray-500 mb-4">
-          Credenciais da Rede — só Pix é suportado nesta integração. Deixe a chave/token em
-          branco para manter os atuais.
+          Credenciais da Rede — só Pix é suportado nesta integração. Deixe a chave/token em branco
+          para manter os atuais.
         </p>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
           <mat-form-field appearance="outline">
@@ -510,8 +614,15 @@ import {
           </mat-form-field>
 
           <mat-form-field appearance="outline">
-            <mat-label>{{ redePvConfigurado ? "Novo PV (opcional)" : "PV (número de filiação)" }}</mat-label>
-            <input matInput type="password" [formControl]="redePvControl" autocomplete="new-password" />
+            <mat-label>{{
+              redePvConfigurado ? "Novo PV (opcional)" : "PV (número de filiação)"
+            }}</mat-label>
+            <input
+              matInput
+              type="password"
+              [formControl]="redePvControl"
+              autocomplete="new-password"
+            />
             @if (redePvConfigurado) {
               <mat-hint>PV já configurado — preencha só para trocar.</mat-hint>
             }
@@ -549,9 +660,10 @@ import {
         </div>
 
         <p class="text-xs text-gray-500 mt-2">
-          URL para cadastrar no painel da Rede: <code class="bg-gray-100 px-1 rounded">{{ redeWebhookUrl }}</code>
-          — em sandbox o cadastro é automático; em produção, repasse essa URL e o token acima
-          pro suporte da Rede (eles cadastram manualmente, por CNPJ).
+          URL para cadastrar no painel da Rede:
+          <code class="bg-gray-100 px-1 rounded">{{ redeWebhookUrl }}</code>
+          — em sandbox o cadastro é automático; em produção, repasse essa URL e o token acima pro
+          suporte da Rede (eles cadastram manualmente, por CNPJ).
         </p>
       </section>
 
@@ -674,7 +786,10 @@ import {
         </mat-form-field>
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="!w-32">
           <mat-label>Tabela</mat-label>
-          <mat-select formControlName="tabelaDestino" (selectionChange)="aoTrocarTabela(novoMapeamento)">
+          <mat-select
+            formControlName="tabelaDestino"
+            (selectionChange)="aoTrocarTabela(novoMapeamento)"
+          >
             <mat-option value="ALUNO">Aluno</mat-option>
             <mat-option value="MATRICULA">Matrícula</mat-option>
             <mat-option value="PARCELA">Parcela</mat-option>
@@ -715,12 +830,38 @@ import {
     </section>
 
     <section class="bg-white rounded-lg border-2 border-red-200 p-5 mt-5">
+      <p class="text-sm font-medium text-red-700 mb-1">Zona de risco — reimportar alunos</p>
+      <p class="text-xs text-gray-500 mb-4">
+        Apaga permanentemente <strong>todos os alunos, matrículas e parcelas</strong> e o que
+        depende deles (histórico e observações de cobrança, tags, histórico de situação, documentos
+        enviados e solicitações). Cursos, usuários, configurações, sacados e cupons são mantidos.
+        Use antes de importar tudo de novo do sistema legado ("Buscar todos do legado"). Esta ação
+        não pode ser desfeita.
+      </p>
+      <mat-form-field appearance="outline" class="w-full max-w-md">
+        <mat-label>Digite "{{ fraseLimparAlunos }}" para habilitar o botão</mat-label>
+        <input matInput [formControl]="confirmacaoAlunos" autocomplete="off" />
+      </mat-form-field>
+      <div>
+        <button
+          mat-raised-button
+          color="warn"
+          type="button"
+          [disabled]="confirmacaoAlunos.value !== fraseLimparAlunos || limpandoAlunos"
+          (click)="confirmarLimpezaAlunos()"
+        >
+          <mat-icon>person_off</mat-icon> Apagar alunos, matrículas e parcelas
+        </button>
+      </div>
+    </section>
+
+    <section class="bg-white rounded-lg border-2 border-red-200 p-5 mt-5">
       <p class="text-sm font-medium text-red-700 mb-1">Zona de risco</p>
       <p class="text-xs text-gray-500 mb-4">
         Apaga permanentemente todos os alunos, cursos, matrículas, parcelas, dados de cobrança e o
-        histórico de relatórios (inclusive os documentos Word/PDF já gerados). Use antes de
-        importar uma planilha real, para começar do zero. Usuários, configurações e o mapeamento
-        de importação são mantidos. Esta ação não pode ser desfeita.
+        histórico de relatórios (inclusive os documentos Word/PDF já gerados). Use antes de importar
+        uma planilha real, para começar do zero. Usuários, configurações e o mapeamento de
+        importação são mantidos. Esta ação não pode ser desfeita.
       </p>
 
       <mat-form-field appearance="outline" class="w-full max-w-md">
@@ -754,6 +895,10 @@ export class ConfiguracoesComponent implements OnInit {
   readonly confirmacaoLimpeza = this.fb.nonNullable.control("");
   limpandoBase = false;
 
+  readonly fraseLimparAlunos = FRASE_CONFIRMACAO_LIMPAR_ALUNOS;
+  readonly confirmacaoAlunos = this.fb.nonNullable.control("");
+  limpandoAlunos = false;
+
   // Certificado A1 da NFS-e: o arquivo e a senha são enviados à parte (não fazem parte do "Salvar").
   readonly certificadoSenha = this.fb.nonNullable.control("");
   certificadoArquivo: File | null = null;
@@ -761,7 +906,12 @@ export class ConfiguracoesComponent implements OnInit {
   testandoNfse = false;
   resultadoTesteNfse: { ok: boolean; mensagem: string } | null = null;
   pendenciasNfse: string[] = [];
-  nfseCertificado: { configurado: boolean; titular: string | null; cnpj: string | null; validoAte: string } = {
+  nfseCertificado: {
+    configurado: boolean;
+    titular: string | null;
+    cnpj: string | null;
+    validoAte: string;
+  } = {
     configurado: false,
     titular: null,
     cnpj: null,
@@ -797,10 +947,19 @@ export class ConfiguracoesComponent implements OnInit {
     nfseAtiva: this.fb.nonNullable.control(false),
     nfseDiaLimite: this.fb.nonNullable.control(10, [Validators.min(1), Validators.max(28)]),
     nfseServicoCodigo: this.fb.nonNullable.control("08.01.01", Validators.required),
-    nfseServicoNome: this.fb.nonNullable.control("Ensino regular pré-escolar, fundamental e médio.", Validators.required),
-    nfseServicoDescricao: this.fb.nonNullable.control("PRESTAÇÃO DE SERVIÇOS EDUCACIONAIS", Validators.required),
+    nfseServicoNome: this.fb.nonNullable.control(
+      "Ensino regular pré-escolar, fundamental e médio.",
+      Validators.required,
+    ),
+    nfseServicoDescricao: this.fb.nonNullable.control(
+      "PRESTAÇÃO DE SERVIÇOS EDUCACIONAIS",
+      Validators.required,
+    ),
     nfseMunicipalServiceId: this.fb.control<string | null>(null),
-    nfseIssPercentual: this.fb.nonNullable.control<number | string>(0, [Validators.min(0), Validators.max(5)]),
+    nfseIssPercentual: this.fb.nonNullable.control<number | string>(0, [
+      Validators.min(0),
+      Validators.max(5),
+    ]),
     nfseProvedor: this.fb.nonNullable.control<NfseProvedor>("ASAAS"),
     nfseAmbiente: this.fb.nonNullable.control<NfseAmbiente>("HOMOLOGACAO"),
     nfsePrestadorCnpj: this.fb.control<string | null>(null),
@@ -811,7 +970,10 @@ export class ConfiguracoesComponent implements OnInit {
     nfseOpcaoSimples: this.fb.nonNullable.control(3),
     nfseRegimeApuracaoSn: this.fb.nonNullable.control(1),
     nfseRegimeEspecial: this.fb.nonNullable.control(0),
-    nfseAliquotaSimples: this.fb.nonNullable.control<number | string>(0, [Validators.min(0), Validators.max(100)]),
+    nfseAliquotaSimples: this.fb.nonNullable.control<number | string>(0, [
+      Validators.min(0),
+      Validators.max(100),
+    ]),
     nfseCodigoTributacaoMunicipal: this.fb.control<string | null>(null),
     nfseSerieDps: this.fb.nonNullable.control(1, [Validators.min(1), Validators.max(89999)]),
     nfseProximoNumeroDps: this.fb.nonNullable.control(1, [Validators.min(1)]),
@@ -870,7 +1032,11 @@ export class ConfiguracoesComponent implements OnInit {
     this.carregando = true;
     this.service.obter().subscribe({
       next: (configuracao) => {
-        this.form.patchValue({ ...configuracao, legadoUrl: configuracao.legadoUrl ?? "", legadoUsuario: configuracao.legadoUsuario ?? "" });
+        this.form.patchValue({
+          ...configuracao,
+          legadoUrl: configuracao.legadoUrl ?? "",
+          legadoUsuario: configuracao.legadoUsuario ?? "",
+        });
         this.legadoSenhaConfigurada = configuracao.legadoSenhaConfigurada;
         this.asaasApiKeyConfigurada = configuracao.asaasApiKeyConfigurada;
         this.asaasWebhookTokenConfigurado = configuracao.asaasWebhookTokenConfigurado;
@@ -893,7 +1059,9 @@ export class ConfiguracoesComponent implements OnInit {
         ? new Date(configuracao.nfseCertificadoValidoAte).toLocaleDateString("pt-BR")
         : "",
     };
-    this.nfseService.situacaoNacional().subscribe({ next: (s) => (this.pendenciasNfse = s.pendencias), error: () => undefined });
+    this.nfseService
+      .situacaoNacional()
+      .subscribe({ next: (s) => (this.pendenciasNfse = s.pendencias), error: () => undefined });
   }
 
   escolherCertificado(evento: Event): void {
@@ -923,16 +1091,20 @@ export class ConfiguracoesComponent implements OnInit {
   removerCertificado(): void {
     const dados: ConfirmDialogData = {
       titulo: "Remover certificado",
-      mensagem: "Sem o certificado a emissão direta na SEFIN para de funcionar até um novo ser enviado. Remover?",
+      mensagem:
+        "Sem o certificado a emissão direta na SEFIN para de funcionar até um novo ser enviado. Remover?",
       confirmarTexto: "Remover",
     };
-    this.dialog.open(ConfirmDialogComponent, { data: dados }).afterClosed().subscribe((ok) => {
-      if (!ok) return;
-      this.nfseService.removerCertificado().subscribe(() => {
-        this.resultadoTesteNfse = null;
-        this.carregar();
+    this.dialog
+      .open(ConfirmDialogComponent, { data: dados })
+      .afterClosed()
+      .subscribe((ok) => {
+        if (!ok) return;
+        this.nfseService.removerCertificado().subscribe(() => {
+          this.resultadoTesteNfse = null;
+          this.carregar();
+        });
       });
-    });
   }
 
   testarNfse(): void {
@@ -979,7 +1151,11 @@ export class ConfiguracoesComponent implements OnInit {
 
     this.service.atualizar(payload).subscribe({
       next: (configuracao) => {
-        this.form.patchValue({ ...configuracao, legadoUrl: configuracao.legadoUrl ?? "", legadoUsuario: configuracao.legadoUsuario ?? "" });
+        this.form.patchValue({
+          ...configuracao,
+          legadoUrl: configuracao.legadoUrl ?? "",
+          legadoUsuario: configuracao.legadoUsuario ?? "",
+        });
         this.legadoSenhaConfigurada = configuracao.legadoSenhaConfigurada;
         this.legadoSenhaControl.setValue("");
         this.asaasApiKeyConfigurada = configuracao.asaasApiKeyConfigurada;
@@ -1003,9 +1179,7 @@ export class ConfiguracoesComponent implements OnInit {
   private criarLinhaMapeamento(mapeamento: MapeamentoImportacao) {
     return this.fb.nonNullable.group({
       colunaPlanilha: [mapeamento.colunaPlanilha, Validators.required],
-      tabelaDestino: this.fb.nonNullable.control<TabelaDestinoImportacao>(
-        mapeamento.tabelaDestino,
-      ),
+      tabelaDestino: this.fb.nonNullable.control<TabelaDestinoImportacao>(mapeamento.tabelaDestino),
       campoDestino: [mapeamento.campoDestino, Validators.required],
       acaoAusente: this.fb.nonNullable.control<AcaoColunaAusente>(mapeamento.acaoAusente),
       valorPadrao: [mapeamento.valorPadrao ?? ""],
@@ -1048,7 +1222,8 @@ export class ConfiguracoesComponent implements OnInit {
         tabelaDestino: valor.tabelaDestino,
         campoDestino: valor.campoDestino,
         acaoAusente: valor.acaoAusente,
-        valorPadrao: valor.acaoAusente === "VALOR_PADRAO" ? valor.valorPadrao || undefined : undefined,
+        valorPadrao:
+          valor.acaoAusente === "VALOR_PADRAO" ? valor.valorPadrao || undefined : undefined,
         ativo: true,
       })
       .subscribe({
@@ -1082,7 +1257,8 @@ export class ConfiguracoesComponent implements OnInit {
         tabelaDestino: valor.tabelaDestino,
         campoDestino: valor.campoDestino,
         acaoAusente: valor.acaoAusente,
-        valorPadrao: valor.acaoAusente === "VALOR_PADRAO" ? valor.valorPadrao || undefined : undefined,
+        valorPadrao:
+          valor.acaoAusente === "VALOR_PADRAO" ? valor.valorPadrao || undefined : undefined,
         ativo: valor.ativo,
       })
       .subscribe({
@@ -1109,6 +1285,40 @@ export class ConfiguracoesComponent implements OnInit {
 
   /** Segunda confirmação (além da frase digitada) antes de disparar a
    * limpeza — ação destrutiva e irreversível. */
+  confirmarLimpezaAlunos(): void {
+    if (this.confirmacaoAlunos.value !== this.fraseLimparAlunos) return;
+
+    const data: ConfirmDialogData = {
+      titulo: "Apagar alunos, matrículas e parcelas",
+      mensagem:
+        "Tem certeza? Todos os alunos, matrículas e parcelas — com histórico de cobrança, tags, " +
+        "documentos e solicitações — serão apagados permanentemente. Os cursos são mantidos.",
+      confirmarTexto: "Sim, apagar",
+    };
+    this.dialog
+      .open(ConfirmDialogComponent, { data, width: "480px" })
+      .afterClosed()
+      .subscribe((ok) => {
+        if (ok) this.limparAlunos();
+      });
+  }
+
+  private limparAlunos(): void {
+    this.limpandoAlunos = true;
+    this.service.limparAlunos(this.confirmacaoAlunos.value).subscribe({
+      next: ({ contagens }) => {
+        this.limpandoAlunos = false;
+        this.confirmacaoAlunos.setValue("");
+        this.snackBar.open(
+          `Apagados ${contagens["alunos"] ?? 0} alunos, ${contagens["matriculas"] ?? 0} matrículas e ${contagens["parcelas"] ?? 0} parcelas`,
+          "Fechar",
+          { duration: 8000 },
+        );
+      },
+      error: () => (this.limpandoAlunos = false),
+    });
+  }
+
   confirmarLimpezaBase(): void {
     if (this.confirmacaoLimpeza.value !== this.fraseConfirmacao) return;
 

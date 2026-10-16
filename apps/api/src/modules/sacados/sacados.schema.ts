@@ -27,7 +27,8 @@ export const sacadoDadosSchema = z
     bairro: z.string().trim().max(100).optional().or(z.literal("")),
   })
   .superRefine((dados, ctx) => {
-    const ok = dados.tipoPessoa === "FISICA" ? validarCpf(dados.cpfCnpj) : validarCnpj(dados.cpfCnpj);
+    const ok =
+      dados.tipoPessoa === "FISICA" ? validarCpf(dados.cpfCnpj) : validarCnpj(dados.cpfCnpj);
     if (!ok) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

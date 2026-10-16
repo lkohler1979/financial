@@ -41,7 +41,13 @@ describe("calcularMultaJuros", () => {
 describe("calcularMultaJurosParcela", () => {
   it("usa multa/juros/total do legado quando presentes, ignorando o cálculo próprio do Ethos", () => {
     const resultado = calcularMultaJurosParcela(
-      { valor: 100, vencimento: new Date(2026, 2, 6), multaLegado: 3, jurosLegado: 12.5, totalLegado: 115.5 },
+      {
+        valor: 100,
+        vencimento: new Date(2026, 2, 6),
+        multaLegado: 3,
+        jurosLegado: 12.5,
+        totalLegado: 115.5,
+      },
       new Date(2026, 6, 2),
       CONFIG_PADRAO,
     );
@@ -60,7 +66,13 @@ describe("calcularMultaJurosParcela", () => {
 
   it("trata totalLegado null como 'não sincronizado' e calcula normalmente", () => {
     const resultado = calcularMultaJurosParcela(
-      { valor: 100, vencimento: new Date(2026, 2, 6), multaLegado: null, jurosLegado: null, totalLegado: null },
+      {
+        valor: 100,
+        vencimento: new Date(2026, 2, 6),
+        multaLegado: null,
+        jurosLegado: null,
+        totalLegado: null,
+      },
       new Date(2026, 2, 6),
       CONFIG_PADRAO,
     );

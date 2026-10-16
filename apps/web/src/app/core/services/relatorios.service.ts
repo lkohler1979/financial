@@ -96,7 +96,9 @@ export class RelatoriosService {
   /** Último documento já gerado para a matrícula (qualquer relatório), ou
    * `null` se nunca foi gerado — usado quando não há mais parcela elegível
    * para oferecer o documento existente em vez de simplesmente falhar. */
-  buscarUltimoDocumentoDaMatricula(matriculaId: string): Observable<UltimoDocumentoMatricula | null> {
+  buscarUltimoDocumentoDaMatricula(
+    matriculaId: string,
+  ): Observable<UltimoDocumentoMatricula | null> {
     return this.http
       .get<UltimoDocumentoMatricula>(`${this.baseUrl}/matriculas/${matriculaId}/ultimo-documento`)
       .pipe(catchError(() => of(null)));

@@ -39,7 +39,9 @@ vi.mock("../../src/modules/matriculas/situacao.service", () => ({
 }));
 vi.mock("../../src/modules/asaas/asaas.service", () => ({ asaasService: {} }));
 vi.mock("../../src/modules/tipos-cobranca/tipos-cobranca.service", () => ({
-  tiposCobrancaService: { formasPagamentoHabilitadas: vi.fn().mockResolvedValue(["BOLETO", "PIX"]) },
+  tiposCobrancaService: {
+    formasPagamentoHabilitadas: vi.fn().mockResolvedValue(["BOLETO", "PIX"]),
+  },
 }));
 vi.mock("../../src/modules/cupons/cupons.repository", () => ({
   cuponsRepository: { findByCodigo: vi.fn() },
@@ -308,8 +310,16 @@ describe("matriculasService.criar — cobranças por tipo", () => {
         alunoId: ALUNO,
         cursoId: CURSO,
         cobrancas: [
-          { tipoCobrancaId: MENSALIDADE.id, numeroParcelas: 6, primeiroVencimento: new Date(2026, 10, 10) },
-          { tipoCobrancaId: TAXA.id, numeroParcelas: 1, primeiroVencimento: new Date(2026, 10, 10) },
+          {
+            tipoCobrancaId: MENSALIDADE.id,
+            numeroParcelas: 6,
+            primeiroVencimento: new Date(2026, 10, 10),
+          },
+          {
+            tipoCobrancaId: TAXA.id,
+            numeroParcelas: 1,
+            primeiroVencimento: new Date(2026, 10, 10),
+          },
         ],
       },
       USUARIO,
@@ -323,16 +333,40 @@ describe("matriculasService.criar — cobranças por tipo", () => {
   });
 
   it("política SOB_DEMANDA não emite nada; TODAS emite todas as parcelas", async () => {
-    tiposRepo.findManyByIds.mockResolvedValue([{ ...MENSALIDADE, emissaoNaMatricula: "SOB_DEMANDA" }] as never);
+    tiposRepo.findManyByIds.mockResolvedValue([
+      { ...MENSALIDADE, emissaoNaMatricula: "SOB_DEMANDA" },
+    ] as never);
     await matriculasService.criar(
-      { alunoId: ALUNO, cursoId: CURSO, cobrancas: [{ tipoCobrancaId: MENSALIDADE.id, numeroParcelas: 6, primeiroVencimento: new Date(2026, 10, 10) }] },
+      {
+        alunoId: ALUNO,
+        cursoId: CURSO,
+        cobrancas: [
+          {
+            tipoCobrancaId: MENSALIDADE.id,
+            numeroParcelas: 6,
+            primeiroVencimento: new Date(2026, 10, 10),
+          },
+        ],
+      },
       USUARIO,
     );
     expect(emissao.emitir.mock.calls.at(-1)?.[0]).toEqual([]);
 
-    tiposRepo.findManyByIds.mockResolvedValue([{ ...MENSALIDADE, emissaoNaMatricula: "TODAS" }] as never);
+    tiposRepo.findManyByIds.mockResolvedValue([
+      { ...MENSALIDADE, emissaoNaMatricula: "TODAS" },
+    ] as never);
     await matriculasService.criar(
-      { alunoId: ALUNO, cursoId: CURSO, cobrancas: [{ tipoCobrancaId: MENSALIDADE.id, numeroParcelas: 6, primeiroVencimento: new Date(2026, 10, 10) }] },
+      {
+        alunoId: ALUNO,
+        cursoId: CURSO,
+        cobrancas: [
+          {
+            tipoCobrancaId: MENSALIDADE.id,
+            numeroParcelas: 6,
+            primeiroVencimento: new Date(2026, 10, 10),
+          },
+        ],
+      },
       USUARIO,
     );
     expect(emissao.emitir.mock.calls.at(-1)?.[0]).toHaveLength(6);
@@ -346,7 +380,11 @@ describe("matriculasService.criar — cobranças por tipo", () => {
         alunoId: ALUNO,
         cursoId: CURSO,
         cobrancas: [
-          { tipoCobrancaId: MENSALIDADE.id, numeroParcelas: 6, primeiroVencimento: new Date(2026, 9, 31) },
+          {
+            tipoCobrancaId: MENSALIDADE.id,
+            numeroParcelas: 6,
+            primeiroVencimento: new Date(2026, 9, 31),
+          },
           { tipoCobrancaId: TAXA.id, numeroParcelas: 1, primeiroVencimento: new Date(2026, 9, 31) },
         ],
       },
@@ -358,7 +396,11 @@ describe("matriculasService.criar — cobranças por tipo", () => {
     expect(chamadas[0]).toMatchObject({ codTitulo: "1", tipoTitulo: "Mensalidade", valor: 200 });
     // dia 31 em mês curto cai no último dia (novembro tem 30)
     expect(chamadas[1].vencimento.getDate()).toBe(30);
-    expect(chamadas[6]).toMatchObject({ codTitulo: "TM1", tipoTitulo: "Taxa de matrícula", valor: 49.9 });
+    expect(chamadas[6]).toMatchObject({
+      codTitulo: "TM1",
+      tipoTitulo: "Taxa de matrícula",
+      valor: 49.9,
+    });
     expect(repo.create).toHaveBeenCalledWith(
       expect.objectContaining({ valorCurso: 1200, numeroParcelas: 6, diaVencimento: 28 }),
     );
@@ -371,13 +413,22 @@ describe("matriculasService.criar — cobranças por tipo", () => {
         alunoId: ALUNO,
         cursoId: CURSO,
         cobrancas: [
-          { tipoCobrancaId: MENSALIDADE.id, numeroParcelas: 6, primeiroVencimento: new Date(2026, 10, 10), observacoes: "Bolsa parcial" },
+          {
+            tipoCobrancaId: MENSALIDADE.id,
+            numeroParcelas: 6,
+            primeiroVencimento: new Date(2026, 10, 10),
+            observacoes: "Bolsa parcial",
+          },
         ],
       },
       USUARIO,
     );
-    expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ situacao: "AGUARDANDO_PAGAMENTO" }));
-    expect(financeiro.criar.mock.calls.every(([i]) => i.observacoes === "Bolsa parcial")).toBe(true);
+    expect(repo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ situacao: "AGUARDANDO_PAGAMENTO" }),
+    );
+    expect(financeiro.criar.mock.calls.every(([i]) => i.observacoes === "Bolsa parcial")).toBe(
+      true,
+    );
   });
 
   it("exige as cobranças obrigatórias", async () => {
@@ -387,7 +438,9 @@ describe("matriculasService.criar — cobranças por tipo", () => {
         {
           alunoId: ALUNO,
           cursoId: CURSO,
-          cobrancas: [{ tipoCobrancaId: TAXA.id, numeroParcelas: 1, primeiroVencimento: new Date() }],
+          cobrancas: [
+            { tipoCobrancaId: TAXA.id, numeroParcelas: 1, primeiroVencimento: new Date() },
+          ],
         },
         USUARIO,
       ),
@@ -402,7 +455,9 @@ describe("matriculasService.criar — cobranças por tipo", () => {
         {
           alunoId: ALUNO,
           cursoId: CURSO,
-          cobrancas: [{ tipoCobrancaId: MENSALIDADE.id, numeroParcelas: 7, primeiroVencimento: new Date() }],
+          cobrancas: [
+            { tipoCobrancaId: MENSALIDADE.id, numeroParcelas: 7, primeiroVencimento: new Date() },
+          ],
         },
         USUARIO,
       ),
@@ -418,7 +473,9 @@ describe("matriculasService.criar — cobranças por tipo", () => {
         {
           alunoId: ALUNO,
           cursoId: CURSO,
-          cobrancas: [{ tipoCobrancaId: MENSALIDADE.id, numeroParcelas: 1, primeiroVencimento: new Date() }],
+          cobrancas: [
+            { tipoCobrancaId: MENSALIDADE.id, numeroParcelas: 1, primeiroVencimento: new Date() },
+          ],
         },
         USUARIO,
       ),
@@ -441,7 +498,11 @@ describe("matriculasService.criar — cobranças por tipo", () => {
         cursoId: CURSO,
         cupomCodigo: "METADE",
         cobrancas: [
-          { tipoCobrancaId: MENSALIDADE.id, numeroParcelas: 6, primeiroVencimento: new Date(2026, 9, 10) },
+          {
+            tipoCobrancaId: MENSALIDADE.id,
+            numeroParcelas: 6,
+            primeiroVencimento: new Date(2026, 9, 10),
+          },
           { tipoCobrancaId: TAXA.id, numeroParcelas: 1, primeiroVencimento: new Date(2026, 9, 10) },
         ],
       },
@@ -465,7 +526,9 @@ describe("matriculasService.criar — cobranças por tipo", () => {
           alunoId: ALUNO,
           cursoId: CURSO,
           cupomCodigo: "INVENTADO",
-          cobrancas: [{ tipoCobrancaId: MENSALIDADE.id, numeroParcelas: 1, primeiroVencimento: new Date() }],
+          cobrancas: [
+            { tipoCobrancaId: MENSALIDADE.id, numeroParcelas: 1, primeiroVencimento: new Date() },
+          ],
         },
         USUARIO,
       ),
@@ -480,8 +543,17 @@ describe("matriculasService.criar — cobranças por tipo", () => {
         alunoId: ALUNO,
         cursoId: CURSO,
         cobrancas: [
-          { tipoCobrancaId: MENSALIDADE.id, numeroParcelas: 1, primeiroVencimento: new Date(2026, 9, 10) },
-          { tipoCobrancaId: TAXA.id, numeroParcelas: 1, primeiroVencimento: new Date(2026, 9, 10), formaPagamento: "PIX" },
+          {
+            tipoCobrancaId: MENSALIDADE.id,
+            numeroParcelas: 1,
+            primeiroVencimento: new Date(2026, 9, 10),
+          },
+          {
+            tipoCobrancaId: TAXA.id,
+            numeroParcelas: 1,
+            primeiroVencimento: new Date(2026, 9, 10),
+            formaPagamento: "PIX",
+          },
         ],
       },
       USUARIO,
@@ -499,7 +571,12 @@ describe("matriculasService.criar — cobranças por tipo", () => {
           alunoId: ALUNO,
           cursoId: CURSO,
           cobrancas: [
-            { tipoCobrancaId: MENSALIDADE.id, numeroParcelas: 1, primeiroVencimento: new Date(), formaPagamento: "CREDIT_CARD" },
+            {
+              tipoCobrancaId: MENSALIDADE.id,
+              numeroParcelas: 1,
+              primeiroVencimento: new Date(),
+              formaPagamento: "CREDIT_CARD",
+            },
           ],
         },
         USUARIO,

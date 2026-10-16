@@ -21,7 +21,11 @@ const ROTULO_STATUS: Record<StatusSolicitacao, string> = {
   template: `
     <div class="flex flex-wrap items-center gap-3 mb-4">
       <h1 class="text-2xl font-medium">Solicitações dos alunos</h1>
-      <select class="border rounded px-2 py-1 ml-auto" [ngModel]="filtro()" (ngModelChange)="mudarFiltro($event)">
+      <select
+        class="border rounded px-2 py-1 ml-auto"
+        [ngModel]="filtro()"
+        (ngModelChange)="mudarFiltro($event)"
+      >
         <option value="ABERTA">Em aberto</option>
         <option value="ATENDIDA">Atendidas</option>
         <option value="RECUSADA">Recusadas</option>
@@ -37,9 +41,14 @@ const ROTULO_STATUS: Record<StatusSolicitacao, string> = {
               <p class="font-medium">{{ s.tipo.nome }}</p>
               <p class="text-xs text-gray-500">
                 {{ s.aluno.codigo ?? "—" }} · {{ s.aluno.nome }}
-                @if (s.matricula) { · matrícula {{ s.matricula.numeroMatricula ?? "—" }} — {{ s.matricula.curso.nome }} }
+                @if (s.matricula) {
+                  · matrícula {{ s.matricula.numeroMatricula ?? "—" }} —
+                  {{ s.matricula.curso.nome }}
+                }
               </p>
-              <p class="text-xs text-gray-400">Pedido em {{ s.criadoEm | date: "dd/MM/yyyy HH:mm" }}</p>
+              <p class="text-xs text-gray-400">
+                Pedido em {{ s.criadoEm | date: "dd/MM/yyyy HH:mm" }}
+              </p>
               @if (s.observacaoAluno) {
                 <p class="text-sm mt-1">“{{ s.observacaoAluno }}”</p>
               }
@@ -53,16 +62,36 @@ const ROTULO_STATUS: Record<StatusSolicitacao, string> = {
               <button mat-button type="button" (click)="baixar(s)">Ver arquivo</button>
             }
             @if (s.status === "ABERTA") {
-              <button mat-flat-button color="primary" type="button" (click)="seletor.click()">Anexar e atender</button>
-              <input #seletor type="file" class="hidden" accept=".pdf,.jpg,.jpeg,.png" (change)="atender(s, $any($event.target))" />
+              <button mat-flat-button color="primary" type="button" (click)="seletor.click()">
+                Anexar e atender
+              </button>
+              <input
+                #seletor
+                type="file"
+                class="hidden"
+                accept=".pdf,.jpg,.jpeg,.png"
+                (change)="atender(s, $any($event.target))"
+              />
               <button mat-button type="button" (click)="recusando.set(s.id)">Recusar</button>
             }
           </div>
 
           @if (recusando() === s.id) {
             <div class="flex flex-wrap gap-2 mt-3">
-              <input class="border rounded px-2 py-1 flex-1 min-w-56" placeholder="Motivo da recusa (o aluno verá)" [(ngModel)]="motivo" />
-              <button mat-flat-button color="warn" type="button" [disabled]="!motivo.trim()" (click)="recusar(s)">Confirmar recusa</button>
+              <input
+                class="border rounded px-2 py-1 flex-1 min-w-56"
+                placeholder="Motivo da recusa (o aluno verá)"
+                [(ngModel)]="motivo"
+              />
+              <button
+                mat-flat-button
+                color="warn"
+                type="button"
+                [disabled]="!motivo.trim()"
+                (click)="recusar(s)"
+              >
+                Confirmar recusa
+              </button>
               <button mat-button type="button" (click)="recusando.set(null)">Cancelar</button>
             </div>
           }

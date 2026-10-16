@@ -44,9 +44,19 @@ const CLASSE_STATUS = {
         }
         <label class="text-sm flex-1 min-w-48">
           <span class="block text-xs text-gray-500">Observação (opcional)</span>
-          <input class="border rounded px-2 py-1 w-full" maxlength="1000" [(ngModel)]="observacao" />
+          <input
+            class="border rounded px-2 py-1 w-full"
+            maxlength="1000"
+            [(ngModel)]="observacao"
+          />
         </label>
-        <button mat-flat-button color="primary" type="button" [disabled]="!tipoId || enviando()" (click)="solicitar()">
+        <button
+          mat-flat-button
+          color="primary"
+          type="button"
+          [disabled]="!tipoId || enviando()"
+          (click)="solicitar()"
+        >
           Solicitar
         </button>
       </div>
@@ -59,10 +69,15 @@ const CLASSE_STATUS = {
             <p class="font-medium">{{ s.tipo.nome }}</p>
             <p class="text-xs text-gray-500">
               Pedido em {{ s.criadoEm | date: "dd/MM/yyyy HH:mm" }}
-              @if (s.matricula) { · matrícula {{ s.matricula.numeroMatricula ?? "—" }} }
+              @if (s.matricula) {
+                · matrícula {{ s.matricula.numeroMatricula ?? "—" }}
+              }
             </p>
             @if (s.respostaStaff) {
-              <p class="text-xs mt-1" [class]="s.status === 'RECUSADA' ? 'text-red-600' : 'text-gray-600'">
+              <p
+                class="text-xs mt-1"
+                [class]="s.status === 'RECUSADA' ? 'text-red-600' : 'text-gray-600'"
+              >
                 {{ s.respostaStaff }}
               </p>
             }
@@ -130,6 +145,8 @@ export class PortalSolicitacoesComponent implements OnInit {
   }
 
   baixar(s: Solicitacao): void {
-    this.portal.baixarSolicitacao(s.id).subscribe((blob) => baixarBlob(blob, s.arquivoNome ?? "documento"));
+    this.portal
+      .baixarSolicitacao(s.id)
+      .subscribe((blob) => baixarBlob(blob, s.arquivoNome ?? "documento"));
   }
 }

@@ -56,7 +56,10 @@ function dataIso(data: Date): string {
 
 /** Competência padrão de um pagamento: último dia do mês pago, sem passar de hoje. */
 export function competenciaPadrao(dataPagamento: Date, hoje = new Date()): string {
-  const doMes = competenciaDoMes({ ano: dataPagamento.getFullYear(), mes: dataPagamento.getMonth() + 1 });
+  const doMes = competenciaDoMes({
+    ano: dataPagamento.getFullYear(),
+    mes: dataPagamento.getMonth() + 1,
+  });
   const dataHoje = dataIso(hoje);
   return doMes > dataHoje ? dataHoje : doMes;
 }
@@ -97,7 +100,8 @@ export function avisosDaNota(parcela: ParcelaParaNota, tomador = tomadorDe(parce
   const erros: string[] = [];
   const avisos: string[] = [];
   if (!tomador.nome?.trim()) erros.push("Tomador sem nome");
-  if (![11, 14].includes(tomador.documento.replace(/\D/g, "").length)) erros.push("Tomador sem CPF/CNPJ válido");
+  if (![11, 14].includes(tomador.documento.replace(/\D/g, "").length))
+    erros.push("Tomador sem CPF/CNPJ válido");
   if (valorDaNota(parcela) <= 0) erros.push("Valor da nota inválido");
   if (!tomador.cep) avisos.push("Tomador sem CEP — o Asaas pode recusar a nota");
   return { erros, avisos };
@@ -220,14 +224,23 @@ export const nfseService = {
 
     const total = await nfseRepository.contarPendentes(inicio, fim);
     const pendentes = await nfseRepository.listarPendentes(inicio, fim, limite);
-    const resultado: ResultadoEmissao = { emitidas: 0, agendadas: 0, erros: [], restantes: Math.max(0, total - pendentes.length) };
+    const resultado: ResultadoEmissao = {
+      emitidas: 0,
+      agendadas: 0,
+      erros: [],
+      restantes: Math.max(0, total - pendentes.length),
+    };
 
     for (const parcela of pendentes) {
       try {
         const status = await this.emitirUma(parcela, competenciaDoMes(ref), contexto, config);
         if (status === "AUTORIZADA") resultado.emitidas += 1;
         else if (status === "AGENDADA") resultado.agendadas += 1;
-        else resultado.erros.push({ parcelaId: parcela.id, erro: parcela.nfseErro ?? "Nota recusada" });
+        else
+          resultado.erros.push({
+            parcelaId: parcela.id,
+            erro: parcela.nfseErro ?? "Nota recusada",
+          });
       } catch (erro) {
         resultado.erros.push({ parcelaId: parcela.id, erro: mensagem(erro) });
       }
@@ -239,15 +252,24 @@ export const nfseService = {
         entidade: "Nfse",
         entidadeId: competenciaDoMes(ref),
         acao: "CRIACAO",
-        detalhes: { competencia: competenciaDoMes(ref), emitidas: resultado.emitidas, agendadas: resultado.agendadas, erros: resultado.erros.length },
+        detalhes: {
+          competencia: competenciaDoMes(ref),
+          emitidas: resultado.emitidas,
+          agendadas: resultado.agendadas,
+          erros: resultado.erros.length,
+        },
       });
     }
     return resultado;
   },
 
   /** Clientes do provedor escolhido (Asaas ou emissão direta na SEFIN Nacional). */
-  async contexto(config: Config, opcoes: { cliente?: AsaasClient; nacional?: SefinClient } = {}): Promise<ContextoEmissao> {
-    if (config.nfseProvedor === "NACIONAL") return { nacional: opcoes.nacional ?? criarClienteSefin(config) };
+  async contexto(
+    config: Config,
+    opcoes: { cliente?: AsaasClient; nacional?: SefinClient } = {},
+  ): Promise<ContextoEmissao> {
+    if (config.nfseProvedor === "NACIONAL")
+      return { nacional: opcoes.nacional ?? criarClienteSefin(config) };
     return { asaas: opcoes.cliente ?? (await obterClienteAsaas()) };
   },
 
@@ -305,11 +327,21 @@ export const nfseService = {
           value: valorDaNota(parcela),
           deductions: 0,
           effectiveDate: competencia,
-          ...(config.nfseMunicipalServiceId ? { municipalServiceId: config.nfseMunicipalServiceId } : {}),
+          ...(config.nfseMunicipalServiceId
+            ? { municipalServiceId: config.nfseMunicipalServiceId }
+            : {}),
           municipalServiceCode: config.nfseServicoCodigo,
           municipalServiceName: config.nfseServicoNome,
           // Simples Nacional: a nota sai sem retenções (igual à nota de exemplo da empresa).
-          taxes: { retainIss: false, iss: Number(config.nfseIssPercentual), pis: 0, cofins: 0, csll: 0, inss: 0, ir: 0 },
+          taxes: {
+            retainIss: false,
+            iss: Number(config.nfseIssPercentual),
+            pis: 0,
+            cofins: 0,
+            csll: 0,
+            inss: 0,
+            ir: 0,
+          },
         });
         notaId = agendada.id;
         await nfseRepository.update(parcela.id, {
@@ -335,7 +367,9 @@ export const nfseService = {
   },
 
   /** Confere no Asaas as notas agendadas: número e PDF aparecem quando a prefeitura autoriza. */
-  async atualizarStatus(cliente?: AsaasClient): Promise<{ conferidas: number; autorizadas: number; erros: number }> {
+  async atualizarStatus(
+    cliente?: AsaasClient,
+  ): Promise<{ conferidas: number; autorizadas: number; erros: number }> {
     const agendadas = await nfseRepository.listarAgendadas();
     if (agendadas.length === 0) return { conferidas: 0, autorizadas: 0, erros: 0 };
     const asaas = cliente ?? (await obterClienteAsaas());
@@ -359,12 +393,18 @@ export const nfseService = {
     const parcela = await nfseRepository.findById(parcelaId);
     if (!parcela) throw new NotFoundError("Parcela não encontrada");
     if (parcela.status !== "PAGO") throw new ValidationError("Só parcelas pagas geram nota");
-    if (parcela.nfseStatus === "AUTORIZADA") throw new ValidationError("A nota desta parcela já foi emitida");
+    if (parcela.nfseStatus === "AUTORIZADA")
+      throw new ValidationError("A nota desta parcela já foi emitida");
     if (!parcela.dataPagamento) throw new ValidationError("Parcela sem data de pagamento");
 
     const config = await configuracoesRepository.obterOuCriar();
     const contexto = await this.contexto(config);
-    const status = await this.emitirUma(parcela, competenciaPadrao(parcela.dataPagamento), contexto, config).catch(() => "ERRO");
+    const status = await this.emitirUma(
+      parcela,
+      competenciaPadrao(parcela.dataPagamento),
+      contexto,
+      config,
+    ).catch(() => "ERRO");
     await registrarAuditoria({
       usuarioId,
       entidade: "Parcela",
@@ -387,7 +427,9 @@ export const nfseService = {
         parcelaId: p.id,
         parcela: p.parcela,
         tipoTitulo: p.tipoTitulo,
-        geraNotaAutomatica: TIPOS_COM_NFSE.some((t) => t.toLowerCase() === (p.tipoTitulo ?? "").toLowerCase()),
+        geraNotaAutomatica: TIPOS_COM_NFSE.some(
+          (t) => t.toLowerCase() === (p.tipoTitulo ?? "").toLowerCase(),
+        ),
         dataPagamento: p.dataPagamento,
         valor: valorDaNota(p),
         aluno: p.matricula.aluno.nome,
@@ -410,16 +452,23 @@ export const nfseService = {
    * paga (inclusive tipos que a rotina automática ignora); a competência é a escolhida ou, se
    * não vier, o último dia do mês do pagamento (limitado a hoje: não existe competência futura).
    */
-  async emitirParaParcela(parcelaId: string, usuarioId: string, opcoes: { competencia?: string; hoje?: Date } = {}) {
+  async emitirParaParcela(
+    parcelaId: string,
+    usuarioId: string,
+    opcoes: { competencia?: string; hoje?: Date } = {},
+  ) {
     const parcela = await nfseRepository.findById(parcelaId);
     if (!parcela) throw new NotFoundError("Parcela não encontrada");
-    if (parcela.status !== "PAGO") throw new ValidationError("Só é possível emitir nota de uma parcela paga");
-    if (parcela.nfseStatus === "AUTORIZADA") throw new ValidationError("A nota desta parcela já foi emitida");
+    if (parcela.status !== "PAGO")
+      throw new ValidationError("Só é possível emitir nota de uma parcela paga");
+    if (parcela.nfseStatus === "AUTORIZADA")
+      throw new ValidationError("A nota desta parcela já foi emitida");
     if (!parcela.dataPagamento) throw new ValidationError("Parcela sem data de pagamento");
 
     const hoje = opcoes.hoje ?? new Date();
     const competencia = opcoes.competencia ?? competenciaPadrao(parcela.dataPagamento, hoje);
-    if (competencia > dataIso(hoje)) throw new ValidationError("A competência não pode ser uma data futura");
+    if (competencia > dataIso(hoje))
+      throw new ValidationError("A competência não pode ser uma data futura");
 
     const config = await configuracoesRepository.obterOuCriar();
     const contexto = await this.contexto(config);

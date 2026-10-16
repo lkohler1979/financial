@@ -136,11 +136,15 @@ import {
         </ng-container>
         <ng-container matColumnDef="cpf">
           <th mat-header-cell *matHeaderCellDef>CPF</th>
-          <td mat-cell *matCellDef="let m" class="whitespace-nowrap">{{ m.aluno?.cpf ? formatarCpf(m.aluno.cpf) : "—" }}</td>
+          <td mat-cell *matCellDef="let m" class="whitespace-nowrap">
+            {{ m.aluno?.cpf ? formatarCpf(m.aluno.cpf) : "—" }}
+          </td>
         </ng-container>
         <ng-container matColumnDef="celular">
           <th mat-header-cell *matHeaderCellDef>Celular</th>
-          <td mat-cell *matCellDef="let m" class="whitespace-nowrap">{{ m.aluno?.telefone1 || m.aluno?.telefone2 || "—" }}</td>
+          <td mat-cell *matCellDef="let m" class="whitespace-nowrap">
+            {{ m.aluno?.telefone1 || m.aluno?.telefone2 || "—" }}
+          </td>
         </ng-container>
         <ng-container matColumnDef="email">
           <th mat-header-cell *matHeaderCellDef>E-mail</th>
@@ -241,7 +245,18 @@ export class MatriculasListComponent implements OnInit {
     dataMatriculaFim: this.fb.control<string | undefined>(undefined),
   });
 
-  colunas = ["aluno", "cpf", "celular", "email", "curso", "numero", "data", "situacao", "parcelas", "acoes"];
+  colunas = [
+    "aluno",
+    "cpf",
+    "celular",
+    "email",
+    "curso",
+    "numero",
+    "data",
+    "situacao",
+    "parcelas",
+    "acoes",
+  ];
   situacoesMatricula: SituacaoMatriculaOpcao[] = [];
   protected readonly formatarCpf = formatarCpf;
   protected readonly rotuloSituacao = rotuloSituacaoMatricula;

@@ -86,7 +86,9 @@ export function aplicarDetalheNaParcela(
 } | null {
   const novoStatus = statusLegadoParaEthos(detalhe);
   const valorPagoLegado = detalhe.tituloValorPago;
-  const dataPagamentoLegado = parseDataLegado(detalhe.tituloDataPagamento ?? detalhe.tituloDataBaixa);
+  const dataPagamentoLegado = parseDataLegado(
+    detalhe.tituloDataPagamento ?? detalhe.tituloDataBaixa,
+  );
   const tipoTituloLegado = tipoTituloDoDetalhe(detalhe);
 
   const mudouStatus = novoStatus !== null && novoStatus !== parcela.status;

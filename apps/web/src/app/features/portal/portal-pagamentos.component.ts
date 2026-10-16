@@ -44,7 +44,9 @@ const ROTULO_STATUS: Record<string, string> = {
           @for (p of parcelas(); track p.id) {
             <tr class="border-t align-top" [class]="classeLinha(p)">
               <td class="p-2 whitespace-nowrap">{{ p.codTitulo }}</td>
-              <td class="p-2">{{ p.tipoTitulo ?? "Parcela" }} - {{ p.parcela.replace("/", " / ") }}</td>
+              <td class="p-2">
+                {{ p.tipoTitulo ?? "Parcela" }} - {{ p.parcela.replace("/", " / ") }}
+              </td>
               <td class="p-2">{{ p.matricula.sacado?.nome ?? p.matricula.aluno.nome }}</td>
               <td class="p-2">{{ p.matricula.aluno.nome }}</td>
               <td class="p-2">{{ p.matricula.curso.nome }}</td>
@@ -58,35 +60,83 @@ const ROTULO_STATUS: Record<string, string> = {
                 @if (p.status === "EM_ABERTO") {
                   @if (p.asaasBillingType) {
                     @if (p.asaasBoletoUrl) {
-                      <a mat-button class="!min-w-0 !px-2" [href]="p.asaasBoletoUrl" target="_blank" rel="noopener">Abrir boleto</a>
+                      <a
+                        mat-button
+                        class="!min-w-0 !px-2"
+                        [href]="p.asaasBoletoUrl"
+                        target="_blank"
+                        rel="noopener"
+                        >Abrir boleto</a
+                      >
                     }
                     @if (p.asaasLinhaDigitavel) {
-                      <button mat-button class="!min-w-0 !px-2" type="button" (click)="copiar(p.asaasLinhaDigitavel)">
+                      <button
+                        mat-button
+                        class="!min-w-0 !px-2"
+                        type="button"
+                        (click)="copiar(p.asaasLinhaDigitavel)"
+                      >
                         Copiar linha digitável
                       </button>
                     }
                     @if (p.asaasPixCopiaECola) {
                       @if (p.asaasPixQrCodeImagem) {
-                        <img class="w-32 h-32" [src]="'data:image/png;base64,' + p.asaasPixQrCodeImagem" alt="QR Code Pix" />
+                        <img
+                          class="w-32 h-32"
+                          [src]="'data:image/png;base64,' + p.asaasPixQrCodeImagem"
+                          alt="QR Code Pix"
+                        />
                       }
-                      <button mat-button class="!min-w-0 !px-2" type="button" (click)="copiar(p.asaasPixCopiaECola)">
+                      <button
+                        mat-button
+                        class="!min-w-0 !px-2"
+                        type="button"
+                        (click)="copiar(p.asaasPixCopiaECola)"
+                      >
                         Copiar código Pix
                       </button>
                     }
                     @if (p.asaasBillingType === "CREDIT_CARD" && p.asaasInvoiceUrl) {
-                      <a mat-button class="!min-w-0 !px-2" [href]="p.asaasInvoiceUrl" target="_blank" rel="noopener">Pagar com cartão</a>
+                      <a
+                        mat-button
+                        class="!min-w-0 !px-2"
+                        [href]="p.asaasInvoiceUrl"
+                        target="_blank"
+                        rel="noopener"
+                        >Pagar com cartão</a
+                      >
                     }
                   } @else if (formaDe(p)) {
-                    <button mat-flat-button color="primary" type="button" [disabled]="gerando() === p.id" (click)="gerar(p, formaDe(p)!)">
-                      {{ gerando() === p.id ? "Gerando..." : (formaDe(p) === "CREDIT_CARD" && provedorCartao() === "REDE" ? "Pagar com cartão" : "Emitir " + rotuloForma(formaDe(p)!)) }}
+                    <button
+                      mat-flat-button
+                      color="primary"
+                      type="button"
+                      [disabled]="gerando() === p.id"
+                      (click)="gerar(p, formaDe(p)!)"
+                    >
+                      {{
+                        gerando() === p.id
+                          ? "Gerando..."
+                          : formaDe(p) === "CREDIT_CARD" && provedorCartao() === "REDE"
+                            ? "Pagar com cartão"
+                            : "Emitir " + rotuloForma(formaDe(p)!)
+                      }}
                     </button>
                   } @else {
-                    <button mat-flat-button color="primary" type="button" [disabled]="gerando() === p.id" [matMenuTriggerFor]="menu">
+                    <button
+                      mat-flat-button
+                      color="primary"
+                      type="button"
+                      [disabled]="gerando() === p.id"
+                      [matMenuTriggerFor]="menu"
+                    >
                       {{ gerando() === p.id ? "Gerando..." : "Pagar" }}
                     </button>
                     <mat-menu #menu="matMenu">
                       @for (f of formas(); track f) {
-                        <button mat-menu-item type="button" (click)="gerar(p, f)">{{ rotuloForma(f) }}</button>
+                        <button mat-menu-item type="button" (click)="gerar(p, f)">
+                          {{ rotuloForma(f) }}
+                        </button>
                       }
                     </mat-menu>
                   }
@@ -94,7 +144,9 @@ const ROTULO_STATUS: Record<string, string> = {
               </td>
             </tr>
           } @empty {
-            <tr><td class="p-4 text-gray-500" colspan="10">Nenhum pagamento encontrado.</td></tr>
+            <tr>
+              <td class="p-4 text-gray-500" colspan="10">Nenhum pagamento encontrado.</td>
+            </tr>
           }
         </tbody>
       </table>
@@ -150,7 +202,9 @@ export class PortalPagamentosComponent implements OnInit {
   }
 
   vencida(p: PortalParcela): boolean {
-    return p.status === "EM_ABERTO" && new Date(p.vencimento).getTime() < Date.now() - 24 * 3600 * 1000;
+    return (
+      p.status === "EM_ABERTO" && new Date(p.vencimento).getTime() < Date.now() - 24 * 3600 * 1000
+    );
   }
 
   rotuloForma(f: FormaPagamento): string {

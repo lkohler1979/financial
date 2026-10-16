@@ -13,7 +13,8 @@ export interface CertificadoA1 {
   validoAte: Date;
 }
 
-const MENSAGEM_ARQUIVO_OU_SENHA = "Não foi possível abrir o certificado. Confira se é um arquivo .pfx/.p12 (A1) e se a senha está correta.";
+const MENSAGEM_ARQUIVO_OU_SENHA =
+  "Não foi possível abrir o certificado. Confira se é um arquivo .pfx/.p12 (A1) e se a senha está correta.";
 
 /**
  * Abre um .pfx e devolve chave/certificado em PEM. Valida a senha e a validade: um
@@ -29,26 +30,35 @@ export function lerCertificadoA1(pfx: Buffer, senha: string, agora = new Date())
   }
 
   const chaves = [
-    ...(p12.getBags({ bagType: forge.pki.oids.pkcs8ShroudedKeyBag })[forge.pki.oids.pkcs8ShroudedKeyBag] ?? []),
+    ...(p12.getBags({ bagType: forge.pki.oids.pkcs8ShroudedKeyBag })[
+      forge.pki.oids.pkcs8ShroudedKeyBag
+    ] ?? []),
     ...(p12.getBags({ bagType: forge.pki.oids.keyBag })[forge.pki.oids.keyBag] ?? []),
   ];
   const chave = chaves.map((b) => b.key).find((k): k is forge.pki.rsa.PrivateKey => Boolean(k));
-  const certificados = (p12.getBags({ bagType: forge.pki.oids.certBag })[forge.pki.oids.certBag] ?? [])
+  const certificados = (
+    p12.getBags({ bagType: forge.pki.oids.certBag })[forge.pki.oids.certBag] ?? []
+  )
     .map((b) => b.cert)
     .filter((c): c is forge.pki.Certificate => Boolean(c));
   if (!chave || certificados.length === 0) {
-    throw new ValidationError("O arquivo não contém chave privada e certificado. Envie o certificado A1 completo (.pfx).");
+    throw new ValidationError(
+      "O arquivo não contém chave privada e certificado. Envie o certificado A1 completo (.pfx).",
+    );
   }
 
   // O .pfx pode trazer a cadeia (AC intermediárias): usa o certificado cuja chave pública
   // bate com a chave privada.
   const certificado =
-    certificados.find((c) => (c.publicKey as forge.pki.rsa.PublicKey).n.compareTo(chave.n) === 0) ?? certificados[0];
+    certificados.find((c) => (c.publicKey as forge.pki.rsa.PublicKey).n.compareTo(chave.n) === 0) ??
+    certificados[0];
 
   const validoDe = certificado.validity.notBefore;
   const validoAte = certificado.validity.notAfter;
   if (validoAte.getTime() < agora.getTime()) {
-    throw new ValidationError(`Certificado vencido em ${validoAte.toLocaleDateString("pt-BR")}. Envie um certificado válido.`);
+    throw new ValidationError(
+      `Certificado vencido em ${validoAte.toLocaleDateString("pt-BR")}. Envie um certificado válido.`,
+    );
   }
   if (validoDe.getTime() > agora.getTime()) {
     throw new ValidationError("Certificado ainda não está válido (data de início no futuro).");

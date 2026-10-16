@@ -3,7 +3,11 @@ import { RedeClient } from "../../src/modules/rede/rede-client";
 import { AppError } from "../../src/shared/errors/app-error";
 
 describe("RedeClient — estorno", () => {
-  const cliente = new RedeClient({ pv: "PVESTORNO", chaveIntegracao: "chave", ambiente: "SANDBOX" });
+  const cliente = new RedeClient({
+    pv: "PVESTORNO",
+    chaveIntegracao: "chave",
+    ambiente: "SANDBOX",
+  });
   const fetchMock = vi.fn();
   beforeEach(() => {
     fetchMock.mockReset();
@@ -15,21 +19,33 @@ describe("RedeClient — estorno", () => {
     Promise.resolve({ ok: status >= 200 && status < 300, status, json: async () => corpo });
   const rotear = (transacao: () => Promise<unknown>) =>
     fetchMock.mockImplementation((url: string) =>
-      url.includes("oauth2/token") ? resp(200, { access_token: "tok", expires_in: 1440 }) : transacao(),
+      url.includes("oauth2/token")
+        ? resp(200, { access_token: "tok", expires_in: 1440 })
+        : transacao(),
     );
   const chamada = () => fetchMock.mock.calls.find(([u]) => !String(u).includes("oauth2"))!;
 
   it("359: estorno concluído na hora; envia o valor em centavos para /{tid}/refunds", async () => {
-    rotear(() => resp(200, { returnCode: "359", returnMessage: "Refund successful", refundId: "r-1" }));
+    rotear(() =>
+      resp(200, { returnCode: "359", returnMessage: "Refund successful", refundId: "r-1" }),
+    );
     const r = await cliente.estornarCartao("10012610061349111724", 15000);
-    expect(chamada()[0]).toBe("https://sandbox-erede.useredecloud.com.br/v2/transactions/10012610061349111724/refunds");
+    expect(chamada()[0]).toBe(
+      "https://sandbox-erede.useredecloud.com.br/v2/transactions/10012610061349111724/refunds",
+    );
     expect(chamada()[1].method).toBe("POST");
     expect(JSON.parse(chamada()[1].body)).toEqual({ amount: 15000 });
     expect(r).toMatchObject({ concluido: true, refundId: "r-1" });
   });
 
   it("360: aceito, mas ainda em processamento (D+1)", async () => {
-    rotear(() => resp(200, { returnCode: "360", returnMessage: "Refund request has been successful", refundId: "r-2" }));
+    rotear(() =>
+      resp(200, {
+        returnCode: "360",
+        returnMessage: "Refund request has been successful",
+        refundId: "r-2",
+      }),
+    );
     expect((await cliente.estornarCartao("T1", 100)).concluido).toBe(false);
   });
 
@@ -47,8 +63,9 @@ describe("RedeClient — estorno", () => {
 
   it("consulta os estornos da transação", async () => {
     rotear(() => resp(200, { refunds: [{ refundId: "r-2", status: "Done", amount: 100 }] }));
-    expect(await cliente.consultarEstornos("T1")).toEqual([{ refundId: "r-2", status: "Done", amount: 100 }]);
+    expect(await cliente.consultarEstornos("T1")).toEqual([
+      { refundId: "r-2", status: "Done", amount: 100 },
+    ]);
     expect(chamada()[1].method).toBe("GET");
   });
 });
-

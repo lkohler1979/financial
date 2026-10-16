@@ -8,11 +8,16 @@ export const redeController = {
   /** Estorno total de um pagamento de cartão (só ADMINISTRADOR — ver rota). */
   estornar: asyncHandler(async (req: Request, res: Response) => {
     const { motivo } = estornoCartaoSchema.parse(req.body);
-    res.json(await redeService.estornarCartao(paramString(req, "parcelaId"), motivo, usuarioAtual(req)));
+    res.json(
+      await redeService.estornarCartao(paramString(req, "parcelaId"), motivo, usuarioAtual(req)),
+    );
   }),
 
   conferirEstorno: asyncHandler(async (req: Request, res: Response) => {
-    const situacao = await redeService.conferirEstorno(paramString(req, "parcelaId"), usuarioAtual(req));
+    const situacao = await redeService.conferirEstorno(
+      paramString(req, "parcelaId"),
+      usuarioAtual(req),
+    );
     res.json({ situacao });
   }),
 

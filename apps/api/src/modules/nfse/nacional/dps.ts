@@ -84,7 +84,9 @@ export function dataHoraBrasilia(data: Date): string {
  * Id da DPS: "DPS" + município emissor (7) + tipo de inscrição (1 CPF, 2 CNPJ) + CNPJ (14)
  * + série (5) + número (15) = 45 caracteres. É a chave de idempotência na SEFIN.
  */
-export function montarIdDps(dados: Pick<DadosDps, "serie" | "numero"> & { municipioIbge: string; cnpj: string }): string {
+export function montarIdDps(
+  dados: Pick<DadosDps, "serie" | "numero"> & { municipioIbge: string; cnpj: string },
+): string {
   return `DPS${dados.municipioIbge}2${apenasDigitos(dados.cnpj).padStart(14, "0")}${String(dados.serie).padStart(5, "0")}${String(dados.numero).padStart(15, "0")}`;
 }
 
@@ -92,23 +94,28 @@ export function montarIdDps(dados: Pick<DadosDps, "serie" | "numero"> & { munici
 export function validarDados(dados: DadosDps): void {
   const erros: string[] = [];
   if (apenasDigitos(dados.prestador.cnpj).length !== 14) erros.push("CNPJ do prestador inválido");
-  if (!/^\d{7}$/.test(dados.prestador.municipioIbge)) erros.push("Código IBGE do município do prestador deve ter 7 dígitos");
+  if (!/^\d{7}$/.test(dados.prestador.municipioIbge))
+    erros.push("Código IBGE do município do prestador deve ter 7 dígitos");
   if (!/^\d{6}$/.test(dados.servico.codigoTributacaoNacional)) {
     erros.push("Código de tributação nacional deve ter 6 dígitos (ex.: 08.01.01)");
   }
-  if (![11, 14].includes(apenasDigitos(dados.tomador.documento).length)) erros.push("CPF/CNPJ do tomador inválido");
+  if (![11, 14].includes(apenasDigitos(dados.tomador.documento).length))
+    erros.push("CPF/CNPJ do tomador inválido");
   if (!dados.tomador.nome.trim()) erros.push("Tomador sem nome");
   if (!(dados.valor > 0)) erros.push("Valor da nota inválido");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dados.competencia)) erros.push("Competência inválida");
-  else if (dados.competencia > dataHoraBrasilia(dados.emitidaEm).slice(0, 10)) erros.push("Competência não pode ser posterior à data de emissão");
+  else if (dados.competencia > dataHoraBrasilia(dados.emitidaEm).slice(0, 10))
+    erros.push("Competência não pode ser posterior à data de emissão");
   if (!Number.isInteger(dados.numero) || dados.numero < 1) erros.push("Número da DPS inválido");
-  if (!Number.isInteger(dados.serie) || dados.serie < 1 || dados.serie > 89999) erros.push("Série da DPS inválida (1 a 89999)");
+  if (!Number.isInteger(dados.serie) || dados.serie < 1 || dados.serie > 89999)
+    erros.push("Série da DPS inválida (1 a 89999)");
   if (erros.length) throw new ValidationError(erros.join("; "));
 }
 
 function montarTomador(t: DadosDps["tomador"]): string {
   const documento = apenasDigitos(t.documento);
-  const identificador = documento.length === 14 ? `<CNPJ>${documento}</CNPJ>` : `<CPF>${documento}</CPF>`;
+  const identificador =
+    documento.length === 14 ? `<CNPJ>${documento}</CNPJ>` : `<CPF>${documento}</CPF>`;
   const e = t.endereco;
   const endereco = e
     ? `<end><endNac><cMun>${e.municipioIbge}</cMun><CEP>${apenasDigitos(e.cep)}</CEP></endNac>` +
@@ -128,7 +135,12 @@ function montarTomador(t: DadosDps["tomador"]): string {
 export function montarDpsXml(dados: DadosDps): string {
   validarDados(dados);
   const p = dados.prestador;
-  const id = montarIdDps({ serie: dados.serie, numero: dados.numero, municipioIbge: p.municipioIbge, cnpj: p.cnpj });
+  const id = montarIdDps({
+    serie: dados.serie,
+    numero: dados.numero,
+    municipioIbge: p.municipioIbge,
+    cnpj: p.cnpj,
+  });
 
   const foneP = apenasDigitos(p.telefone);
   const regTrib =

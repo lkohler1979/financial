@@ -5,7 +5,11 @@ import { sacadosService } from "../../src/modules/sacados/sacados.service";
 import { ValidationError } from "../../src/shared/errors/app-error";
 
 vi.mock("../../src/modules/matriculas/matriculas.repository", () => ({
-  matriculasRepository: { findById: vi.fn(), update: vi.fn(), countCobrancasEmitidasEmAberto: vi.fn() },
+  matriculasRepository: {
+    findById: vi.fn(),
+    update: vi.fn(),
+    countCobrancasEmitidasEmAberto: vi.fn(),
+  },
 }));
 vi.mock("../../src/modules/sacados/sacados.service", () => ({
   sacadosService: { obterOuCriar: vi.fn(), buscarPorId: vi.fn() },
@@ -58,10 +62,14 @@ describe("matriculasService.alterarSacado", () => {
   it("recusa quando o responsável já é o mesmo", async () => {
     repo.findById.mockResolvedValue({ ...base, sacado: { id: "s1" } } as never);
     sacados.buscarPorId.mockResolvedValue({ id: "s1" } as never);
-    await expect(matriculasService.alterarSacado("m1", { sacadoId: "s1" }, "u")).rejects.toBeInstanceOf(ValidationError);
+    await expect(
+      matriculasService.alterarSacado("m1", { sacadoId: "s1" }, "u"),
+    ).rejects.toBeInstanceOf(ValidationError);
 
     repo.findById.mockResolvedValue({ ...base, sacado: null } as never);
-    await expect(matriculasService.alterarSacado("m1", { sacadoId: null }, "u")).rejects.toBeInstanceOf(ValidationError);
+    await expect(
+      matriculasService.alterarSacado("m1", { sacadoId: null }, "u"),
+    ).rejects.toBeInstanceOf(ValidationError);
     expect(repo.update).not.toHaveBeenCalled();
   });
 });

@@ -31,7 +31,14 @@ export type Transporte = (req: {
   timeoutMs: number;
 }) => Promise<RespostaHttp>;
 
-export const transporteHttps: Transporte = ({ url, metodo, headers, corpo, certificado, timeoutMs }) =>
+export const transporteHttps: Transporte = ({
+  url,
+  metodo,
+  headers,
+  corpo,
+  certificado,
+  timeoutMs,
+}) =>
   new Promise((resolve, reject) => {
     const alvo = new URL(url);
     const req = https.request(
@@ -39,7 +46,10 @@ export const transporteHttps: Transporte = ({ url, metodo, headers, corpo, certi
         hostname: alvo.hostname,
         path: `${alvo.pathname}${alvo.search}`,
         method: metodo,
-        headers: { ...headers, ...(corpo ? { "content-length": String(Buffer.byteLength(corpo)) } : {}) },
+        headers: {
+          ...headers,
+          ...(corpo ? { "content-length": String(Buffer.byteLength(corpo)) } : {}),
+        },
         key: certificado.keyPem,
         cert: certificado.certPem,
         // A SEFIN recusa HTTP/2 nos caminhos autenticados — o módulo https já usa HTTP/1.1.
@@ -57,8 +67,10 @@ export const transporteHttps: Transporte = ({ url, metodo, headers, corpo, certi
     req.end();
   });
 
-export const gzipBase64 = (texto: string) => zlib.gzipSync(Buffer.from(texto, "utf8")).toString("base64");
-export const gunzipBase64 = (b64: string) => zlib.gunzipSync(Buffer.from(b64, "base64")).toString("utf8");
+export const gzipBase64 = (texto: string) =>
+  zlib.gzipSync(Buffer.from(texto, "utf8")).toString("base64");
+export const gunzipBase64 = (b64: string) =>
+  zlib.gunzipSync(Buffer.from(b64, "base64")).toString("utf8");
 
 interface MensagemSefin {
   codigo?: string;
@@ -71,7 +83,9 @@ interface MensagemSefin {
 
 /** Rejeição devolvida pela SEFIN (regra fiscal): vira erro 422 com os códigos. */
 export class NfseRejeitadaError extends AppError {
-  constructor(public readonly mensagens: { codigo: string; descricao: string; complemento?: string }[]) {
+  constructor(
+    public readonly mensagens: { codigo: string; descricao: string; complemento?: string }[],
+  ) {
     const [primeira] = mensagens;
     const resto = mensagens.length > 1 ? ` (+${mensagens.length - 1})` : "";
     super(
@@ -136,15 +150,25 @@ export class SefinClient {
       });
     } catch (erro) {
       const motivo = erro instanceof Error ? erro.message : String(erro);
-      throw new AppError(`Falha de comunicação com a SEFIN Nacional: ${motivo}`, 502, "NFSE_SEM_COMUNICACAO");
+      throw new AppError(
+        `Falha de comunicação com a SEFIN Nacional: ${motivo}`,
+        502,
+        "NFSE_SEM_COMUNICACAO",
+      );
     }
   }
 
   /** Envia a DPS assinada (síncrono): devolve a NFS-e gerada ou lança a rejeição da SEFIN. */
   async emitir(dpsXmlAssinado: string): Promise<NotaEmitida> {
-    const resposta = await this.chamar("sefin", "POST", "/nfse", { dpsXmlGZipB64: gzipBase64(dpsXmlAssinado) });
+    const resposta = await this.chamar("sefin", "POST", "/nfse", {
+      dpsXmlGZipB64: gzipBase64(dpsXmlAssinado),
+    });
     const json = lerJson(resposta.corpo);
-    if (resposta.status < 300 && typeof json?.chaveAcesso === "string" && typeof json.nfseXmlGZipB64 === "string") {
+    if (
+      resposta.status < 300 &&
+      typeof json?.chaveAcesso === "string" &&
+      typeof json.nfseXmlGZipB64 === "string"
+    ) {
       return {
         chaveAcesso: json.chaveAcesso,
         idDps: typeof json.idDps === "string" ? json.idDps : null,
@@ -166,14 +190,22 @@ export class SefinClient {
   async consultarNfse(chaveAcesso: string): Promise<string> {
     const resposta = await this.chamar("sefin", "GET", `/nfse/${chaveAcesso}`);
     const json = lerJson(resposta.corpo);
-    if (resposta.status < 300 && typeof json?.nfseXmlGZipB64 === "string") return gunzipBase64(json.nfseXmlGZipB64);
+    if (resposta.status < 300 && typeof json?.nfseXmlGZipB64 === "string")
+      return gunzipBase64(json.nfseXmlGZipB64);
     this.lancarErro(resposta, json);
   }
 
   /** PDF do DANFSe (documento auxiliar) da nota. */
   async baixarDanfse(chaveAcesso: string): Promise<Buffer> {
-    const resposta = await this.chamar("danfse", "GET", `/${chaveAcesso}`, undefined, "application/pdf");
-    if (resposta.status < 300 && resposta.corpo.subarray(0, 4).toString() === "%PDF") return resposta.corpo;
+    const resposta = await this.chamar(
+      "danfse",
+      "GET",
+      `/${chaveAcesso}`,
+      undefined,
+      "application/pdf",
+    );
+    if (resposta.status < 300 && resposta.corpo.subarray(0, 4).toString() === "%PDF")
+      return resposta.corpo;
     this.lancarErro(resposta, lerJson(resposta.corpo));
   }
 
@@ -187,6 +219,10 @@ export class SefinClient {
         "NFSE_CERTIFICADO_RECUSADO",
       );
     }
-    throw new AppError(`A SEFIN respondeu HTTP ${resposta.status} sem detalhes`, 502, "NFSE_RESPOSTA_INESPERADA");
+    throw new AppError(
+      `A SEFIN respondeu HTTP ${resposta.status} sem detalhes`,
+      502,
+      "NFSE_RESPOSTA_INESPERADA",
+    );
   }
 }

@@ -10,7 +10,11 @@ export const solicitacoesRouter = Router();
 
 solicitacoesRouter.get("/tipos", solicitacoesController.listarTipos);
 solicitacoesRouter.post("/tipos", requireRole("ADMINISTRADOR"), solicitacoesController.criarTipo);
-solicitacoesRouter.put("/tipos/:id", requireRole("ADMINISTRADOR"), solicitacoesController.atualizarTipo);
+solicitacoesRouter.put(
+  "/tipos/:id",
+  requireRole("ADMINISTRADOR"),
+  solicitacoesController.atualizarTipo,
+);
 solicitacoesRouter.get("/", solicitacoesController.listar);
 solicitacoesRouter.post("/:id/atender", upload.single("arquivo"), solicitacoesController.atender);
 solicitacoesRouter.post("/:id/recusar", solicitacoesController.recusar);

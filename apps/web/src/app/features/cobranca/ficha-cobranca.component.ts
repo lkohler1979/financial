@@ -133,7 +133,10 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
           <div class="w-full sm:w-52 flex-shrink-0 flex items-center gap-2">
             <p class="text-xs font-medium text-gray-600 mb-0 whitespace-nowrap">Situação</p>
             <mat-form-field appearance="outline" class="w-full !text-sm" subscriptSizing="dynamic">
-              <mat-select [formControl]="situacaoControl" (selectionChange)="mudarSituacao($event.value)">
+              <mat-select
+                [formControl]="situacaoControl"
+                (selectionChange)="mudarSituacao($event.value)"
+              >
                 @for (situacao of situacoes; track situacao.id) {
                   <mat-option [value]="situacao.id">{{ situacao.nome }}</mat-option>
                 }
@@ -228,15 +231,27 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
                 </td>
                 <td class="py-1">
                   @if (parcela.statusSincronizacaoLegado === "SINCRONIZADO") {
-                    <mat-icon class="!text-base !w-4 !h-4 text-green-600" title="Sincronizado">check_circle</mat-icon>
+                    <mat-icon class="!text-base !w-4 !h-4 text-green-600" title="Sincronizado"
+                      >check_circle</mat-icon
+                    >
                   } @else {
-                    <mat-icon class="!text-base !w-4 !h-4 text-gray-400" title="Pendente de sincronização">radio_button_unchecked</mat-icon>
+                    <mat-icon
+                      class="!text-base !w-4 !h-4 text-gray-400"
+                      title="Pendente de sincronização"
+                      >radio_button_unchecked</mat-icon
+                    >
                   }
                 </td>
                 <td class="py-1 text-right">{{ parcela.valor | currency: "BRL" }}</td>
-                <td class="py-1 text-right">{{ calculoParcela(parcela).multa | currency: "BRL" }}</td>
-                <td class="py-1 text-right">{{ calculoParcela(parcela).juros | currency: "BRL" }}</td>
-                <td class="py-1 text-right">{{ calculoParcela(parcela).total | currency: "BRL" }}</td>
+                <td class="py-1 text-right">
+                  {{ calculoParcela(parcela).multa | currency: "BRL" }}
+                </td>
+                <td class="py-1 text-right">
+                  {{ calculoParcela(parcela).juros | currency: "BRL" }}
+                </td>
+                <td class="py-1 text-right">
+                  {{ calculoParcela(parcela).total | currency: "BRL" }}
+                </td>
                 <td class="py-1 text-right text-gray-400">
                   {{
                     parcela.valorOrigemComJurosEMulta !== undefined &&
@@ -246,40 +261,88 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
                   }}
                 </td>
                 <td class="py-1 whitespace-nowrap">
-                  @if (parcela.status === "PAGO" && authService.temPerfil("ADMINISTRADOR", "FINANCEIRO")) {
+                  @if (
+                    parcela.status === "PAGO" &&
+                    authService.temPerfil("ADMINISTRADOR", "FINANCEIRO")
+                  ) {
                     @if (parcela.nfseStatus === "AUTORIZADA") {
-                      <span class="text-xs text-green-700 mr-1">NFS-e {{ parcela.nfseNumero }}</span>
+                      <span class="text-xs text-green-700 mr-1"
+                        >NFS-e {{ parcela.nfseNumero }}</span
+                      >
                       @if (parcela.nfsePdfUrl) {
-                        <a mat-button class="!min-w-0 !px-2" [href]="parcela.nfsePdfUrl" target="_blank" rel="noopener">Nota</a>
+                        <a
+                          mat-button
+                          class="!min-w-0 !px-2"
+                          [href]="parcela.nfsePdfUrl"
+                          target="_blank"
+                          rel="noopener"
+                          >Nota</a
+                        >
                       } @else if (parcela.nfseChaveAcesso) {
-                        <button mat-button class="!min-w-0 !px-2" type="button" (click)="abrirNota(parcela)">Nota</button>
+                        <button
+                          mat-button
+                          class="!min-w-0 !px-2"
+                          type="button"
+                          (click)="abrirNota(parcela)"
+                        >
+                          Nota
+                        </button>
                       }
                     } @else {
                       @if (parcela.nfseStatus === "ERRO") {
-                        <span class="text-xs text-red-600 mr-1" [title]="parcela.nfseErro ?? ''">Nota com erro</span>
+                        <span class="text-xs text-red-600 mr-1" [title]="parcela.nfseErro ?? ''"
+                          >Nota com erro</span
+                        >
                       }
-                      <button mat-button class="!min-w-0 !px-2" type="button" (click)="emitirNota(parcela)">Emitir NFS-e</button>
+                      <button
+                        mat-button
+                        class="!min-w-0 !px-2"
+                        type="button"
+                        (click)="emitirNota(parcela)"
+                      >
+                        Emitir NFS-e
+                      </button>
                     }
                   }
                   @if (pagoNoCartaoRede(parcela)) {
                     <span class="text-xs text-gray-500 mr-1">
                       {{ parcela.cartaoBandeira }} final {{ parcela.cartaoFinal }}
-                      {{ parcela.cartaoParcelas && parcela.cartaoParcelas > 1 ? parcela.cartaoParcelas + "x" : "à vista" }}
+                      {{
+                        parcela.cartaoParcelas && parcela.cartaoParcelas > 1
+                          ? parcela.cartaoParcelas + "x"
+                          : "à vista"
+                      }}
                     </span>
                     @if (parcela.cartaoEstornoId) {
                       <span class="text-xs text-amber-700 mr-1">Estorno em processamento</span>
-                      <button mat-button class="!min-w-0 !px-2" type="button" (click)="conferirEstorno(parcela)">
+                      <button
+                        mat-button
+                        class="!min-w-0 !px-2"
+                        type="button"
+                        (click)="conferirEstorno(parcela)"
+                      >
                         Conferir
                       </button>
                     } @else {
-                      <button mat-button color="warn" class="!min-w-0 !px-2" type="button" (click)="estornarCartao(parcela)">
+                      <button
+                        mat-button
+                        color="warn"
+                        class="!min-w-0 !px-2"
+                        type="button"
+                        (click)="estornarCartao(parcela)"
+                      >
                         Estornar
                       </button>
                     }
                   }
                   @if (parcela.asaasPaymentId) {
                     @if (parcela.asaasBillingType === "BOLETO" && parcela.asaasBoletoUrl) {
-                      <a mat-button class="!min-w-0 !px-2" [href]="parcela.asaasBoletoUrl" target="_blank">
+                      <a
+                        mat-button
+                        class="!min-w-0 !px-2"
+                        [href]="parcela.asaasBoletoUrl"
+                        target="_blank"
+                      >
                         Ver boleto
                       </a>
                     }
@@ -305,7 +368,12 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
                       }
                     }
                     @if (parcela.asaasBillingType === "CREDIT_CARD" && parcela.asaasInvoiceUrl) {
-                      <a mat-button class="!min-w-0 !px-2" [href]="parcela.asaasInvoiceUrl" target="_blank">
+                      <a
+                        mat-button
+                        class="!min-w-0 !px-2"
+                        [href]="parcela.asaasInvoiceUrl"
+                        target="_blank"
+                      >
                         Pagar com cartão
                       </a>
                     }
@@ -316,7 +384,11 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
                       [disabled]="gerandoBoletoId === parcela.id"
                       (click)="gerarCobranca(parcela, parcela.formaPagamento!)"
                     >
-                      {{ gerandoBoletoId === parcela.id ? "Gerando..." : "Gerar " + rotuloForma(parcela.formaPagamento!) }}
+                      {{
+                        gerandoBoletoId === parcela.id
+                          ? "Gerando..."
+                          : "Gerar " + rotuloForma(parcela.formaPagamento!)
+                      }}
                     </button>
                   } @else if (parcela.status === "EM_ABERTO") {
                     <button
@@ -329,7 +401,9 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
                     </button>
                     <mat-menu #menuCobranca="matMenu">
                       @if (metodosAceitos.includes("BOLETO")) {
-                        <button mat-menu-item (click)="gerarCobranca(parcela, 'BOLETO')">Boleto</button>
+                        <button mat-menu-item (click)="gerarCobranca(parcela, 'BOLETO')">
+                          Boleto
+                        </button>
                       }
                       @if (metodosAceitos.includes("PIX")) {
                         <button mat-menu-item (click)="gerarCobranca(parcela, 'PIX')">Pix</button>
@@ -357,7 +431,9 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
                 <td class="py-1 text-right">{{ totalDevedor() | currency: "BRL" }}</td>
                 <td class="py-1 text-right">{{ totalMultaDevedor() | currency: "BRL" }}</td>
                 <td class="py-1 text-right">{{ totalJurosDevedor() | currency: "BRL" }}</td>
-                <td class="py-1 text-right">{{ totalComMultaEJurosDevedor() | currency: "BRL" }}</td>
+                <td class="py-1 text-right">
+                  {{ totalComMultaEJurosDevedor() | currency: "BRL" }}
+                </td>
                 <td class="py-1"></td>
                 <td class="py-1"></td>
               </tr>
@@ -587,7 +663,8 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
   totalDevedor(): number {
     return this.parcelas
       .filter(
-        (p) => p.status === "EM_ABERTO" || p.status === "PROTESTO_ENVIADO" || p.status === "PROTESTADO",
+        (p) =>
+          p.status === "EM_ABERTO" || p.status === "PROTESTO_ENVIADO" || p.status === "PROTESTADO",
       )
       .reduce((soma, p) => soma + Number(p.valor), 0);
   }
@@ -634,8 +711,9 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
 
     const ajuste = this.jurosContarDiaGeracao ? 0 : 1;
     const diasAtraso = Math.max(
-      Math.floor((this.inicioDoDia(hoje).getTime() - this.inicioDoDia(vencimento).getTime()) / 86_400_000) -
-        ajuste,
+      Math.floor(
+        (this.inicioDoDia(hoje).getTime() - this.inicioDoDia(vencimento).getTime()) / 86_400_000,
+      ) - ajuste,
       0,
     );
 
@@ -658,7 +736,8 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
 
   private parcelasDevedoras(): Parcela[] {
     return this.parcelas.filter(
-      (p) => p.status === "EM_ABERTO" || p.status === "PROTESTO_ENVIADO" || p.status === "PROTESTADO",
+      (p) =>
+        p.status === "EM_ABERTO" || p.status === "PROTESTO_ENVIADO" || p.status === "PROTESTADO",
     );
   }
 
@@ -702,7 +781,12 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
   /** Estorno total no cartão: pede o motivo (vai para a Auditoria) e confirma antes de enviar. */
   /** Nota fiscal individual deste pagamento (competência = mês do pagamento; ajustável em Notas fiscais). */
   emitirNota(parcela: Parcela): void {
-    if (!confirm(`Emitir a NFS-e do pagamento da parcela ${parcela.parcela}? A emissão não pode ser desfeita por aqui.`)) return;
+    if (
+      !confirm(
+        `Emitir a NFS-e do pagamento da parcela ${parcela.parcela}? A emissão não pode ser desfeita por aqui.`,
+      )
+    )
+      return;
     this.nfseService.emitirIndividual(parcela.id).subscribe({
       next: () => {
         this.snackBar.open("Nota emitida", "Fechar", { duration: 5000 });
@@ -713,7 +797,9 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
   }
 
   abrirNota(parcela: Parcela): void {
-    this.nfseService.danfse(parcela.id).subscribe((pdf) => window.open(URL.createObjectURL(pdf), "_blank"));
+    this.nfseService
+      .danfse(parcela.id)
+      .subscribe((pdf) => window.open(URL.createObjectURL(pdf), "_blank"));
   }
 
   estornarCartao(parcela: Parcela): void {
@@ -837,21 +923,21 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
         [this.matriculaId],
       )
       .subscribe({
-      next: ({ id: relatorioId, jobId, totalElegiveis }) => {
-        if (totalElegiveis === 0) {
-          // Nenhuma parcela elegível — normalmente porque já foram todas
-          // protestadas antes. Em vez de só avisar que não há nada a gerar,
-          // procura o último documento já gerado para esta matrícula e
-          // oferece para baixar de novo.
-          this.buscarDocumentoJaGerado();
-          return;
-        }
+        next: ({ id: relatorioId, jobId, totalElegiveis }) => {
+          if (totalElegiveis === 0) {
+            // Nenhuma parcela elegível — normalmente porque já foram todas
+            // protestadas antes. Em vez de só avisar que não há nada a gerar,
+            // procura o último documento já gerado para esta matrícula e
+            // oferece para baixar de novo.
+            this.buscarDocumentoJaGerado();
+            return;
+          }
 
-        if (jobId) this.acompanharGeracao(jobId, relatorioId);
-        else this.gerando = false;
-      },
-      error: () => (this.gerando = false),
-    });
+          if (jobId) this.acompanharGeracao(jobId, relatorioId);
+          else this.gerando = false;
+        },
+        error: () => (this.gerando = false),
+      });
   }
 
   private buscarDocumentoJaGerado(): void {

@@ -11,7 +11,10 @@ vi.mock("../../src/modules/rede/rede-client", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../src/modules/rede/rede-client")>()),
   RedeClient: vi.fn().mockImplementation(() => ({ estornarCartao, consultarEstornos })),
 }));
-vi.mock("../../src/shared/utils/criptografia", () => ({ decifrar: (v: string) => `dec(${v})`, criptografar: (v: string) => v }));
+vi.mock("../../src/shared/utils/criptografia", () => ({
+  decifrar: (v: string) => `dec(${v})`,
+  criptografar: (v: string) => v,
+}));
 vi.mock("../../src/modules/financeiro/financeiro.repository", () => ({
   financeiroRepository: { findById: vi.fn(), update: vi.fn(), listarComEstornoPendente: vi.fn() },
 }));
@@ -46,7 +49,11 @@ describe("redeService.estornarCartao", () => {
     fin.update.mockReset();
     auditoria.mockReset();
     fin.findById.mockResolvedValue(paga as never);
-    config.obterOuCriar.mockResolvedValue({ redePvCriptografado: "pv", redeChaveIntegracaoCriptografada: "k", redeAmbiente: "SANDBOX" } as never);
+    config.obterOuCriar.mockResolvedValue({
+      redePvCriptografado: "pv",
+      redeChaveIntegracaoCriptografada: "k",
+      redeAmbiente: "SANDBOX",
+    } as never);
   });
 
   it("estorno imediato (359): reabre a parcela, limpa a baixa e audita com o motivo", async () => {
@@ -57,10 +64,23 @@ describe("redeService.estornarCartao", () => {
     expect(r.concluido).toBe(true);
     expect(fin.update).toHaveBeenCalledWith(
       "p1",
-      expect.objectContaining({ status: "EM_ABERTO", dataPagamento: null, valorPago: null, asaasPaymentId: null, cartaoFinal: null }),
+      expect.objectContaining({
+        status: "EM_ABERTO",
+        dataPagamento: null,
+        valorPago: null,
+        asaasPaymentId: null,
+        cartaoFinal: null,
+      }),
     );
     expect(auditoria).toHaveBeenCalledWith(
-      expect.objectContaining({ usuarioId: "admin", detalhes: expect.objectContaining({ acao: "estorno_cartao_solicitado", motivo: "Pagamento em duplicidade", tid: "TID1" }) }),
+      expect.objectContaining({
+        usuarioId: "admin",
+        detalhes: expect.objectContaining({
+          acao: "estorno_cartao_solicitado",
+          motivo: "Pagamento em duplicidade",
+          tid: "TID1",
+        }),
+      }),
     );
   });
 
@@ -70,8 +90,14 @@ describe("redeService.estornarCartao", () => {
 
     expect(r.concluido).toBe(false);
     expect(fin.update).toHaveBeenCalledTimes(1);
-    expect(fin.update).toHaveBeenCalledWith("p1", expect.objectContaining({ cartaoEstornoId: "r2" }));
-    expect(fin.update).not.toHaveBeenCalledWith("p1", expect.objectContaining({ status: "EM_ABERTO" }));
+    expect(fin.update).toHaveBeenCalledWith(
+      "p1",
+      expect.objectContaining({ cartaoEstornoId: "r2" }),
+    );
+    expect(fin.update).not.toHaveBeenCalledWith(
+      "p1",
+      expect.objectContaining({ status: "EM_ABERTO" }),
+    );
   });
 
   it("regras: só parcela paga no cartão da Rede; sem estorno em andamento", async () => {
@@ -82,14 +108,20 @@ describe("redeService.estornarCartao", () => {
       { ...paga, cartaoEstornoId: "r9" },
     ]) {
       fin.findById.mockResolvedValue(parcela as never);
-      await expect(redeService.estornarCartao("p1", "motivo teste", "admin")).rejects.toBeInstanceOf(AppError);
+      await expect(
+        redeService.estornarCartao("p1", "motivo teste", "admin"),
+      ).rejects.toBeInstanceOf(AppError);
     }
     expect(estornarCartao).not.toHaveBeenCalled();
   });
 
   it("Rede recusou (ex.: prazo expirado): erro e a parcela não muda", async () => {
-    estornarCartao.mockRejectedValue(new AppError("Estorno não realizado: prazo", 422, "REDE_ESTORNO_RECUSADO"));
-    await expect(redeService.estornarCartao("p1", "motivo teste", "admin")).rejects.toMatchObject({ codigo: "REDE_ESTORNO_RECUSADO" });
+    estornarCartao.mockRejectedValue(
+      new AppError("Estorno não realizado: prazo", 422, "REDE_ESTORNO_RECUSADO"),
+    );
+    await expect(redeService.estornarCartao("p1", "motivo teste", "admin")).rejects.toMatchObject({
+      codigo: "REDE_ESTORNO_RECUSADO",
+    });
     expect(fin.update).not.toHaveBeenCalled();
   });
 });
@@ -99,7 +131,11 @@ describe("redeService.conferirEstorno", () => {
     consultarEstornos.mockReset();
     fin.update.mockReset();
     fin.findById.mockResolvedValue({ ...paga, cartaoEstornoId: "r2" } as never);
-    config.obterOuCriar.mockResolvedValue({ redePvCriptografado: "pv", redeChaveIntegracaoCriptografada: "k", redeAmbiente: "SANDBOX" } as never);
+    config.obterOuCriar.mockResolvedValue({
+      redePvCriptografado: "pv",
+      redeChaveIntegracaoCriptografada: "k",
+      redeAmbiente: "SANDBOX",
+    } as never);
   });
 
   it("Done: reabre a parcela", async () => {

@@ -13,20 +13,36 @@ portalRouter.post("/login", portalController.login);
 
 portalRouter.use(requireAluno);
 portalRouter.get("/me", portalController.me);
-portalRouter.get("/matriculas/:matriculaId/documentos", requireSomenteAluno, portalController.listarDocumentos);
+portalRouter.get(
+  "/matriculas/:matriculaId/documentos",
+  requireSomenteAluno,
+  portalController.listarDocumentos,
+);
 portalRouter.post(
   "/matriculas/:matriculaId/documentos/:tipoId/arquivo",
   requireSomenteAluno,
   upload.single("arquivo"),
   portalController.enviarDocumento,
 );
-portalRouter.get("/documentos/:documentoId/arquivo", requireSomenteAluno, portalController.baixarDocumento);
+portalRouter.get(
+  "/documentos/:documentoId/arquivo",
+  requireSomenteAluno,
+  portalController.baixarDocumento,
+);
 portalRouter.get("/parcelas", portalController.listarParcelas);
 portalRouter.get("/formas-pagamento", portalController.formasPagamento);
 portalRouter.get("/pagamento", portalController.configuracaoPagamento);
 portalRouter.post("/parcelas/:parcelaId/cartao", portalController.pagarComCartao);
 portalRouter.post("/parcelas/:parcelaId/cobranca", portalController.gerarCobranca);
-portalRouter.get("/tipos-solicitacao", requireSomenteAluno, portalController.listarTiposSolicitacao);
+portalRouter.get(
+  "/tipos-solicitacao",
+  requireSomenteAluno,
+  portalController.listarTiposSolicitacao,
+);
 portalRouter.get("/solicitacoes", requireSomenteAluno, portalController.listarSolicitacoes);
 portalRouter.post("/solicitacoes", requireSomenteAluno, portalController.solicitar);
-portalRouter.get("/solicitacoes/:id/arquivo", requireSomenteAluno, portalController.baixarSolicitacao);
+portalRouter.get(
+  "/solicitacoes/:id/arquivo",
+  requireSomenteAluno,
+  portalController.baixarSolicitacao,
+);

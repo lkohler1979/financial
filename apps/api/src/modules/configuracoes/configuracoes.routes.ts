@@ -6,3 +6,4 @@ export const configuracoesRouter = Router();
 configuracoesRouter.get("/", configuracoesController.obter);
 configuracoesRouter.put("/", configuracoesController.atualizar);
 configuracoesRouter.post("/limpar-base", configuracoesController.limparBase);
+configuracoesRouter.post("/limpar-alunos", configuracoesController.limparAlunos);

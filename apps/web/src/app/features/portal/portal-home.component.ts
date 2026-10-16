@@ -62,7 +62,9 @@ import { PortalSolicitacoesComponent } from "./portal-solicitacoes.component";
             @if (dados.tipoAcesso === "ALUNO") {
               <mat-tab label="Solicitações">
                 <div class="pt-4">
-                  <app-portal-solicitacoes [matriculas]="dados.matriculas"></app-portal-solicitacoes>
+                  <app-portal-solicitacoes
+                    [matriculas]="dados.matriculas"
+                  ></app-portal-solicitacoes>
                 </div>
               </mat-tab>
             }

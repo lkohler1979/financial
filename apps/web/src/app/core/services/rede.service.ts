@@ -10,10 +10,14 @@ export class RedeService {
 
   /** Estorno total de um pagamento de cartão (só administrador). `concluido: false` = a Rede ainda processa (D+1). */
   estornarCartao(parcelaId: string, motivo: string): Observable<{ concluido: boolean }> {
-    return this.http.post<{ concluido: boolean }>(`${this.baseUrl}/parcelas/${parcelaId}/estorno`, { motivo });
+    return this.http.post<{ concluido: boolean }>(`${this.baseUrl}/parcelas/${parcelaId}/estorno`, {
+      motivo,
+    });
   }
 
-  conferirEstorno(parcelaId: string): Observable<{ situacao: "CONCLUIDO" | "NEGADO" | "PROCESSANDO" }> {
+  conferirEstorno(
+    parcelaId: string,
+  ): Observable<{ situacao: "CONCLUIDO" | "NEGADO" | "PROCESSANDO" }> {
     return this.http.post<{ situacao: "CONCLUIDO" | "NEGADO" | "PROCESSANDO" }>(
       `${this.baseUrl}/parcelas/${parcelaId}/estorno/conferir`,
       {},

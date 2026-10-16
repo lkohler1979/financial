@@ -1,9 +1,21 @@
 import { describe, expect, it, vi } from "vitest";
 import type { LegadoPessoaCurso } from "../../src/modules/sincronizacao-legado/legado-client";
-import { TETO_RESULTADOS_LEGADO, varrerPessoasDoLegado } from "../../src/modules/sincronizacao-legado/legado-varredura";
+import {
+  TETO_RESULTADOS_LEGADO,
+  varrerPessoasDoLegado,
+} from "../../src/modules/sincronizacao-legado/legado-varredura";
 
 function linha(pesId: string, nome: string, alunocursoId = `ac-${pesId}`): LegadoPessoaCurso {
-  return { pesId, alunoId: pesId, nome, cpf: "000", alunocursoId, alunocursoSituacao: "", cursoId: "c", cursoNome: "Curso" };
+  return {
+    pesId,
+    alunoId: pesId,
+    nome,
+    cpf: "000",
+    alunocursoId,
+    alunocursoSituacao: "",
+    cursoId: "c",
+    cursoNome: "Curso",
+  };
 }
 
 /** Simula o legado: prefixo do nome, sem acento/maiúscula, no máximo 40 linhas. */
@@ -11,14 +23,17 @@ function legadoSimulado(nomes: string[]) {
   const base = nomes.map((nome, i) => linha(String(i + 1), nome));
   const normalizar = (t: string) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
   return vi.fn(async (prefixo: string) =>
-    base.filter((p) => normalizar(p.nome).startsWith(normalizar(prefixo))).slice(0, TETO_RESULTADOS_LEGADO),
+    base
+      .filter((p) => normalizar(p.nome).startsWith(normalizar(prefixo)))
+      .slice(0, TETO_RESULTADOS_LEGADO),
   );
 }
 
 describe("varrerPessoasDoLegado", () => {
   it("expande só os prefixos que voltam cheios (40) e encontra todo mundo", async () => {
     // 100 'Maria N' + 45 'Ana N' + 3 nomes isolados: 'm' e 'a' voltam cheios, o resto não.
-    const sufixo = (i: number) => String.fromCharCode(97 + Math.floor(i / 26)) + String.fromCharCode(97 + (i % 26));
+    const sufixo = (i: number) =>
+      String.fromCharCode(97 + Math.floor(i / 26)) + String.fromCharCode(97 + (i % 26));
     const nomes = [
       ...Array.from({ length: 100 }, (_, i) => `Maria ${sufixo(i)}`),
       ...Array.from({ length: 45 }, (_, i) => `Ana ${sufixo(i)}`),
@@ -42,7 +57,11 @@ describe("varrerPessoasDoLegado", () => {
 
   it("não duplica quem aparece em várias consultas e junta os cursos da mesma pessoa", async () => {
     const buscar = vi.fn(async (prefixo: string) =>
-      prefixo === "a" ? [linha("1", "Ana", "ac-1"), linha("1", "Ana", "ac-2")] : prefixo === "n" ? [linha("1", "Ana", "ac-1")] : [],
+      prefixo === "a"
+        ? [linha("1", "Ana", "ac-1"), linha("1", "Ana", "ac-2")]
+        : prefixo === "n"
+          ? [linha("1", "Ana", "ac-1")]
+          : [],
     );
     const r = await varrerPessoasDoLegado(buscar);
     expect(r.pessoas.size).toBe(1);
@@ -60,7 +79,9 @@ describe("varrerPessoasDoLegado", () => {
 
   it("prefixo que nunca esvazia (40 iguais) para na profundidade máxima e é reportado", async () => {
     const buscar = vi.fn(async (prefixo: string) =>
-      prefixo.startsWith("x") ? Array.from({ length: TETO_RESULTADOS_LEGADO }, (_, i) => linha(`${prefixo}-${i}`, "X")) : [],
+      prefixo.startsWith("x")
+        ? Array.from({ length: TETO_RESULTADOS_LEGADO }, (_, i) => linha(`${prefixo}-${i}`, "X"))
+        : [],
     );
     // Só o ramo "x..." é cheio; como toda expansão volta cheia, o limite de 5 pessoas aborta antes do fim.
     const r = await varrerPessoasDoLegado(buscar, { limite: 200 });

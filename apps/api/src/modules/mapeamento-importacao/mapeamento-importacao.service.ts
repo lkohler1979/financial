@@ -51,7 +51,9 @@ export const mapeamentoImportacaoService = {
     const tabelaDestino = input.tabelaDestino ?? atual.tabelaDestino;
     const campoDestino = input.campoDestino ?? atual.campoDestino;
     if (!campoValido(tabelaDestino, campoDestino)) {
-      throw new ValidationError(`Campo "${campoDestino}" não é configurável para a tabela ${tabelaDestino}`);
+      throw new ValidationError(
+        `Campo "${campoDestino}" não é configurável para a tabela ${tabelaDestino}`,
+      );
     }
 
     if (input.colunaPlanilha && input.colunaPlanilha !== atual.colunaPlanilha) {

@@ -25,6 +25,8 @@ export const tiposCobrancaController = {
 
   atualizar: asyncHandler(async (req: Request, res: Response) => {
     const input = atualizarTipoCobrancaSchema.parse(req.body);
-    res.json(await tiposCobrancaService.atualizar(paramString(req, "id"), input, usuarioAtual(req)));
+    res.json(
+      await tiposCobrancaService.atualizar(paramString(req, "id"), input, usuarioAtual(req)),
+    );
   }),
 };

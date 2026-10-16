@@ -13,10 +13,7 @@ export const TIPO_CAMPO = {
 
 export type TipoCampo = (typeof TIPO_CAMPO)[keyof typeof TIPO_CAMPO];
 
-export const CAMPOS_POR_TABELA: Record<
-  TabelaDestinoImportacao,
-  Record<string, TipoCampo>
-> = {
+export const CAMPOS_POR_TABELA: Record<TabelaDestinoImportacao, Record<string, TipoCampo>> = {
   ALUNO: {
     tipoPessoa: TIPO_CAMPO.texto,
     email: TIPO_CAMPO.texto,
@@ -46,10 +43,7 @@ export const CAMPOS_POR_TABELA: Record<
   },
 };
 
-export function tipoDoCampo(
-  tabela: TabelaDestinoImportacao,
-  campo: string,
-): TipoCampo | undefined {
+export function tipoDoCampo(tabela: TabelaDestinoImportacao, campo: string): TipoCampo | undefined {
   return CAMPOS_POR_TABELA[tabela]?.[campo];
 }
 
@@ -67,18 +61,78 @@ export const MAPEAMENTOS_PADRAO: Array<{
   acaoAusente: "VALOR_PADRAO" | "NAO_IMPORTAR";
   valorPadrao?: string;
 }> = [
-  { colunaPlanilha: "TP_PESSOA", tabelaDestino: "ALUNO", campoDestino: "tipoPessoa", acaoAusente: "NAO_IMPORTAR" },
-  { colunaPlanilha: "EMAIL", tabelaDestino: "ALUNO", campoDestino: "email", acaoAusente: "NAO_IMPORTAR" },
-  { colunaPlanilha: "FONE_1", tabelaDestino: "ALUNO", campoDestino: "telefone1", acaoAusente: "NAO_IMPORTAR" },
-  { colunaPlanilha: "FONE_2", tabelaDestino: "ALUNO", campoDestino: "telefone2", acaoAusente: "NAO_IMPORTAR" },
-  { colunaPlanilha: "CEP", tabelaDestino: "ALUNO", campoDestino: "cep", acaoAusente: "NAO_IMPORTAR" },
-  { colunaPlanilha: "ENDERECO", tabelaDestino: "ALUNO", campoDestino: "endereco", acaoAusente: "NAO_IMPORTAR" },
-  { colunaPlanilha: "NUMERO", tabelaDestino: "ALUNO", campoDestino: "numero", acaoAusente: "NAO_IMPORTAR" },
-  { colunaPlanilha: "COMPLEMENTO", tabelaDestino: "ALUNO", campoDestino: "complemento", acaoAusente: "NAO_IMPORTAR" },
-  { colunaPlanilha: "BAIRRO", tabelaDestino: "ALUNO", campoDestino: "bairro", acaoAusente: "NAO_IMPORTAR" },
-  { colunaPlanilha: "CIDADE", tabelaDestino: "ALUNO", campoDestino: "cidade", acaoAusente: "NAO_IMPORTAR" },
-  { colunaPlanilha: "ESTADO", tabelaDestino: "ALUNO", campoDestino: "estado", acaoAusente: "NAO_IMPORTAR" },
-  { colunaPlanilha: "DATA_MATRICULA", tabelaDestino: "MATRICULA", campoDestino: "dataMatricula", acaoAusente: "NAO_IMPORTAR" },
+  {
+    colunaPlanilha: "TP_PESSOA",
+    tabelaDestino: "ALUNO",
+    campoDestino: "tipoPessoa",
+    acaoAusente: "NAO_IMPORTAR",
+  },
+  {
+    colunaPlanilha: "EMAIL",
+    tabelaDestino: "ALUNO",
+    campoDestino: "email",
+    acaoAusente: "NAO_IMPORTAR",
+  },
+  {
+    colunaPlanilha: "FONE_1",
+    tabelaDestino: "ALUNO",
+    campoDestino: "telefone1",
+    acaoAusente: "NAO_IMPORTAR",
+  },
+  {
+    colunaPlanilha: "FONE_2",
+    tabelaDestino: "ALUNO",
+    campoDestino: "telefone2",
+    acaoAusente: "NAO_IMPORTAR",
+  },
+  {
+    colunaPlanilha: "CEP",
+    tabelaDestino: "ALUNO",
+    campoDestino: "cep",
+    acaoAusente: "NAO_IMPORTAR",
+  },
+  {
+    colunaPlanilha: "ENDERECO",
+    tabelaDestino: "ALUNO",
+    campoDestino: "endereco",
+    acaoAusente: "NAO_IMPORTAR",
+  },
+  {
+    colunaPlanilha: "NUMERO",
+    tabelaDestino: "ALUNO",
+    campoDestino: "numero",
+    acaoAusente: "NAO_IMPORTAR",
+  },
+  {
+    colunaPlanilha: "COMPLEMENTO",
+    tabelaDestino: "ALUNO",
+    campoDestino: "complemento",
+    acaoAusente: "NAO_IMPORTAR",
+  },
+  {
+    colunaPlanilha: "BAIRRO",
+    tabelaDestino: "ALUNO",
+    campoDestino: "bairro",
+    acaoAusente: "NAO_IMPORTAR",
+  },
+  {
+    colunaPlanilha: "CIDADE",
+    tabelaDestino: "ALUNO",
+    campoDestino: "cidade",
+    acaoAusente: "NAO_IMPORTAR",
+  },
+  {
+    colunaPlanilha: "ESTADO",
+    tabelaDestino: "ALUNO",
+    campoDestino: "estado",
+    acaoAusente: "NAO_IMPORTAR",
+  },
+  {
+    colunaPlanilha: "DATA_MATRICULA",
+    tabelaDestino: "MATRICULA",
+    campoDestino: "dataMatricula",
+    acaoAusente: "NAO_IMPORTAR",
+  },
   {
     // Planilha real recebida em 2026-07-09 traz a coluna com "?" no nome
     // ("CONTRATO ASSINADO?") — corrigido para bater exatamente (o casamento
@@ -89,7 +143,12 @@ export const MAPEAMENTOS_PADRAO: Array<{
     acaoAusente: "VALOR_PADRAO",
     valorPadrao: "false",
   },
-  { colunaPlanilha: "TIPO_TITULO", tabelaDestino: "PARCELA", campoDestino: "tipoTitulo", acaoAusente: "NAO_IMPORTAR" },
+  {
+    colunaPlanilha: "TIPO_TITULO",
+    tabelaDestino: "PARCELA",
+    campoDestino: "tipoTitulo",
+    acaoAusente: "NAO_IMPORTAR",
+  },
   {
     colunaPlanilha: "TITULO_VALOR_JUROS_E_MULTA",
     tabelaDestino: "PARCELA",

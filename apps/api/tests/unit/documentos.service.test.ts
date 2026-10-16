@@ -139,7 +139,12 @@ describe("documentosService.anexarArquivo", () => {
 });
 
 describe("documentosService.anexarArquivo — registro de origem", () => {
-  const pdf = { originalname: "cpf.pdf", mimetype: "application/pdf", size: 10, buffer: Buffer.from("x") };
+  const pdf = {
+    originalname: "cpf.pdf",
+    mimetype: "application/pdf",
+    size: 10,
+    buffer: Buffer.from("x"),
+  };
 
   it("guarda IP e marca envio do próprio aluno (sem usuário)", async () => {
     await documentosService.anexarArquivo("m1", "t-cpf", pdf, null, "200.1.2.3");

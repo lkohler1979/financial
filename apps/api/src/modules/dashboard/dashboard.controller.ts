@@ -3,6 +3,10 @@ import { asyncHandler } from "../../shared/utils/async-handler";
 import { dashboardService } from "./dashboard.service";
 
 export const dashboardController = {
+  visaoGeral: asyncHandler(async (_req: Request, res: Response) => {
+    res.json(await dashboardService.visaoGeral());
+  }),
+
   geral: asyncHandler(async (_req: Request, res: Response) => {
     const dashboard = await dashboardService.geral();
     res.json(dashboard);

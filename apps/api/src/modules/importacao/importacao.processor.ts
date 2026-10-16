@@ -1,4 +1,9 @@
-import { MapeamentoImportacao, SituacaoCobranca, StatusParcela, TabelaDestinoImportacao } from "@prisma/client";
+import {
+  MapeamentoImportacao,
+  SituacaoCobranca,
+  StatusParcela,
+  TabelaDestinoImportacao,
+} from "@prisma/client";
 import { normalizarCpf, validarCpf } from "../../shared/utils/cpf";
 import { alunosRepository } from "../alunos/alunos.repository";
 import { cursosRepository } from "../cursos/cursos.repository";
@@ -250,7 +255,11 @@ async function processarLinha(
     (await matriculasRepository.create({
       aluno: { connect: { id: aluno.id } },
       curso: { connect: { id: curso.id } },
-      ...(resolverCamposDinamicos("MATRICULA", linhaBruta, mapeamentos) as CamposMatriculaDinamicos),
+      ...(resolverCamposDinamicos(
+        "MATRICULA",
+        linhaBruta,
+        mapeamentos,
+      ) as CamposMatriculaDinamicos),
     }));
 
   // Decisão do usuário, 2026-07-09: matrícula sem situação de cobrança

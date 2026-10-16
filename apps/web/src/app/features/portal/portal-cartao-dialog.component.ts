@@ -15,7 +15,10 @@ export interface PortalCartaoDialogData {
 
 /** "5448280000000007" → "5448 2800 0000 0007" (até 19 dígitos). */
 function mascararNumero(valor: string): string {
-  return valor.replace(/\D/g, "").slice(0, 19).replace(/(\d{4})(?=\d)/g, "$1 ");
+  return valor
+    .replace(/\D/g, "")
+    .slice(0, 19)
+    .replace(/(\d{4})(?=\d)/g, "$1 ");
 }
 
 /** "0135" → "01/35". */
@@ -115,7 +118,13 @@ function mascararValidade(valor: string): string {
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button mat-button type="button" (click)="fechar()" [disabled]="pagando()">Cancelar</button>
-      <button mat-flat-button color="primary" type="button" (click)="pagar()" [disabled]="pagando()">
+      <button
+        mat-flat-button
+        color="primary"
+        type="button"
+        (click)="pagar()"
+        [disabled]="pagando()"
+      >
         {{ pagando() ? "Processando..." : "Pagar " + (data.valor | currency: "BRL") }}
       </button>
     </mat-dialog-actions>
@@ -123,7 +132,9 @@ function mascararValidade(valor: string): string {
 })
 export class PortalCartaoDialogComponent {
   protected readonly data = inject<PortalCartaoDialogData>(MAT_DIALOG_DATA);
-  private readonly ref = inject(MatDialogRef<PortalCartaoDialogComponent, PortalResultadoCartao | undefined>);
+  private readonly ref = inject(
+    MatDialogRef<PortalCartaoDialogComponent, PortalResultadoCartao | undefined>,
+  );
   private readonly portal = inject(PortalService);
 
   numero = "";
@@ -168,7 +179,11 @@ export class PortalCartaoDialogComponent {
           this.pagando.set(false);
           // O CVV nunca fica na tela depois de uma tentativa; o resto o aluno corrige.
           this.cvv = "";
-          this.erro.set(e?.error?.detalhes?.[0]?.mensagem ?? e?.error?.mensagem ?? "Não foi possível processar o pagamento");
+          this.erro.set(
+            e?.error?.detalhes?.[0]?.mensagem ??
+              e?.error?.mensagem ??
+              "Não foi possível processar o pagamento",
+          );
         },
       });
   }

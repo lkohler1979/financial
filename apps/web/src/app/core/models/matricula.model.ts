@@ -57,7 +57,13 @@ export interface Matricula {
   agenteEducacional?: AgenteEducacional | null;
   aluno?: MatriculaResumoAluno;
   /** Responsável financeiro quando não é o próprio aluno. */
-  sacado?: { id: string; tipoPessoa: "FISICA" | "JURIDICA"; cpfCnpj: string; nome: string; email?: string | null } | null;
+  sacado?: {
+    id: string;
+    tipoPessoa: "FISICA" | "JURIDICA";
+    cpfCnpj: string;
+    nome: string;
+    email?: string | null;
+  } | null;
   curso?: MatriculaResumoCurso;
   situacaoCobranca?: MatriculaResumoSituacaoCobranca | null;
   resumoParcelas?: MatriculaResumoParcelas;

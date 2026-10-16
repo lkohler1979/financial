@@ -79,7 +79,9 @@ function normalizarCodTitulo(valor: string): string {
   return digitos.replace(/^0+(?=\d)/, "");
 }
 
-function agruparTitulosPorAlunocurso(titulos: LegadoTituloResumo[]): Map<string, LegadoTituloResumo[]> {
+function agruparTitulosPorAlunocurso(
+  titulos: LegadoTituloResumo[],
+): Map<string, LegadoTituloResumo[]> {
   const mapa = new Map<string, LegadoTituloResumo[]>();
   for (const titulo of titulos) {
     const lista = mapa.get(titulo.alunocursoId) ?? [];
@@ -118,7 +120,11 @@ export async function gravarTitulosNaMatricula(
   titulos: LegadoTituloResumo[],
   usuarioId: string,
   avisos: string[],
-  opcoes: { auditar?: boolean } = {},
+  opcoes: {
+    auditar?: boolean;
+    /** Chamado para cada título que não pôde ser importado (ex.: sem vencimento válido). */
+    aoIgnorar?: (titulo: LegadoTituloResumo, motivo: string) => void;
+  } = {},
 ): Promise<{ novas: number; atualizadas: number }> {
   const auditar = opcoes.auditar ?? true;
   let novas = 0;
@@ -161,7 +167,11 @@ export async function gravarTitulosNaMatricula(
 
     const vencimento = parseDataLegadoIso(titulo.tituloDataVencimento);
     if (!vencimento) {
-      avisos.push(`Título ${titulo.tituloId} (${titulo.tituloDescricao}) sem data de vencimento válida — não importado`);
+      const motivo = "sem data de vencimento válida";
+      avisos.push(
+        `Título ${titulo.tituloId} (${titulo.tituloDescricao}) ${motivo} — não importado`,
+      );
+      opcoes.aoIgnorar?.(titulo, motivo);
       continue;
     }
 
@@ -220,7 +230,9 @@ export const importacaoLegadoService = {
 
     const { nome, pesId } = pessoaCursos[0];
     const alunoExistente = await alunosRepository.findByCpf(cpf);
-    const titulosPorAlunocurso = agruparTitulosPorAlunocurso(await client.buscarTitulosPorPessoa(pesId));
+    const titulosPorAlunocurso = agruparTitulosPorAlunocurso(
+      await client.buscarTitulosPorPessoa(pesId),
+    );
 
     const cursos: PreviaCursoLegado[] = [];
     for (const pessoaCurso of pessoaCursos) {
@@ -337,10 +349,14 @@ export const importacaoLegadoService = {
 
       const cursoEthos = await cursosRepository.findById(selecao.cursoEthosId);
       if (!cursoEthos) {
-        throw new ValidationError(`Curso selecionado (${selecao.cursoEthosId}) não existe no Ethos`);
+        throw new ValidationError(
+          `Curso selecionado (${selecao.cursoEthosId}) não existe no Ethos`,
+        );
       }
 
-      let matricula = aluno ? await matriculasRepository.findByAlunoECurso(aluno.id, cursoEthos.id) : null;
+      let matricula = aluno
+        ? await matriculasRepository.findByAlunoECurso(aluno.id, cursoEthos.id)
+        : null;
 
       if (!matricula) {
         // Decisão do usuário, 2026-09-15: se aluno/matrícula ainda não
@@ -383,6 +399,13 @@ export const importacaoLegadoService = {
       parcelasAtualizadas += gravadas.atualizadas;
     }
 
-    return { alunoCriado, alunoId: aluno?.id ?? null, matriculasNovas, parcelasNovas, parcelasAtualizadas, avisos };
+    return {
+      alunoCriado,
+      alunoId: aluno?.id ?? null,
+      matriculasNovas,
+      parcelasNovas,
+      parcelasAtualizadas,
+      avisos,
+    };
   },
 };

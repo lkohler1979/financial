@@ -32,7 +32,9 @@ export const matriculasController = {
 
   alterarSacado: asyncHandler(async (req: Request, res: Response) => {
     const input = alterarSacadoSchema.parse(req.body);
-    res.json(await matriculasService.alterarSacado(paramString(req, "id"), input, usuarioAtual(req)));
+    res.json(
+      await matriculasService.alterarSacado(paramString(req, "id"), input, usuarioAtual(req)),
+    );
   }),
 
   alterarSituacao: asyncHandler(async (req: Request, res: Response) => {

@@ -143,7 +143,10 @@ async function gerarDocumentoParaGrupo(
     caminhoDocumentoPdf = caminhoCompleto.replace(/\.docx$/i, ".pdf");
     await fs.writeFile(caminhoDocumentoPdf, bufferPdf);
   } catch (erroPdf) {
-    console.error(`[worker:geracao-word] falha ao gerar PDF da matrícula ${item.matriculaId}`, erroPdf);
+    console.error(
+      `[worker:geracao-word] falha ao gerar PDF da matrícula ${item.matriculaId}`,
+      erroPdf,
+    );
   }
 
   const valorTotal = calculosParcelas.reduce((soma, c) => soma + c.total, 0);
@@ -159,7 +162,12 @@ async function gerarDocumentoParaGrupo(
     try {
       await financeiroService.atualizar(
         parcela.id,
-        { status: "PROTESTO_ENVIADO", multaProtesto: multa, jurosProtesto: juros, totalProtesto: total },
+        {
+          status: "PROTESTO_ENVIADO",
+          multaProtesto: multa,
+          jurosProtesto: juros,
+          totalProtesto: total,
+        },
         ctx.usuarioId,
       );
     } catch (erroParcela) {
@@ -197,7 +205,7 @@ async function processarJob(job: Job<GeracaoWordJobData>): Promise<void> {
       jurosDiarioPercentual: Number(configuracao.jurosDiarioPercentual),
       jurosContarDiaGeracao: configuracao.jurosContarDiaGeracao,
     },
-    diasAtrasoMinimo: relatorio.incluirParcelasVencidasRecentes ? 0 : relatorio.diasAtraso ?? 0,
+    diasAtrasoMinimo: relatorio.incluirParcelasVencidasRecentes ? 0 : (relatorio.diasAtraso ?? 0),
     hoje: new Date(),
     usuarioId: relatorio.usuarioId,
   };

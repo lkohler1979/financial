@@ -278,10 +278,7 @@ describe("processarLinhasImportacao", () => {
       financeiro.findByChaveNatural.mockResolvedValue(null);
       financeiro.create.mockResolvedValue({ id: "parcela-1" } as never);
 
-      await processarLinhasImportacao(
-        [linha({ TITULO_VALOR_JUROS_E_MULTA: "160,50" })],
-        USUARIO,
-      );
+      await processarLinhasImportacao([linha({ TITULO_VALOR_JUROS_E_MULTA: "160,50" })], USUARIO);
 
       expect(financeiro.create).toHaveBeenCalledWith(
         expect.objectContaining({ valorOrigemComJurosEMulta: 160.5 }),

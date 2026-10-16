@@ -32,8 +32,33 @@ function cpfValidator(control: AbstractControl): ValidationErrors | null {
 }
 
 const UFS = [
-  "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR",
-  "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO",
+  "AC",
+  "AL",
+  "AP",
+  "AM",
+  "BA",
+  "CE",
+  "DF",
+  "ES",
+  "GO",
+  "MA",
+  "MT",
+  "MS",
+  "MG",
+  "PA",
+  "PB",
+  "PR",
+  "PE",
+  "PI",
+  "RJ",
+  "RN",
+  "RS",
+  "RO",
+  "RR",
+  "SC",
+  "SP",
+  "SE",
+  "TO",
 ];
 const GENEROS = ["Feminino", "Masculino", "Outro", "Prefiro não informar"];
 const TIPOS_DOCUMENTO_IDENTIFICACAO = ["RG", "CNH", "Passaporte", "RNE", "Outro"];
@@ -286,7 +311,13 @@ const ORIGENS_CADASTRO = [
       <section class="bg-white rounded shadow-sm p-6 max-w-4xl mt-4">
         <div class="flex items-center mb-3">
           <p class="text-sm font-medium text-gray-700 m-0">Matrículas / cursos</p>
-          <a mat-flat-button color="primary" class="ml-auto" [routerLink]="['/matriculas/cadastro']" [queryParams]="{ alunoId: id }">
+          <a
+            mat-flat-button
+            color="primary"
+            class="ml-auto"
+            [routerLink]="['/matriculas/cadastro']"
+            [queryParams]="{ alunoId: id }"
+          >
             <mat-icon>add</mat-icon> Adicionar curso
           </a>
         </div>
@@ -306,19 +337,31 @@ const ORIGENS_CADASTRO = [
               <tr class="border-t">
                 <td class="py-1 pr-2 whitespace-nowrap">{{ m.numeroMatricula || "—" }}</td>
                 <td class="pr-2">{{ m.curso?.nome }}</td>
-                <td class="pr-2 whitespace-nowrap">{{ m.dataMatricula ? (m.dataMatricula | date: "dd/MM/yyyy") : "—" }}</td>
+                <td class="pr-2 whitespace-nowrap">
+                  {{ m.dataMatricula ? (m.dataMatricula | date: "dd/MM/yyyy") : "—" }}
+                </td>
                 <td class="pr-2">
-                  <span class="px-2 py-0.5 rounded text-xs whitespace-nowrap" [class]="classeSituacao(m.situacao)">{{ rotuloSituacao(m.situacao) }}</span>
+                  <span
+                    class="px-2 py-0.5 rounded text-xs whitespace-nowrap"
+                    [class]="classeSituacao(m.situacao)"
+                    >{{ rotuloSituacao(m.situacao) }}</span
+                  >
                 </td>
                 <td class="pr-2">{{ m.agenteEducacional?.nome || "—" }}</td>
                 <td class="text-right">
-                  <a mat-icon-button [routerLink]="['/matriculas', m.id]" aria-label="Abrir matrícula">
+                  <a
+                    mat-icon-button
+                    [routerLink]="['/matriculas', m.id]"
+                    aria-label="Abrir matrícula"
+                  >
                     <mat-icon>edit</mat-icon>
                   </a>
                 </td>
               </tr>
             } @empty {
-              <tr><td class="py-3 text-gray-500" colspan="6">Este aluno ainda não tem matrícula.</td></tr>
+              <tr>
+                <td class="py-3 text-gray-500" colspan="6">Este aluno ainda não tem matrícula.</td>
+              </tr>
             }
           </tbody>
         </table>

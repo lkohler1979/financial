@@ -39,7 +39,9 @@ export class DocumentosService {
   }
 
   aguardandoConferencia(): Observable<DocumentoAguardandoConferencia[]> {
-    return this.http.get<DocumentoAguardandoConferencia[]>(`${this.baseUrl}/aguardando-conferencia`);
+    return this.http.get<DocumentoAguardandoConferencia[]>(
+      `${this.baseUrl}/aguardando-conferencia`,
+    );
   }
 
   listarDaMatricula(matriculaId: string): Observable<DocumentosDaMatricula> {

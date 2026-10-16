@@ -13,10 +13,9 @@ const camposComuns = {
   ativo: z.boolean().optional(),
 };
 
-function validarCampoConhecido<T extends { tabelaDestino: z.infer<typeof tabelaDestino>; campoDestino: string }>(
-  obj: T,
-  ctx: z.RefinementCtx,
-) {
+function validarCampoConhecido<
+  T extends { tabelaDestino: z.infer<typeof tabelaDestino>; campoDestino: string },
+>(obj: T, ctx: z.RefinementCtx) {
   if (!campoValido(obj.tabelaDestino, obj.campoDestino)) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -26,9 +25,7 @@ function validarCampoConhecido<T extends { tabelaDestino: z.infer<typeof tabelaD
   }
 }
 
-export const criarMapeamentoSchema = z
-  .object(camposComuns)
-  .superRefine(validarCampoConhecido);
+export const criarMapeamentoSchema = z.object(camposComuns).superRefine(validarCampoConhecido);
 
 export const atualizarMapeamentoSchema = z
   .object({

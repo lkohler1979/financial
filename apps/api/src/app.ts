@@ -32,7 +32,8 @@ import { dashboardRouter } from "./modules/dashboard/dashboard.routes";
 export const app = express();
 
 // Atrás de proxy reverso, TRUST_PROXY = nº de proxies (ex.: 1) para req.ip ser o IP real do cliente.
-if (process.env.TRUST_PROXY) app.set("trust proxy", Number(process.env.TRUST_PROXY) || process.env.TRUST_PROXY);
+if (process.env.TRUST_PROXY)
+  app.set("trust proxy", Number(process.env.TRUST_PROXY) || process.env.TRUST_PROXY);
 
 app.use(helmet());
 app.use(cors());
@@ -80,12 +81,20 @@ app.use("/api/alunos", requireRole("ADMINISTRADOR", "FINANCEIRO", "USUARIO"), al
 app.use("/api/cursos", requireRole("ADMINISTRADOR", "FINANCEIRO"), cursosRouter);
 app.use("/api/matriculas", requireRole("ADMINISTRADOR", "FINANCEIRO", "USUARIO"), matriculasRouter);
 app.use("/api/cupons", requireRole("ADMINISTRADOR", "FINANCEIRO", "USUARIO"), cuponsRouter);
-app.use("/api/tipos-cobranca", requireRole("ADMINISTRADOR", "FINANCEIRO", "USUARIO"), tiposCobrancaRouter);
+app.use(
+  "/api/tipos-cobranca",
+  requireRole("ADMINISTRADOR", "FINANCEIRO", "USUARIO"),
+  tiposCobrancaRouter,
+);
 app.use("/api/documentos", requireRole("ADMINISTRADOR", "FINANCEIRO", "USUARIO"), documentosRouter);
 app.use("/api/sacados", requireRole("ADMINISTRADOR", "FINANCEIRO", "USUARIO"), sacadosRouter);
 app.use("/api/rede", requireRole("ADMINISTRADOR"), redeRouter);
 app.use("/api/nfse", requireRole("ADMINISTRADOR", "FINANCEIRO"), nfseRouter);
-app.use("/api/solicitacoes", requireRole("ADMINISTRADOR", "FINANCEIRO", "USUARIO"), solicitacoesRouter);
+app.use(
+  "/api/solicitacoes",
+  requireRole("ADMINISTRADOR", "FINANCEIRO", "USUARIO"),
+  solicitacoesRouter,
+);
 app.use("/api/financeiro", requireRole("ADMINISTRADOR", "FINANCEIRO"), financeiroRouter);
 app.use("/api/importacao", requireRole("ADMINISTRADOR", "FINANCEIRO"), importacaoRouter);
 app.use(

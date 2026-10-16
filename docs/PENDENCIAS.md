@@ -94,20 +94,20 @@ Convenção: `[ ]` em aberto · `[x]` resolvida (mover a decisão final para o P
 
 - [x] **Login simples (e-mail + senha) e tabela de usuários com perfis, resolvido em 2026-07-07 (decisão do usuário):** implementado `POST /api/auth/login` (JWT, sem refresh token — não pedido, mantém "simples" como o usuário definiu) e RBAC (`requireAuth`/`requireRole`) em todas as rotas de negócio. E-mail validado como e-mail real (Zod `.email()`); senha exigida com mínimo 6 caracteres alfanuméricos (`/^[a-zA-Z0-9]{6,}$/`, front e back). Perfis do enum `PerfilUsuario`: `ADMINISTRADOR`, `FINANCEIRO`, `USUARIO` (antes era `ADMINISTRADOR`/`OPERADOR` — `OPERADOR` renomeado para `USUARIO` e `FINANCEIRO` adicionado via `ALTER TYPE ... RENAME VALUE`/`ADD VALUE`, migration `20260707120000_perfil_usuario_financeiro`).
   - **Matriz de perfis x módulo, conforme definido pelo usuário:**
-    | Módulo | ADMINISTRADOR | FINANCEIRO | USUARIO |
-    |---|---|---|---|
-    | dashboard | ✅ | ❌ | ❌ |
-    | alunos | ✅ | ✅ | ✅ |
-    | cursos | ✅ | ✅ | ❌ |
-    | matrículas | ✅ | ✅ | ✅ |
-    | financeiro (Parcela) | ✅ | ✅ (ver nota) | ❌ |
-    | importação | ✅ | ✅ | ❌ |
-    | relatórios (geração de doc) | ✅ | ✅ | ✅ |
-    | cobrança (situações/tags — leitura) | ✅ | ✅ | ✅ |
-    | cobrança (lote, ficha, histórico, CRUD situações/tags) | ✅ | ❌ | ❌ |
-    | configurações | ✅ | ❌ | ❌ |
-    | auditoria | ✅ | ❌ | ❌ |
-    | usuários | ✅ | ❌ | ❌ |
+    | Módulo                                                 | ADMINISTRADOR | FINANCEIRO    | USUARIO |
+    | ------------------------------------------------------ | ------------- | ------------- | ------- |
+    | dashboard                                              | ✅            | ❌            | ❌      |
+    | alunos                                                 | ✅            | ✅            | ✅      |
+    | cursos                                                 | ✅            | ✅            | ❌      |
+    | matrículas                                             | ✅            | ✅            | ✅      |
+    | financeiro (Parcela)                                   | ✅            | ✅ (ver nota) | ❌      |
+    | importação                                             | ✅            | ✅            | ❌      |
+    | relatórios (geração de doc)                            | ✅            | ✅            | ✅      |
+    | cobrança (situações/tags — leitura)                    | ✅            | ✅            | ✅      |
+    | cobrança (lote, ficha, histórico, CRUD situações/tags) | ✅            | ❌            | ❌      |
+    | configurações                                          | ✅            | ❌            | ❌      |
+    | auditoria                                              | ✅            | ❌            | ❌      |
+    | usuários                                               | ✅            | ❌            | ❌      |
   - **Nota sobre "financeiro (Parcela)" para o perfil FINANCEIRO:** o usuário listou para este perfil "cursos, aluno, matriculas, importação e geração de doc em relatórios" e não citou o módulo `financeiro` (Parcela) explicitamente. Como o perfil se chama "financeiro", presumi que a omissão foi um lapso e liberei o módulo `financeiro` para esse perfil também — **confirmar se essa suposição está correta**; se não, é só remover `FINANCEIRO` de `app.use("/api/financeiro", ...)` em `apps/api/src/app.ts`.
   - **Leitura de situações/tags liberada para todos os perfis:** a tela de Relatórios (`/relatorios`, acessível a FINANCEIRO e USUARIO) usa `GET /api/cobranca/situacoes` e `GET /api/cobranca/tags` só para popular os filtros — por isso a leitura desses dois endpoints foi liberada a qualquer perfil autenticado, mesmo que o resto do módulo `cobranca` (ficha, lote, histórico, CRUD de situações/tags) continue restrito a ADMINISTRADOR (não estava no pedido para FINANCEIRO/USUARIO).
   - **Usuário administrador inicial:** `apps/api/src/bootstrap/seed-admin.ts` cria um `ADMINISTRADOR` ativo na primeira subida da API a partir de `ADMIN_EMAIL`/`ADMIN_PASSWORD` (.env, padrão `admin@ethosfinancial.local` / `admin123`) — **trocar a senha padrão logo após o primeiro login**, pela própria tela de gestão de usuários.

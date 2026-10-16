@@ -6,7 +6,13 @@ import { sacadosRepository } from "../../src/modules/sacados/sacados.repository"
 import { ValidationError } from "../../src/shared/errors/app-error";
 
 vi.mock("../../src/modules/sacados/sacados.repository", () => ({
-  sacadosRepository: { findById: vi.fn(), findByCpfCnpj: vi.fn(), buscar: vi.fn(), create: vi.fn(), update: vi.fn() },
+  sacadosRepository: {
+    findById: vi.fn(),
+    findByCpfCnpj: vi.fn(),
+    buscar: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+  },
 }));
 vi.mock("../../src/modules/auditoria/auditoria.service", () => ({ registrarAuditoria: vi.fn() }));
 
@@ -25,15 +31,36 @@ describe("validarCnpj", () => {
 
 describe("sacadoDadosSchema", () => {
   it("valida CPF para pessoa física e CNPJ para jurídica, e normaliza o documento", () => {
-    expect(sacadoDadosSchema.parse({ tipoPessoa: "FISICA", cpfCnpj: "529.982.247-25", nome: "Mãe" }).cpfCnpj).toBe("52998224725");
-    expect(sacadoDadosSchema.parse({ tipoPessoa: "JURIDICA", cpfCnpj: "11.222.333/0001-81", nome: "Empresa" }).cpfCnpj).toBe("11222333000181");
-    expect(sacadoDadosSchema.safeParse({ tipoPessoa: "JURIDICA", cpfCnpj: "52998224725", nome: "X" }).success).toBe(false);
-    expect(sacadoDadosSchema.safeParse({ tipoPessoa: "FISICA", cpfCnpj: "11222333000181", nome: "X" }).success).toBe(false);
+    expect(
+      sacadoDadosSchema.parse({ tipoPessoa: "FISICA", cpfCnpj: "529.982.247-25", nome: "Mãe" })
+        .cpfCnpj,
+    ).toBe("52998224725");
+    expect(
+      sacadoDadosSchema.parse({
+        tipoPessoa: "JURIDICA",
+        cpfCnpj: "11.222.333/0001-81",
+        nome: "Empresa",
+      }).cpfCnpj,
+    ).toBe("11222333000181");
+    expect(
+      sacadoDadosSchema.safeParse({ tipoPessoa: "JURIDICA", cpfCnpj: "52998224725", nome: "X" })
+        .success,
+    ).toBe(false);
+    expect(
+      sacadoDadosSchema.safeParse({ tipoPessoa: "FISICA", cpfCnpj: "11222333000181", nome: "X" })
+        .success,
+    ).toBe(false);
   });
 });
 
 describe("sacadosService.obterOuCriar", () => {
-  const dados = sacadoDadosSchema.parse({ tipoPessoa: "JURIDICA", cpfCnpj: "11222333000181", nome: "Empresa", email: "", telefone: "" });
+  const dados = sacadoDadosSchema.parse({
+    tipoPessoa: "JURIDICA",
+    cpfCnpj: "11222333000181",
+    nome: "Empresa",
+    email: "",
+    telefone: "",
+  });
 
   it("reaproveita o sacado existente sem sobrescrever", async () => {
     repo.findByCpfCnpj.mockResolvedValue({ id: "s1", tipoPessoa: "JURIDICA" } as never);
@@ -44,9 +71,15 @@ describe("sacadosService.obterOuCriar", () => {
 
   it("cria quando não existe; e-mail/telefone vazios viram nulo; PJ não guarda nascimento", async () => {
     repo.findByCpfCnpj.mockResolvedValue(null);
-    repo.create.mockResolvedValue({ id: "s2", cpfCnpj: "11222333000181", tipoPessoa: "JURIDICA" } as never);
+    repo.create.mockResolvedValue({
+      id: "s2",
+      cpfCnpj: "11222333000181",
+      tipoPessoa: "JURIDICA",
+    } as never);
     await sacadosService.obterOuCriar(dados, "u");
-    expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ email: null, telefone: null, dataNascimento: null }));
+    expect(repo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ email: null, telefone: null, dataNascimento: null }),
+    );
   });
 
   it("recusa documento já usado por outro tipo de pessoa", async () => {
@@ -57,9 +90,13 @@ describe("sacadosService.obterOuCriar", () => {
 
 describe("sacadosService.remover", () => {
   it("não remove sacado com matrículas; remove quando livre", async () => {
-    (sacadosRepository as unknown as Record<string, ReturnType<typeof vi.fn>>).countMatriculas = vi.fn();
+    (sacadosRepository as unknown as Record<string, ReturnType<typeof vi.fn>>).countMatriculas =
+      vi.fn();
     (sacadosRepository as unknown as Record<string, ReturnType<typeof vi.fn>>).delete = vi.fn();
-    const r = sacadosRepository as unknown as { countMatriculas: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn> };
+    const r = sacadosRepository as unknown as {
+      countMatriculas: ReturnType<typeof vi.fn>;
+      delete: ReturnType<typeof vi.fn>;
+    };
     repo.findById.mockResolvedValue({ id: "s1" } as never);
 
     r.countMatriculas.mockResolvedValue(2);

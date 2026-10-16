@@ -45,7 +45,11 @@ function formatarDocumento(valor: string): string {
         <mat-card-header>
           <mat-card-title class="text-xl font-medium">Área do aluno</mat-card-title>
           <mat-card-subtitle>
-            {{ ehCnpj() ? "Entre com o CNPJ e o número da matrícula" : "Entre com seu CPF e data de nascimento" }}
+            {{
+              ehCnpj()
+                ? "Entre com o CNPJ e o número da matrícula"
+                : "Entre com seu CPF e data de nascimento"
+            }}
           </mat-card-subtitle>
         </mat-card-header>
 
@@ -87,7 +91,13 @@ function formatarDocumento(valor: string): string {
               <p class="text-red-600 text-sm mb-2">{{ mensagemErro }}</p>
             }
 
-            <button mat-raised-button color="primary" type="submit" class="w-full" [disabled]="entrando">
+            <button
+              mat-raised-button
+              color="primary"
+              type="submit"
+              class="w-full"
+              [disabled]="entrando"
+            >
               Entrar
             </button>
           </form>
@@ -124,7 +134,10 @@ export class PortalLoginComponent {
     const { documento, dataNascimento, numeroMatricula } = this.form.getRawValue();
     const cnpj = this.ehCnpj();
     const digitos = documento.replace(/\D/g, "");
-    if (this.form.controls.documento.invalid || (cnpj ? digitos.length !== 14 : digitos.length !== 11)) {
+    if (
+      this.form.controls.documento.invalid ||
+      (cnpj ? digitos.length !== 14 : digitos.length !== 11)
+    ) {
       this.form.markAllAsTouched();
       this.mensagemErro = "Informe o CPF (11 dígitos) ou CNPJ (14 dígitos) completo";
       return;

@@ -76,7 +76,11 @@ export const cuponsService = {
   async atualizar(id: string, input: AtualizarCupomInput, usuarioId: string) {
     const atual = await cuponsRepository.findById(id);
     if (!atual) throw new NotFoundError("Cupom não encontrado");
-    if (input.codigo && input.codigo !== atual.codigo && (await cuponsRepository.findByCodigo(input.codigo))) {
+    if (
+      input.codigo &&
+      input.codigo !== atual.codigo &&
+      (await cuponsRepository.findByCodigo(input.codigo))
+    ) {
       throw new ConflictError("Já existe um cupom com este código", { codigo: input.codigo });
     }
     const cupom = await cuponsRepository.update(id, input);

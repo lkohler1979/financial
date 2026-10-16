@@ -6,7 +6,11 @@ import { MatIconModule } from "@angular/material/icon";
 import { MatSnackBar } from "@angular/material/snack-bar";
 import { TipoDescontoCupom } from "../../core/models/cupom.model";
 import { EscopoDocumento, TipoDocumento } from "../../core/models/documento.model";
-import { EmissaoCobranca, FormaPagamento, TipoCobranca } from "../../core/models/tipo-cobranca.model";
+import {
+  EmissaoCobranca,
+  FormaPagamento,
+  TipoCobranca,
+} from "../../core/models/tipo-cobranca.model";
 import { CuponsService } from "../../core/services/cupons.service";
 import { DocumentosService } from "../../core/services/documentos.service";
 import { SolicitacoesService } from "../../core/services/solicitacoes.service";
@@ -75,7 +79,10 @@ interface LinhaSolicitacao {
         Mensalidade, Taxa de matrícula e Renegociação são tipos de cobrança. "Valor do curso" usa o
         valor padrão do curso; senão vale o valor padrão do tipo. "No protesto" desmarcado = as
         parcelas desse tipo nunca entram no relatório/documento de protesto. "No cadastro"
-        desmarcado = não aparece ao cadastrar a matrícula. Opções de parcelas separadas por vírgula. "Emissão na matrícula" define quais parcelas já saem com boleto/Pix no cadastro (taxas: todas; mensalidade: só a 1ª — as demais saem aos poucos, antes do vencimento, ou a pedido do aluno).
+        desmarcado = não aparece ao cadastrar a matrícula. Opções de parcelas separadas por vírgula.
+        "Emissão na matrícula" define quais parcelas já saem com boleto/Pix no cadastro (taxas:
+        todas; mensalidade: só a 1ª — as demais saem aos poucos, antes do vencimento, ou a pedido do
+        aluno).
       </p>
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
@@ -100,7 +107,9 @@ interface LinhaSolicitacao {
           <tbody>
             @for (l of cobrancas; track $index) {
               <tr class="border-t">
-                <td class="py-1 pr-2"><input class="border rounded px-2 py-1 w-40" [(ngModel)]="l.nome" /></td>
+                <td class="py-1 pr-2">
+                  <input class="border rounded px-2 py-1 w-40" [(ngModel)]="l.nome" />
+                </td>
                 <td class="pr-2"><mat-checkbox [(ngModel)]="l.obrigatorio"></mat-checkbox></td>
                 <td class="pr-2"><mat-checkbox [(ngModel)]="l.usaValorDoCurso"></mat-checkbox></td>
                 <td class="pr-2">
@@ -113,7 +122,9 @@ interface LinhaSolicitacao {
                     [disabled]="l.usaValorDoCurso"
                   />
                 </td>
-                <td class="pr-2"><input class="border rounded px-2 py-1 w-28" [(ngModel)]="l.opcoes" /></td>
+                <td class="pr-2">
+                  <input class="border rounded px-2 py-1 w-28" [(ngModel)]="l.opcoes" />
+                </td>
                 <td class="pr-2">
                   <select class="border rounded px-2 py-1" [(ngModel)]="l.formaPagamentoPadrao">
                     <option value="">—</option>
@@ -131,12 +142,31 @@ interface LinhaSolicitacao {
                 </td>
                 <td class="pr-2"><mat-checkbox [(ngModel)]="l.aceitaCupom"></mat-checkbox></td>
                 <td class="pr-2"><mat-checkbox [(ngModel)]="l.entraNoProtesto"></mat-checkbox></td>
-                <td class="pr-2"><mat-checkbox [(ngModel)]="l.disponivelNoCadastro"></mat-checkbox></td>
-                <td class="pr-2"><input class="border rounded px-2 py-1 w-14" maxlength="5" [(ngModel)]="l.prefixoTitulo" /></td>
-                <td class="pr-2"><input class="border rounded px-2 py-1 w-12" type="number" [(ngModel)]="l.ordem" /></td>
+                <td class="pr-2">
+                  <mat-checkbox [(ngModel)]="l.disponivelNoCadastro"></mat-checkbox>
+                </td>
+                <td class="pr-2">
+                  <input
+                    class="border rounded px-2 py-1 w-14"
+                    maxlength="5"
+                    [(ngModel)]="l.prefixoTitulo"
+                  />
+                </td>
+                <td class="pr-2">
+                  <input
+                    class="border rounded px-2 py-1 w-12"
+                    type="number"
+                    [(ngModel)]="l.ordem"
+                  />
+                </td>
                 <td class="pr-2"><mat-checkbox [(ngModel)]="l.ativo"></mat-checkbox></td>
                 <td>
-                  <button mat-icon-button type="button" aria-label="Salvar" (click)="salvarCobranca(l)">
+                  <button
+                    mat-icon-button
+                    type="button"
+                    aria-label="Salvar"
+                    (click)="salvarCobranca(l)"
+                  >
                     <mat-icon>save</mat-icon>
                   </button>
                 </td>
@@ -173,19 +203,38 @@ interface LinhaSolicitacao {
           <tbody>
             @for (l of cupons; track $index) {
               <tr class="border-t">
-                <td class="py-1 pr-2"><input class="border rounded px-2 py-1 w-32 uppercase" [(ngModel)]="l.codigo" /></td>
-                <td class="pr-2"><input class="border rounded px-2 py-1 w-56" [(ngModel)]="l.descricao" /></td>
+                <td class="py-1 pr-2">
+                  <input class="border rounded px-2 py-1 w-32 uppercase" [(ngModel)]="l.codigo" />
+                </td>
+                <td class="pr-2">
+                  <input class="border rounded px-2 py-1 w-56" [(ngModel)]="l.descricao" />
+                </td>
                 <td class="pr-2">
                   <select class="border rounded px-2 py-1" [(ngModel)]="l.tipoDesconto">
                     <option value="PERCENTUAL">Percentual (%)</option>
                     <option value="VALOR">Valor (R$)</option>
                   </select>
                 </td>
-                <td class="pr-2"><input class="border rounded px-2 py-1 w-24" type="number" min="0" step="0.01" [(ngModel)]="l.valor" /></td>
-                <td class="pr-2"><input class="border rounded px-2 py-1" type="date" [(ngModel)]="l.validadeAte" /></td>
+                <td class="pr-2">
+                  <input
+                    class="border rounded px-2 py-1 w-24"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    [(ngModel)]="l.valor"
+                  />
+                </td>
+                <td class="pr-2">
+                  <input class="border rounded px-2 py-1" type="date" [(ngModel)]="l.validadeAte" />
+                </td>
                 <td class="pr-2"><mat-checkbox [(ngModel)]="l.ativo"></mat-checkbox></td>
                 <td>
-                  <button mat-icon-button type="button" aria-label="Salvar" (click)="salvarCupom(l)">
+                  <button
+                    mat-icon-button
+                    type="button"
+                    aria-label="Salvar"
+                    (click)="salvarCupom(l)"
+                  >
                     <mat-icon>save</mat-icon>
                   </button>
                 </td>
@@ -219,12 +268,27 @@ interface LinhaSolicitacao {
           <tbody>
             @for (l of solicitacoes; track $index) {
               <tr class="border-t">
-                <td class="py-1 pr-2"><input class="border rounded px-2 py-1 w-64" [(ngModel)]="l.nome" /></td>
-                <td class="pr-2"><input class="border rounded px-2 py-1 w-72" [(ngModel)]="l.descricao" /></td>
-                <td class="pr-2"><input class="border rounded px-2 py-1 w-14" type="number" [(ngModel)]="l.ordem" /></td>
+                <td class="py-1 pr-2">
+                  <input class="border rounded px-2 py-1 w-64" [(ngModel)]="l.nome" />
+                </td>
+                <td class="pr-2">
+                  <input class="border rounded px-2 py-1 w-72" [(ngModel)]="l.descricao" />
+                </td>
+                <td class="pr-2">
+                  <input
+                    class="border rounded px-2 py-1 w-14"
+                    type="number"
+                    [(ngModel)]="l.ordem"
+                  />
+                </td>
                 <td class="pr-2"><mat-checkbox [(ngModel)]="l.ativo"></mat-checkbox></td>
                 <td>
-                  <button mat-icon-button type="button" aria-label="Salvar" (click)="salvarSolicitacao(l)">
+                  <button
+                    mat-icon-button
+                    type="button"
+                    aria-label="Salvar"
+                    (click)="salvarSolicitacao(l)"
+                  >
                     <mat-icon>save</mat-icon>
                   </button>
                 </td>
@@ -259,7 +323,9 @@ interface LinhaSolicitacao {
           <tbody>
             @for (l of documentos; track $index) {
               <tr class="border-t">
-                <td class="py-1 pr-2"><input class="border rounded px-2 py-1 w-64" [(ngModel)]="l.nome" /></td>
+                <td class="py-1 pr-2">
+                  <input class="border rounded px-2 py-1 w-64" [(ngModel)]="l.nome" />
+                </td>
                 <td class="pr-2">
                   @if (l.id) {
                     {{ l.escopo === "ALUNO" ? "Aluno" : "Matrícula" }}
@@ -271,10 +337,21 @@ interface LinhaSolicitacao {
                   }
                 </td>
                 <td class="pr-2"><mat-checkbox [(ngModel)]="l.obrigatorio"></mat-checkbox></td>
-                <td class="pr-2"><input class="border rounded px-2 py-1 w-14" type="number" [(ngModel)]="l.ordem" /></td>
+                <td class="pr-2">
+                  <input
+                    class="border rounded px-2 py-1 w-14"
+                    type="number"
+                    [(ngModel)]="l.ordem"
+                  />
+                </td>
                 <td class="pr-2"><mat-checkbox [(ngModel)]="l.ativo"></mat-checkbox></td>
                 <td>
-                  <button mat-icon-button type="button" aria-label="Salvar" (click)="salvarDocumento(l)">
+                  <button
+                    mat-icon-button
+                    type="button"
+                    aria-label="Salvar"
+                    (click)="salvarDocumento(l)"
+                  >
                     <mat-icon>save</mat-icon>
                   </button>
                 </td>
@@ -380,7 +457,14 @@ export class TiposCadastroComponent implements OnInit {
   novoCupom(): void {
     this.cupons = [
       ...this.cupons,
-      { codigo: "", descricao: "", tipoDesconto: "PERCENTUAL", valor: null, validadeAte: "", ativo: true },
+      {
+        codigo: "",
+        descricao: "",
+        tipoDesconto: "PERCENTUAL",
+        valor: null,
+        validadeAte: "",
+        ativo: true,
+      },
     ];
   }
 
@@ -413,7 +497,13 @@ export class TiposCadastroComponent implements OnInit {
   novoDocumento(): void {
     this.documentos = [
       ...this.documentos,
-      { nome: "", escopo: "ALUNO", obrigatorio: true, ordem: this.documentos.length + 1, ativo: true },
+      {
+        nome: "",
+        escopo: "ALUNO",
+        obrigatorio: true,
+        ordem: this.documentos.length + 1,
+        ativo: true,
+      },
     ];
   }
 
@@ -437,7 +527,9 @@ export class TiposCadastroComponent implements OnInit {
       disponivelNoCadastro: l.disponivelNoCadastro,
       emissaoNaMatricula: l.emissaoNaMatricula,
     };
-    const req = l.id ? this.cobrancaService.atualizar(l.id, payload) : this.cobrancaService.criar(payload);
+    const req = l.id
+      ? this.cobrancaService.atualizar(l.id, payload)
+      : this.cobrancaService.criar(payload);
     req.subscribe({
       next: () => {
         this.snackBar.open("Tipo de cobrança salvo", "Fechar", { duration: 3000 });
@@ -456,7 +548,9 @@ export class TiposCadastroComponent implements OnInit {
       validadeAte: l.validadeAte || null,
       ativo: l.ativo,
     };
-    const req = l.id ? this.cuponsService.atualizar(l.id, payload) : this.cuponsService.criar(payload);
+    const req = l.id
+      ? this.cuponsService.atualizar(l.id, payload)
+      : this.cuponsService.criar(payload);
     req.subscribe({
       next: () => {
         this.snackBar.open("Cupom salvo", "Fechar", { duration: 3000 });
@@ -490,6 +584,8 @@ export class TiposCadastroComponent implements OnInit {
   }
 
   private erro(e: { error?: { mensagem?: string } }): void {
-    this.snackBar.open(e?.error?.mensagem ?? "Não foi possível salvar", "Fechar", { duration: 5000 });
+    this.snackBar.open(e?.error?.mensagem ?? "Não foi possível salvar", "Fechar", {
+      duration: 5000,
+    });
   }
 }

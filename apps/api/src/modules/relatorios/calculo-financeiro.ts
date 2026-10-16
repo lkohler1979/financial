@@ -66,7 +66,11 @@ export function calcularMultaJurosParcela(
     };
   }
 
-  const diasAtraso = calcularDiasAtraso(parcela.vencimento, referencia, config.jurosContarDiaGeracao);
+  const diasAtraso = calcularDiasAtraso(
+    parcela.vencimento,
+    referencia,
+    config.jurosContarDiaGeracao,
+  );
   return calcularMultaJuros(parcela.valor, diasAtraso, config);
 }
 

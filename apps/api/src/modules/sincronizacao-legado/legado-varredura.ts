@@ -5,7 +5,7 @@ export const TETO_RESULTADOS_LEGADO = 40;
 
 const LETRAS = "abcdefghijklmnopqrstuvwxyz".split("");
 // Começos possíveis de nome: letras e dígitos (razão social "3M ...").
-const INICIAIS = [...LETRAS, ...("0123456789".split(""))];
+const INICIAIS = [...LETRAS, ..."0123456789".split("")];
 // Próximo caractere ao expandir um prefixo cheio: letras e espaço (nome composto). Apóstrofo e
 // hífen ("D'Ávila", "Ana-Maria") só nos dois primeiros níveis, onde a busca é mais larga.
 const PROFUNDIDADE_PONTUACAO = 2;

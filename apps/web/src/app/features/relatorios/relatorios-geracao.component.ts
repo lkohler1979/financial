@@ -78,9 +78,7 @@ const TAMANHO_PAGINA_HISTORICO = 10;
           </mat-select>
         </mat-form-field>
 
-        <p class="text-xs font-medium text-gray-600 col-span-2 md:col-span-4 mb-0 mt-1">
-          Cobrança
-        </p>
+        <p class="text-xs font-medium text-gray-600 col-span-2 md:col-span-4 mb-0 mt-1">Cobrança</p>
         <mat-form-field appearance="outline">
           <mat-label>Incluir situação</mat-label>
           <mat-select formControlName="situacaoCobrancaId">
@@ -138,11 +136,11 @@ const TAMANHO_PAGINA_HISTORICO = 10;
       </button>
       <p class="text-[11px] text-gray-400 mt-3 mb-0">
         Deixe em branco para usar os padrões configurados no sistema. "Excluir situações já
-        tratadas" ignora matrículas cuja situação atual está marcada como
-        "não participa de novos relatórios", além de sempre ignorar matrículas com a situação
-        "Quitado". Por padrão, o documento de protesto só inclui parcelas vencidas há mais do que
-        o mínimo de dias configurado — "Incluir parcelas só vencidas" também inclui, no mesmo
-        documento, as parcelas da matrícula que estão vencidas mas ainda dentro desse mínimo.
+        tratadas" ignora matrículas cuja situação atual está marcada como "não participa de novos
+        relatórios", além de sempre ignorar matrículas com a situação "Quitado". Por padrão, o
+        documento de protesto só inclui parcelas vencidas há mais do que o mínimo de dias
+        configurado — "Incluir parcelas só vencidas" também inclui, no mesmo documento, as parcelas
+        da matrícula que estão vencidas mas ainda dentro desse mínimo.
       </p>
     </div>
 
@@ -152,7 +150,9 @@ const TAMANHO_PAGINA_HISTORICO = 10;
 
     @if (buscou) {
       @if (elegiveis.length > 0) {
-        <div class="flex flex-wrap justify-between items-center gap-2 bg-blue-50 rounded px-4 py-2 mb-3">
+        <div
+          class="flex flex-wrap justify-between items-center gap-2 bg-blue-50 rounded px-4 py-2 mb-3"
+        >
           <span class="text-sm text-blue-900 font-medium">
             {{ selecionados.size }} de {{ elegiveis.length }} alunos selecionados
           </span>
@@ -380,7 +380,11 @@ const TAMANHO_PAGINA_HISTORICO = 10;
 
         @if (!carregandoHistorico && historico.length < historicoTotal) {
           <div class="flex justify-center p-3">
-            <button mat-stroked-button [disabled]="carregandoMaisHistorico" (click)="carregarMaisHistorico()">
+            <button
+              mat-stroked-button
+              [disabled]="carregandoMaisHistorico"
+              (click)="carregarMaisHistorico()"
+            >
               @if (carregandoMaisHistorico) {
                 Carregando...
               } @else {

@@ -2,7 +2,12 @@ import { ConflictError, NotFoundError } from "../../shared/errors/app-error";
 import { hashSenha } from "../../shared/utils/senha";
 import { registrarAuditoria } from "../auditoria/auditoria.service";
 import { usuariosRepository } from "./usuarios.repository";
-import type { AlterarSenhaInput, AtualizarUsuarioInput, CriarUsuarioInput, ListarUsuariosInput } from "./usuarios.schema";
+import type {
+  AlterarSenhaInput,
+  AtualizarUsuarioInput,
+  CriarUsuarioInput,
+  ListarUsuariosInput,
+} from "./usuarios.schema";
 
 const ENTIDADE = "Usuario";
 

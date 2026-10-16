@@ -189,7 +189,8 @@ export class CursosListComponent implements OnInit {
   salvarCampo(curso: Curso, campo: "grauEnsino" | "valorPadrao", bruto: string): void {
     const texto = bruto.trim();
     if (!texto) return; // limpar não é suportado aqui — edite o curso.
-    const payload = campo === "valorPadrao" ? { valorPadrao: Number(texto) } : { grauEnsino: texto };
+    const payload =
+      campo === "valorPadrao" ? { valorPadrao: Number(texto) } : { grauEnsino: texto };
     if (campo === "valorPadrao" && !(Number(texto) > 0)) return;
     this.service.atualizar(curso.id, payload).subscribe({
       next: (atualizado) => {

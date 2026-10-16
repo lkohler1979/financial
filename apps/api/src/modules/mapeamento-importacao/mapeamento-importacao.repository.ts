@@ -17,7 +17,9 @@ export const mapeamentoImportacaoRepository = {
     if (total === 0) {
       await prisma.mapeamentoImportacao.createMany({ data: MAPEAMENTOS_PADRAO });
     }
-    return prisma.mapeamentoImportacao.findMany({ orderBy: [{ tabelaDestino: "asc" }, { campoDestino: "asc" }] });
+    return prisma.mapeamentoImportacao.findMany({
+      orderBy: [{ tabelaDestino: "asc" }, { campoDestino: "asc" }],
+    });
   },
 
   listarAtivos() {

@@ -3,13 +3,19 @@ import fs from "node:fs";
 import { configuracoesService } from "../../src/modules/configuracoes/configuracoes.service";
 import { configuracoesRepository } from "../../src/modules/configuracoes/configuracoes.repository";
 import { registrarAuditoria } from "../../src/modules/auditoria/auditoria.service";
+import { armazenamento } from "../../src/shared/armazenamento/armazenamento";
 
 vi.mock("../../src/modules/configuracoes/configuracoes.repository", () => ({
   configuracoesRepository: {
     obterOuCriar: vi.fn(),
     atualizar: vi.fn(),
     limparDadosTransacionais: vi.fn(),
+    limparAlunosMatriculasParcelas: vi.fn(),
   },
+}));
+
+vi.mock("../../src/shared/armazenamento/armazenamento", () => ({
+  armazenamento: { remover: vi.fn() },
 }));
 
 vi.mock("../../src/modules/auditoria/auditoria.service", () => ({
@@ -120,5 +126,30 @@ describe("configuracoesService.limparBase", () => {
     });
 
     await expect(configuracoesService.limparBase(USUARIO)).resolves.toEqual(contagensFake);
+  });
+});
+
+describe("configuracoesService.limparAlunos", () => {
+  it("apaga alunos/matrículas/parcelas, remove os arquivos dos documentos e audita só as contagens", async () => {
+    const contagens = { alunos: 3, matriculas: 4, parcelas: 20, documentos: 2 };
+    repo.limparAlunosMatriculasParcelas.mockResolvedValue({
+      chavesArquivos: ["a/1.pdf", "a/2.pdf"],
+      contagens,
+    } as never);
+    vi.mocked(armazenamento.remover).mockRejectedValueOnce(new Error("já removido"));
+
+    const resultado = await configuracoesService.limparAlunos(USUARIO);
+
+    expect(resultado).toEqual(contagens);
+    // A falha de um arquivo não impede a limpeza nem a remoção dos demais.
+    expect(armazenamento.remover).toHaveBeenCalledTimes(2);
+    expect(auditoria).toHaveBeenCalledWith(
+      expect.objectContaining({
+        usuarioId: USUARIO,
+        entidadeId: "limpeza-alunos",
+        acao: "EXCLUSAO",
+        detalhes: contagens,
+      }),
+    );
   });
 });

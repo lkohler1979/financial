@@ -98,3 +98,13 @@ export const atualizarConfiguracaoSchema = z
   .refine((obj) => Object.keys(obj).length > 0, "Informe ao menos um campo para atualizar");
 
 export type AtualizarConfiguracaoInput = z.infer<typeof atualizarConfiguracaoSchema>;
+
+// Apagar só alunos, matrículas e parcelas (e o que depende deles), mantendo cursos, usuários,
+// configurações, sacados e cupons — para reimportar tudo do legado.
+export const FRASE_CONFIRMACAO_LIMPAR_ALUNOS = "APAGAR ALUNOS";
+
+export const limparAlunosSchema = z.object({
+  confirmacao: z.string().refine((v) => v === FRASE_CONFIRMACAO_LIMPAR_ALUNOS, {
+    message: `Digite exatamente "${FRASE_CONFIRMACAO_LIMPAR_ALUNOS}" para confirmar`,
+  }),
+});

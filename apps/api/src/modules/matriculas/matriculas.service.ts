@@ -66,10 +66,18 @@ function dividirValorEmParcelas(valorTotal: number, quantidade: number): number[
  */
 async function gerarParcelasAutomaticas(
   matriculaId: string,
-  dados: { valorCurso: number; numeroParcelas: number; diaVencimento: number; dataMatricula?: Date },
+  dados: {
+    valorCurso: number;
+    numeroParcelas: number;
+    diaVencimento: number;
+    dataMatricula?: Date;
+  },
   usuarioId: string,
 ): Promise<void> {
-  const { ano, mes } = calcularMesPrimeiraParcela(dados.dataMatricula ?? new Date(), dados.diaVencimento);
+  const { ano, mes } = calcularMesPrimeiraParcela(
+    dados.dataMatricula ?? new Date(),
+    dados.diaVencimento,
+  );
   const valores = dividirValorEmParcelas(dados.valorCurso, dados.numeroParcelas);
 
   for (let indice = 0; indice < dados.numeroParcelas; indice++) {
@@ -141,7 +149,9 @@ async function resolverCobrancas(
           ? null
           : Number(tipo.valorPadrao));
     if (valor == null) {
-      throw new ValidationError(`${tipo.nome}: informe o valor (o curso/tipo não tem valor padrão)`);
+      throw new ValidationError(
+        `${tipo.nome}: informe o valor (o curso/tipo não tem valor padrão)`,
+      );
     }
     const formaPagamento = c.formaPagamento ?? tipo.formaPagamentoPadrao ?? null;
     if (formaPagamento && !formasHabilitadas.includes(formaPagamento)) {
@@ -556,7 +566,10 @@ export const matriculasService = {
       acao: "ATUALIZACAO",
       detalhes: { acao: "sacado_alterado", de: atual.sacado?.id ?? null, para: novo?.id ?? null },
     });
-    return { ...serializarMatricula(matricula), cobrancasEmitidasNoSacadoAnterior: cobrancasEmitidas };
+    return {
+      ...serializarMatricula(matricula),
+      cobrancasEmitidasNoSacadoAnterior: cobrancasEmitidas,
+    };
   },
 
   async remover(id: string, usuarioId: string) {

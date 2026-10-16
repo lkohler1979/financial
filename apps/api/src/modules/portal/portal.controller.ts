@@ -23,7 +23,9 @@ export const portalController = {
   }),
 
   listarDocumentos: asyncHandler(async (req: Request, res: Response) => {
-    res.json(await portalService.listarDocumentos(alunoAtual(req), paramString(req, "matriculaId")));
+    res.json(
+      await portalService.listarDocumentos(alunoAtual(req), paramString(req, "matriculaId")),
+    );
   }),
 
   enviarDocumento: asyncHandler(async (req: Request, res: Response) => {
@@ -41,7 +43,10 @@ export const portalController = {
   }),
 
   baixarDocumento: asyncHandler(async (req: Request, res: Response) => {
-    const arquivo = await portalService.baixarDocumento(alunoAtual(req), paramString(req, "documentoId"));
+    const arquivo = await portalService.baixarDocumento(
+      alunoAtual(req),
+      paramString(req, "documentoId"),
+    );
     res.type(arquivo.mime);
     res.download(arquivo.caminho, arquivo.nome);
   }),
@@ -73,7 +78,11 @@ export const portalController = {
   gerarCobranca: asyncHandler(async (req: Request, res: Response) => {
     const { formaPagamento } = gerarCobrancaAlunoSchema.parse(req.body ?? {});
     res.json(
-      await portalService.gerarCobranca(sessaoAtual(req), paramString(req, "parcelaId"), formaPagamento),
+      await portalService.gerarCobranca(
+        sessaoAtual(req),
+        paramString(req, "parcelaId"),
+        formaPagamento,
+      ),
     );
   }),
 

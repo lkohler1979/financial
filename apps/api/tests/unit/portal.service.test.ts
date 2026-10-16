@@ -49,7 +49,10 @@ beforeEach(() => {
 describe("portalService.login", () => {
   it("entra com CPF (com máscara) e data de nascimento corretos", async () => {
     repo.findAlunoPorCpf.mockResolvedValue(aluno as never);
-    const r = await portalService.login({ documento: "529.982.247-25", dataNascimento: "1990-05-17" }, "ip");
+    const r = await portalService.login(
+      { documento: "529.982.247-25", dataNascimento: "1990-05-17" },
+      "ip",
+    );
     expect(repo.findAlunoPorCpf).toHaveBeenCalledWith("52998224725");
     expect(verificarTokenAluno(r.token)?.sub).toBe("a1");
   });
@@ -84,13 +87,17 @@ describe("portalService.login", () => {
 describe("portalService — isolamento entre alunos", () => {
   it("não lista documentos de matrícula de outro aluno", async () => {
     repo.findMatriculaDoAluno.mockResolvedValue(null);
-    await expect(portalService.listarDocumentos("a1", "m-de-outro")).rejects.toBeInstanceOf(NotFoundError);
+    await expect(portalService.listarDocumentos("a1", "m-de-outro")).rejects.toBeInstanceOf(
+      NotFoundError,
+    );
     expect(docs.listarDaMatricula).not.toHaveBeenCalled();
   });
 
   it("não emite cobrança de parcela de outro aluno", async () => {
     repo.findParcelaDoDono.mockResolvedValue(null);
-    await expect(portalService.gerarCobranca({ alunoId: "a1" }, "p-de-outro")).rejects.toBeInstanceOf(NotFoundError);
+    await expect(
+      portalService.gerarCobranca({ alunoId: "a1" }, "p-de-outro"),
+    ).rejects.toBeInstanceOf(NotFoundError);
     expect(asaas.gerarCobrancaParcela).not.toHaveBeenCalled();
   });
 
@@ -102,18 +109,32 @@ describe("portalService — isolamento entre alunos", () => {
 
 describe("portalService.gerarCobranca", () => {
   it("só para parcela em aberto", async () => {
-    repo.findParcelaDoDono.mockResolvedValue({ id: "p1", status: "PAGO", formaPagamento: null } as never);
-    await expect(portalService.gerarCobranca({ alunoId: "a1" }, "p1")).rejects.toBeInstanceOf(ValidationError);
+    repo.findParcelaDoDono.mockResolvedValue({
+      id: "p1",
+      status: "PAGO",
+      formaPagamento: null,
+    } as never);
+    await expect(portalService.gerarCobranca({ alunoId: "a1" }, "p1")).rejects.toBeInstanceOf(
+      ValidationError,
+    );
   });
 
   it("usa a forma definida na parcela e não registra usuário do sistema", async () => {
-    repo.findParcelaDoDono.mockResolvedValue({ id: "p1", status: "EM_ABERTO", formaPagamento: "PIX" } as never);
+    repo.findParcelaDoDono.mockResolvedValue({
+      id: "p1",
+      status: "EM_ABERTO",
+      formaPagamento: "PIX",
+    } as never);
     await portalService.gerarCobranca({ alunoId: "a1" }, "p1");
     expect(asaas.gerarCobrancaParcela).toHaveBeenCalledWith("p1", "PIX", null);
   });
 
   it("forma escolhida pelo aluno prevalece; padrão é boleto", async () => {
-    repo.findParcelaDoDono.mockResolvedValue({ id: "p1", status: "EM_ABERTO", formaPagamento: null } as never);
+    repo.findParcelaDoDono.mockResolvedValue({
+      id: "p1",
+      status: "EM_ABERTO",
+      formaPagamento: null,
+    } as never);
     await portalService.gerarCobranca({ alunoId: "a1" }, "p1");
     expect(asaas.gerarCobrancaParcela).toHaveBeenLastCalledWith("p1", "BOLETO", null);
     await portalService.gerarCobranca({ alunoId: "a1" }, "p1", "CREDIT_CARD");
@@ -122,7 +143,12 @@ describe("portalService.gerarCobranca", () => {
 });
 
 describe("portalService.enviarDocumento", () => {
-  const arquivo = { originalname: "cpf.pdf", mimetype: "application/pdf", size: 1, buffer: Buffer.from("x") };
+  const arquivo = {
+    originalname: "cpf.pdf",
+    mimetype: "application/pdf",
+    size: 1,
+    buffer: Buffer.from("x"),
+  };
 
   it("não substitui documento já deferido", async () => {
     repo.findMatriculaDoAluno.mockResolvedValue({ id: "m1" } as never);
@@ -140,7 +166,11 @@ describe("portalService.enviarDocumento", () => {
     docs.listarDaMatricula.mockResolvedValue({
       itens: [{ tipo: { id: "t1" }, documento: null }],
     } as never);
-    docs.anexarArquivo.mockResolvedValue({ id: "d1", situacaoEntrega: "ENVIADO", situacaoDeferimento: "PENDENTE" } as never);
+    docs.anexarArquivo.mockResolvedValue({
+      id: "d1",
+      situacaoEntrega: "ENVIADO",
+      situacaoDeferimento: "PENDENTE",
+    } as never);
     await portalService.enviarDocumento("a1", "m1", "t1", arquivo, "200.1.2.3");
     expect(docs.anexarArquivo).toHaveBeenCalledWith("m1", "t1", arquivo, null, "200.1.2.3");
   });
@@ -152,7 +182,12 @@ describe("portalService.enviarDocumento", () => {
       itens: [
         {
           tipo: { id: "t1", nome: "CPF", escopo: "ALUNO", obrigatorio: true, ordem: 1 },
-          documento: { id: "d1", observacaoInterna: "segredo", situacaoEntrega: "ENVIADO", situacaoDeferimento: "PENDENTE" },
+          documento: {
+            id: "d1",
+            observacaoInterna: "segredo",
+            situacaoEntrega: "ENVIADO",
+            situacaoDeferimento: "PENDENTE",
+          },
         },
       ],
     } as never);
@@ -168,7 +203,10 @@ describe("portalService.login — sacado", () => {
   it("CNPJ + número de uma matrícula que a empresa paga", async () => {
     repo.findSacadoPorDocumento.mockResolvedValue(sacadoPj as never);
     repo.findMatriculaDoSacadoPorNumero.mockResolvedValue({ id: "m1" } as never);
-    const r = await portalService.login({ documento: "11.222.333/0001-81", numeroMatricula: "202600001" }, "ip");
+    const r = await portalService.login(
+      { documento: "11.222.333/0001-81", numeroMatricula: "202600001" },
+      "ip",
+    );
     expect(repo.findSacadoPorDocumento).toHaveBeenCalledWith("11222333000181");
     expect(r.tipoAcesso).toBe("SACADO");
     expect(verificarTokenAluno(r.token)).toMatchObject({ sub: "s1", tipo: "SACADO" });
@@ -184,7 +222,9 @@ describe("portalService.login — sacado", () => {
 
   it("CNPJ sem número da matrícula (ou só data de nascimento) é recusado", async () => {
     repo.findSacadoPorDocumento.mockResolvedValue(sacadoPj as never);
-    await expect(portalService.login({ documento: "11222333000181" }, "ip")).rejects.toMatchObject({ statusCode: 401 });
+    await expect(portalService.login({ documento: "11222333000181" }, "ip")).rejects.toMatchObject({
+      statusCode: 401,
+    });
     await expect(
       portalService.login({ documento: "11222333000181", dataNascimento: "1990-01-01" }, "ip"),
     ).rejects.toMatchObject({ statusCode: 401 });
@@ -193,13 +233,19 @@ describe("portalService.login — sacado", () => {
   it("CPF de sacado pessoa física entra com a data de nascimento dele", async () => {
     repo.findAlunoPorCpf.mockResolvedValue(null);
     repo.findSacadoPorDocumento.mockResolvedValue(sacadoPf as never);
-    const r = await portalService.login({ documento: "529.982.247-25", dataNascimento: "1965-03-10" }, "ip");
+    const r = await portalService.login(
+      { documento: "529.982.247-25", dataNascimento: "1965-03-10" },
+      "ip",
+    );
     expect(r.tipoAcesso).toBe("SACADO");
   });
 
   it("CPF que é aluno entra como aluno (não como sacado)", async () => {
     repo.findAlunoPorCpf.mockResolvedValue(aluno as never);
-    const r = await portalService.login({ documento: "52998224725", dataNascimento: "1990-05-17" }, "ip");
+    const r = await portalService.login(
+      { documento: "52998224725", dataNascimento: "1990-05-17" },
+      "ip",
+    );
     expect(r.tipoAcesso).toBe("ALUNO");
     expect(repo.findSacadoPorDocumento).not.toHaveBeenCalled();
   });
@@ -208,7 +254,9 @@ describe("portalService.login — sacado", () => {
 describe("portalService — sessão de sacado", () => {
   it("emite cobrança só de parcela das matrículas que ele paga", async () => {
     repo.findParcelaDoDono.mockResolvedValue(null);
-    await expect(portalService.gerarCobranca({ sacadoId: "s1" }, "p-de-outro")).rejects.toBeInstanceOf(NotFoundError);
+    await expect(
+      portalService.gerarCobranca({ sacadoId: "s1" }, "p-de-outro"),
+    ).rejects.toBeInstanceOf(NotFoundError);
     expect(repo.findParcelaDoDono).toHaveBeenCalledWith("p-de-outro", { sacadoId: "s1" });
   });
 });

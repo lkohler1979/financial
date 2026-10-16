@@ -23,7 +23,8 @@ export class LimitadorTentativas {
 
   registrarFalha(chave: string, agora = Date.now()): void {
     const f = this.falhas.get(chave);
-    if (!f || agora - f.desde > this.janelaMs) this.falhas.set(chave, { quantidade: 1, desde: agora });
+    if (!f || agora - f.desde > this.janelaMs)
+      this.falhas.set(chave, { quantidade: 1, desde: agora });
     else f.quantidade += 1;
   }
 

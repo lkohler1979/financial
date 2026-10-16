@@ -44,7 +44,9 @@ const incluiTomador = {
 } satisfies Prisma.ParcelaInclude;
 
 const dosTipos: Prisma.ParcelaWhereInput = {
-  OR: TIPOS_COM_NFSE.map((nome) => ({ tipoTitulo: { equals: nome, mode: "insensitive" as const } })),
+  OR: TIPOS_COM_NFSE.map((nome) => ({
+    tipoTitulo: { equals: nome, mode: "insensitive" as const },
+  })),
 };
 
 export type ParcelaParaNota = Prisma.ParcelaGetPayload<{ include: typeof incluiTomador }>;
@@ -59,7 +61,10 @@ export const nfseRepository = {
       where: {
         status: "PAGO",
         dataPagamento: { gte: inicio, lt: fim },
-        AND: [dosTipos, { OR: [{ nfseStatus: null }, { nfseStatus: { in: ["ERRO", "AGENDADA"] } }] }],
+        AND: [
+          dosTipos,
+          { OR: [{ nfseStatus: null }, { nfseStatus: { in: ["ERRO", "AGENDADA"] } }] },
+        ],
       },
       orderBy: [{ dataPagamento: "asc" }, { id: "asc" }],
       ...(limite ? { take: limite } : {}),
@@ -72,7 +77,10 @@ export const nfseRepository = {
       where: {
         status: "PAGO",
         dataPagamento: { gte: inicio, lt: fim },
-        AND: [dosTipos, { OR: [{ nfseStatus: null }, { nfseStatus: { in: ["ERRO", "AGENDADA"] } }] }],
+        AND: [
+          dosTipos,
+          { OR: [{ nfseStatus: null }, { nfseStatus: { in: ["ERRO", "AGENDADA"] } }] },
+        ],
       },
     });
   },
@@ -81,14 +89,24 @@ export const nfseRepository = {
    * Pagamentos realizados (qualquer tipo) para a emissão individual: filtra por aluno, CPF/CNPJ
    * do aluno ou do sacado, número da matrícula e/ou período de pagamento. Mais recentes primeiro.
    */
-  buscarPagas(filtros: { busca?: string; inicio?: Date; fim?: Date; limite: number }): Promise<ParcelaParaNota[]> {
+  buscarPagas(filtros: {
+    busca?: string;
+    inicio?: Date;
+    fim?: Date;
+    limite: number;
+  }): Promise<ParcelaParaNota[]> {
     const busca = filtros.busca?.trim();
     const digitos = busca?.replace(/\D/g, "");
     return prisma.parcela.findMany({
       where: {
         status: "PAGO",
         ...(filtros.inicio || filtros.fim
-          ? { dataPagamento: { ...(filtros.inicio ? { gte: filtros.inicio } : {}), ...(filtros.fim ? { lt: filtros.fim } : {}) } }
+          ? {
+              dataPagamento: {
+                ...(filtros.inicio ? { gte: filtros.inicio } : {}),
+                ...(filtros.fim ? { lt: filtros.fim } : {}),
+              },
+            }
           : {}),
         ...(busca
           ? {
@@ -97,7 +115,10 @@ export const nfseRepository = {
                   { aluno: { nome: { contains: busca, mode: "insensitive" as const } } },
                   { numeroMatricula: { contains: busca, mode: "insensitive" as const } },
                   ...(digitos && digitos.length >= 3
-                    ? [{ aluno: { cpf: { contains: digitos } } }, { sacado: { cpfCnpj: { contains: digitos } } }]
+                    ? [
+                        { aluno: { cpf: { contains: digitos } } },
+                        { sacado: { cpfCnpj: { contains: digitos } } },
+                      ]
                     : []),
                   { sacado: { nome: { contains: busca, mode: "insensitive" as const } } },
                 ],

@@ -2,10 +2,7 @@ import { ConflictError, NotFoundError } from "../../shared/errors/app-error";
 import { registrarAuditoria } from "../auditoria/auditoria.service";
 import { configuracoesRepository } from "../configuracoes/configuracoes.repository";
 import { tiposCobrancaRepository } from "./tipos-cobranca.repository";
-import type {
-  AtualizarTipoCobrancaInput,
-  CriarTipoCobrancaInput,
-} from "./tipos-cobranca.schema";
+import type { AtualizarTipoCobrancaInput, CriarTipoCobrancaInput } from "./tipos-cobranca.schema";
 
 const ENTIDADE = "TipoCobranca";
 
@@ -55,7 +52,9 @@ export const tiposCobrancaService = {
 
     if (input.nome && input.nome !== atual.nome) {
       if (await tiposCobrancaRepository.findByNome(input.nome)) {
-        throw new ConflictError("Já existe um tipo de cobrança com este nome", { nome: input.nome });
+        throw new ConflictError("Já existe um tipo de cobrança com este nome", {
+          nome: input.nome,
+        });
       }
     }
 

@@ -150,8 +150,8 @@ import { formatarCnpj, formatarCpf } from "../../shared/utils/cpf.util";
           <div class="col-span-1 md:col-span-3 -mt-2 mb-2">
             @if (quantidadeParcelas > 0) {
               <p class="text-xs text-gray-500">
-                {{ quantidadeParcelas }} parcela(s) já gerada(s) para esta matrícula — veja na
-                Ficha de Cobrança.
+                {{ quantidadeParcelas }} parcela(s) já gerada(s) para esta matrícula — veja na Ficha
+                de Cobrança.
               </p>
             } @else {
               <button
@@ -226,13 +226,25 @@ import { formatarCnpj, formatarCpf } from "../../shared/utils/cpf.util";
       @if (editando && id) {
         <section class="bg-white rounded-lg border p-4 mb-4">
           <div class="flex flex-wrap items-center gap-3">
-            <p class="text-sm font-medium text-gray-700 m-0">Responsável financeiro e tomador da nota fiscal</p>
+            <p class="text-sm font-medium text-gray-700 m-0">
+              Responsável financeiro e tomador da nota fiscal
+            </p>
             @if (sacadoNome) {
-              <span class="text-sm"><strong>{{ sacadoNome }}</strong> — {{ sacadoDocumento }} (cobrança e nota fiscal saem em nome dele)</span>
+              <span class="text-sm"
+                ><strong>{{ sacadoNome }}</strong> — {{ sacadoDocumento }} (cobrança e nota fiscal
+                saem em nome dele)</span
+              >
             } @else {
-              <span class="text-sm text-gray-600">O próprio aluno (padrão) — a nota fiscal sai no nome dele</span>
+              <span class="text-sm text-gray-600"
+                >O próprio aluno (padrão) — a nota fiscal sai no nome dele</span
+              >
             }
-            <button mat-stroked-button type="button" class="ml-auto" (click)="alterandoSacado = !alterandoSacado">
+            <button
+              mat-stroked-button
+              type="button"
+              class="ml-auto"
+              (click)="alterandoSacado = !alterandoSacado"
+            >
               {{ alterandoSacado ? "Fechar" : "Alterar responsável" }}
             </button>
           </div>
@@ -259,7 +271,10 @@ import { formatarCnpj, formatarCpf } from "../../shared/utils/cpf.util";
       }
 
       @if (editando && id && situacaoAtual) {
-        <app-situacao-matricula [matriculaId]="id" [situacaoInicial]="situacaoAtual"></app-situacao-matricula>
+        <app-situacao-matricula
+          [matriculaId]="id"
+          [situacaoInicial]="situacaoAtual"
+        ></app-situacao-matricula>
       }
 
       @if (editando && id) {
@@ -506,9 +521,7 @@ export class MatriculaFormComponent implements OnInit {
 
   removerTag(tag: Tag): void {
     if (!this.id) return;
-    this.cobrancaService
-      .removerTag(this.id, tag.id)
-      .subscribe(() => this.carregarFichaCobranca());
+    this.cobrancaService.removerTag(this.id, tag.id).subscribe(() => this.carregarFichaCobranca());
   }
 
   exibirAluno(aluno: Aluno | string | null): string {

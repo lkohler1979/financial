@@ -39,7 +39,9 @@ export class PortalService {
   }
 
   baixarDocumento(documentoId: string): Observable<Blob> {
-    return this.http.get(`${this.baseUrl}/documentos/${documentoId}/arquivo`, { responseType: "blob" });
+    return this.http.get(`${this.baseUrl}/documentos/${documentoId}/arquivo`, {
+      responseType: "blob",
+    });
   }
 
   parcelas(): Observable<PortalParcela[]> {
@@ -56,7 +58,10 @@ export class PortalService {
 
   /** Paga a parcela no cartão (Rede). Os dados vão só nesta chamada — nada é guardado no navegador. */
   pagarComCartao(parcelaId: string, cartao: PortalDadosCartao): Observable<PortalResultadoCartao> {
-    return this.http.post<PortalResultadoCartao>(`${this.baseUrl}/parcelas/${parcelaId}/cartao`, cartao);
+    return this.http.post<PortalResultadoCartao>(
+      `${this.baseUrl}/parcelas/${parcelaId}/cartao`,
+      cartao,
+    );
   }
 
   gerarCobranca(parcelaId: string, formaPagamento?: FormaPagamento): Observable<PortalCobranca> {

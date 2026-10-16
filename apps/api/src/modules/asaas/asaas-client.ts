@@ -174,7 +174,9 @@ export class AsaasClient {
 
   /** Emite uma nota já agendada (POST /invoices/{id}/authorize). */
   emitirNota(id: string): Promise<AsaasNota> {
-    return this.requisitar<AsaasNota>(`/invoices/${encodeURIComponent(id)}/authorize`, { method: "POST" });
+    return this.requisitar<AsaasNota>(`/invoices/${encodeURIComponent(id)}/authorize`, {
+      method: "POST",
+    });
   }
 
   /** Situação atual da nota: número, PDF e XML aparecem quando AUTHORIZED. */

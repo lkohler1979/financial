@@ -2,7 +2,11 @@ import { Component, inject, input, OnInit, signal } from "@angular/core";
 import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
 import { MatSnackBar } from "@angular/material/snack-bar";
-import { PortalDocumentos, PortalItemDocumento, PortalMatricula } from "../../core/models/portal.model";
+import {
+  PortalDocumentos,
+  PortalItemDocumento,
+  PortalMatricula,
+} from "../../core/models/portal.model";
 import { PortalService } from "../../core/services/portal.service";
 import { baixarBlob } from "./baixar-arquivo";
 
@@ -28,11 +32,16 @@ import { baixarBlob } from "./baixar-arquivo";
 
     @if (dados(); as d) {
       @if (d.pendentesObrigatorios > 0) {
-        <p class="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-3">
-          {{ d.pendentesObrigatorios }} documento(s) obrigatório(s) pendente(s) de envio ou aprovação.
+        <p
+          class="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-3"
+        >
+          {{ d.pendentesObrigatorios }} documento(s) obrigatório(s) pendente(s) de envio ou
+          aprovação.
         </p>
       } @else {
-        <p class="text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2 mb-3">
+        <p
+          class="text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2 mb-3"
+        >
           Toda a documentação obrigatória está aprovada.
         </p>
       }
@@ -55,7 +64,9 @@ import { baixarBlob } from "./baixar-arquivo";
               }
             </div>
 
-            <span class="text-xs px-2 py-1 rounded-full" [class]="classeSituacao(item)">{{ rotuloSituacao(item) }}</span>
+            <span class="text-xs px-2 py-1 rounded-full" [class]="classeSituacao(item)">{{
+              rotuloSituacao(item)
+            }}</span>
 
             @if (item.documento?.situacaoEntrega === "ENVIADO") {
               <button mat-button type="button" (click)="baixar(item)">Ver arquivo</button>
@@ -142,6 +153,8 @@ export class PortalDocumentosComponent implements OnInit {
   baixar(item: PortalItemDocumento): void {
     const doc = item.documento;
     if (!doc) return;
-    this.portal.baixarDocumento(doc.id).subscribe((blob) => baixarBlob(blob, doc.arquivoNome ?? "documento"));
+    this.portal
+      .baixarDocumento(doc.id)
+      .subscribe((blob) => baixarBlob(blob, doc.arquivoNome ?? "documento"));
   }
 }

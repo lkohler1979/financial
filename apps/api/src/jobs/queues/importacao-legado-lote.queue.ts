@@ -12,5 +12,8 @@ export interface ImportacaoLegadoLoteJobData {
 // usuário vê o motivo na tela e dispara de novo (as parcelas já gravadas são só atualizadas).
 export const importacaoLegadoLoteQueue = new Queue<ImportacaoLegadoLoteJobData, unknown, string>(
   IMPORTACAO_LEGADO_LOTE_QUEUE_NAME,
-  { connection: redisConnection, defaultJobOptions: { attempts: 1, removeOnComplete: 20, removeOnFail: 20 } },
+  {
+    connection: redisConnection,
+    defaultJobOptions: { attempts: 1, removeOnComplete: 20, removeOnFail: 20 },
+  },
 );

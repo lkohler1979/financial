@@ -3,7 +3,13 @@ import { FormsModule } from "@angular/forms";
 import { MatRadioModule } from "@angular/material/radio";
 import { Sacado, SacadoPayload, TipoPessoaSacado } from "../../core/models/sacado.model";
 import { SacadosService } from "../../core/services/sacados.service";
-import { formatarCnpj, formatarCpf, normalizarCpf, validarCnpj, validarCpf } from "../../shared/utils/cpf.util";
+import {
+  formatarCnpj,
+  formatarCpf,
+  normalizarCpf,
+  validarCnpj,
+  validarCpf,
+} from "../../shared/utils/cpf.util";
 
 /**
  * "Responsável financeiro" do cadastro da matrícula: o próprio aluno (padrão) ou
@@ -15,7 +21,9 @@ import { formatarCnpj, formatarCpf, normalizarCpf, validarCnpj, validarCpf } fro
   standalone: true,
   imports: [FormsModule, MatRadioModule],
   template: `
-    <p class="text-xs font-medium text-gray-600 border-b pb-1 mb-3 mt-4">RESPONSÁVEL FINANCEIRO (SACADO)</p>
+    <p class="text-xs font-medium text-gray-600 border-b pb-1 mb-3 mt-4">
+      RESPONSÁVEL FINANCEIRO (SACADO)
+    </p>
     <mat-radio-group [ngModel]="outro()" (ngModelChange)="alternar($event)" class="flex gap-6 mb-2">
       <mat-radio-button [value]="false">O próprio aluno</mat-radio-button>
       <mat-radio-button [value]="true">Outra pessoa ou empresa</mat-radio-button>
@@ -25,7 +33,11 @@ import { formatarCnpj, formatarCpf, normalizarCpf, validarCnpj, validarCpf } fro
       <div class="grid gap-3 md:grid-cols-4 items-end">
         <label class="text-sm">
           <span class="block text-xs text-gray-500">Tipo</span>
-          <select class="border rounded px-2 py-1 w-full" [(ngModel)]="tipo" (ngModelChange)="mudou()">
+          <select
+            class="border rounded px-2 py-1 w-full"
+            [(ngModel)]="tipo"
+            (ngModelChange)="mudou()"
+          >
             <option value="FISICA">Pessoa física</option>
             <option value="JURIDICA">Pessoa jurídica</option>
           </select>
@@ -42,43 +54,91 @@ import { formatarCnpj, formatarCpf, normalizarCpf, validarCnpj, validarCpf } fro
           />
         </label>
         <label class="text-sm md:col-span-2">
-          <span class="block text-xs text-gray-500">{{ tipo === "FISICA" ? "Nome" : "Razão social" }}</span>
-          <input class="border rounded px-2 py-1 w-full" [(ngModel)]="nome" (ngModelChange)="mudou()" [disabled]="existente()" />
+          <span class="block text-xs text-gray-500">{{
+            tipo === "FISICA" ? "Nome" : "Razão social"
+          }}</span>
+          <input
+            class="border rounded px-2 py-1 w-full"
+            [(ngModel)]="nome"
+            (ngModelChange)="mudou()"
+            [disabled]="existente()"
+          />
         </label>
         <label class="text-sm">
           <span class="block text-xs text-gray-500">E-mail</span>
-          <input class="border rounded px-2 py-1 w-full" type="email" [(ngModel)]="email" (ngModelChange)="mudou()" [disabled]="existente()" />
+          <input
+            class="border rounded px-2 py-1 w-full"
+            type="email"
+            [(ngModel)]="email"
+            (ngModelChange)="mudou()"
+            [disabled]="existente()"
+          />
         </label>
         <label class="text-sm">
           <span class="block text-xs text-gray-500">Telefone</span>
-          <input class="border rounded px-2 py-1 w-full" [(ngModel)]="telefone" (ngModelChange)="mudou()" [disabled]="existente()" />
+          <input
+            class="border rounded px-2 py-1 w-full"
+            [(ngModel)]="telefone"
+            (ngModelChange)="mudou()"
+            [disabled]="existente()"
+          />
         </label>
         @if (tipo === "FISICA") {
           <label class="text-sm">
             <span class="block text-xs text-gray-500">Data de nascimento</span>
-            <input class="border rounded px-2 py-1 w-full" type="date" [(ngModel)]="dataNascimento" (ngModelChange)="mudou()" [disabled]="existente()" />
+            <input
+              class="border rounded px-2 py-1 w-full"
+              type="date"
+              [(ngModel)]="dataNascimento"
+              (ngModelChange)="mudou()"
+              [disabled]="existente()"
+            />
           </label>
         }
       </div>
       <p class="text-xs text-gray-500 mt-3 mb-1">
-        Endereço do tomador (a nota fiscal de serviço exige — se ficar em branco, a nota pode ser recusada)
+        Endereço do tomador (a nota fiscal de serviço exige — se ficar em branco, a nota pode ser
+        recusada)
       </p>
       <div class="grid gap-3 md:grid-cols-5">
         <label class="text-sm">
           <span class="block text-xs text-gray-500">CEP</span>
-          <input class="border rounded px-2 py-1 w-full" inputmode="numeric" maxlength="9" [(ngModel)]="cep" (ngModelChange)="mudou()" (blur)="buscarCep()" [disabled]="existente()" />
+          <input
+            class="border rounded px-2 py-1 w-full"
+            inputmode="numeric"
+            maxlength="9"
+            [(ngModel)]="cep"
+            (ngModelChange)="mudou()"
+            (blur)="buscarCep()"
+            [disabled]="existente()"
+          />
         </label>
         <label class="text-sm md:col-span-2">
           <span class="block text-xs text-gray-500">Logradouro</span>
-          <input class="border rounded px-2 py-1 w-full" [(ngModel)]="endereco" (ngModelChange)="mudou()" [disabled]="existente()" />
+          <input
+            class="border rounded px-2 py-1 w-full"
+            [(ngModel)]="endereco"
+            (ngModelChange)="mudou()"
+            [disabled]="existente()"
+          />
         </label>
         <label class="text-sm">
           <span class="block text-xs text-gray-500">Número</span>
-          <input class="border rounded px-2 py-1 w-full" [(ngModel)]="numero" (ngModelChange)="mudou()" [disabled]="existente()" />
+          <input
+            class="border rounded px-2 py-1 w-full"
+            [(ngModel)]="numero"
+            (ngModelChange)="mudou()"
+            [disabled]="existente()"
+          />
         </label>
         <label class="text-sm">
           <span class="block text-xs text-gray-500">Bairro</span>
-          <input class="border rounded px-2 py-1 w-full" [(ngModel)]="bairro" (ngModelChange)="mudou()" [disabled]="existente()" />
+          <input
+            class="border rounded px-2 py-1 w-full"
+            [(ngModel)]="bairro"
+            (ngModelChange)="mudou()"
+            [disabled]="existente()"
+          />
         </label>
       </div>
       @if (existente()) {
@@ -88,8 +148,8 @@ import { formatarCnpj, formatarCpf, normalizarCpf, validarCnpj, validarCpf } fro
         <p class="text-xs text-red-600 mt-1">{{ erro() }}</p>
       }
       <p class="text-xs text-gray-500 mt-1">
-        Para consultar os títulos na área do aluno, pessoa física usa CPF + data de nascimento e empresa
-        usa CNPJ + número da matrícula.
+        Para consultar os títulos na área do aluno, pessoa física usa CPF + data de nascimento e
+        empresa usa CNPJ + número da matrícula.
       </p>
     }
   `,
@@ -170,7 +230,11 @@ export class SacadoMatriculaComponent {
     }
     const temDocumento = normalizarCpf(this.documento).length > 0;
     this.erro.set(
-      temDocumento && !this.documentoValido() ? (this.tipo === "FISICA" ? "CPF inválido" : "CNPJ inválido") : "",
+      temDocumento && !this.documentoValido()
+        ? this.tipo === "FISICA"
+          ? "CPF inválido"
+          : "CNPJ inválido"
+        : "",
     );
     const valido = this.documentoValido() && !!this.nome.trim();
     this.alterado.emit({
@@ -181,7 +245,9 @@ export class SacadoMatriculaComponent {
         nome: this.nome.trim(),
         ...(this.email.trim() ? { email: this.email.trim() } : {}),
         ...(this.telefone.trim() ? { telefone: this.telefone.trim() } : {}),
-        ...(this.tipo === "FISICA" && this.dataNascimento ? { dataNascimento: this.dataNascimento } : {}),
+        ...(this.tipo === "FISICA" && this.dataNascimento
+          ? { dataNascimento: this.dataNascimento }
+          : {}),
         ...(this.cep.trim() ? { cep: this.cep.trim() } : {}),
         ...(this.endereco.trim() ? { endereco: this.endereco.trim() } : {}),
         ...(this.numero.trim() ? { numero: this.numero.trim() } : {}),

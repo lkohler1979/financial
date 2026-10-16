@@ -30,7 +30,9 @@ export const sacadosService = {
     await this.buscarPorId(id);
     const matriculas = await sacadosRepository.countMatriculas(id);
     if (matriculas > 0) {
-      throw new ConflictError("Não é possível remover um sacado com matrículas vinculadas", { matriculas });
+      throw new ConflictError("Não é possível remover um sacado com matrículas vinculadas", {
+        matriculas,
+      });
     }
     await sacadosRepository.delete(id);
     await registrarAuditoria({ usuarioId, entidade: ENTIDADE, entidadeId: id, acao: "EXCLUSAO" });

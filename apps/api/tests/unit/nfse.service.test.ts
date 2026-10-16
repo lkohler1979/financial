@@ -31,6 +31,9 @@ vi.mock("../../src/modules/asaas/asaas.service", () => ({
 }));
 vi.mock("../../src/modules/auditoria/auditoria.service", () => ({ registrarAuditoria: vi.fn() }));
 
+/** Só o trecho da parcela que os testes de tomador inválido alteram. */
+type ComAluno = { matricula: { aluno: unknown } };
+
 const repo = vi.mocked(nfseRepository);
 const config = vi.mocked(configuracoesRepository);
 const asaas = vi.mocked(asaasService);
@@ -116,10 +119,10 @@ describe("tomador e valor", () => {
 
   it("erro sem CPF/CNPJ válido ou valor; aviso sem CEP", () => {
     const semDoc = parcela();
-    (semDoc as any).matricula.aluno = { ...aluno, cpf: "123" };
+    (semDoc as unknown as ComAluno).matricula.aluno = { ...aluno, cpf: "123" };
     expect(avisosDaNota(semDoc).erros).toContain("Tomador sem CPF/CNPJ válido");
     const semCep = parcela();
-    (semCep as any).matricula.aluno = { ...aluno, cep: null };
+    (semCep as unknown as ComAluno).matricula.aluno = { ...aluno, cep: null };
     expect(avisosDaNota(semCep)).toMatchObject({ erros: [], avisos: [expect.stringContaining("CEP")] });
     expect(avisosDaNota(parcela({ valorPago: "0", valor: "0" })).erros).toContain("Valor da nota inválido");
   });
@@ -164,7 +167,7 @@ describe("nfseService.emitirPendentes", () => {
 
   it("tomador inválido: marca erro na parcela sem chamar o Asaas, e as demais seguem", async () => {
     const ruim = parcela({ id: "ruim" });
-    (ruim as any).matricula.aluno = { ...aluno, cpf: "" };
+    (ruim as unknown as ComAluno).matricula.aluno = { ...aluno, cpf: "" };
     repo.contarPendentes.mockResolvedValue(2);
     repo.listarPendentes.mockResolvedValue([ruim, parcela({ id: "boa" })]);
     cliente.agendarNota.mockResolvedValue({ id: "inv_3", status: "SCHEDULED" });

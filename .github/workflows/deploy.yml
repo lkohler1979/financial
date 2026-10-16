@@ -1,13 +1,10 @@
 name: Deploy
 
-# Produção sempre reflete a main: depois que o CI (lint + testes) passa num push na main,
-# entra na VPS por SSH e roda o scripts/deploy.sh (pull, build, migrations e restart no PM2).
-# Se o CI falhar, nada é publicado. Também pode ser disparado à mão (Actions → Deploy → Run workflow).
+# Produção sempre reflete a main: o CI (main.yml) chama este workflow depois que lint e testes
+# passam num push na main. Entra na VPS por SSH e roda o scripts/deploy.sh (pull, build,
+# migrations e restart no PM2). Também pode ser disparado à mão (Actions → Deploy → Run workflow).
 on:
-  workflow_run:
-    workflows: ["CI"]
-    types: [completed]
-    branches: [main]
+  workflow_call:
   workflow_dispatch:
 
 # Um deploy por vez; um novo push espera o em andamento terminar (não cancela no meio de migrations).
@@ -18,7 +15,6 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     timeout-minutes: 30
 
     steps:

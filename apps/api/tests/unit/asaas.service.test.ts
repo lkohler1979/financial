@@ -6,7 +6,6 @@ import { financeiroRepository } from "../../src/modules/financeiro/financeiro.re
 import { financeiroService } from "../../src/modules/financeiro/financeiro.service";
 import { sincronizacaoLegadoRepository } from "../../src/modules/sincronizacao-legado/sincronizacao-legado.repository";
 import { registrarAuditoria } from "../../src/modules/auditoria/auditoria.service";
-import { AsaasClient } from "../../src/modules/asaas/asaas-client";
 import { AppError, NotFoundError } from "../../src/shared/errors/app-error";
 
 const { criarClienteMock, criarCobrancaMock, obterLinhaDigitavelMock, obterQrCodePixMock } = vi.hoisted(

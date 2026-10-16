@@ -603,8 +603,8 @@ export class MatriculaWizardComponent implements OnInit {
       // Passos 1 e 2 já vêm preenchidos: marca como concluídos e vai ao passo 3.
       setTimeout(() => {
         const passos = this.stepper?.steps.toArray() ?? [];
-        passos[0] && (passos[0].completed = true);
-        passos[1] && (passos[1].completed = true);
+        if (passos[0]) passos[0].completed = true;
+        if (passos[1]) passos[1].completed = true;
         if (this.stepper) this.stepper.selectedIndex = 2;
       });
     });

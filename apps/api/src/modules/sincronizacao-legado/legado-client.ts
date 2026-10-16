@@ -205,9 +205,23 @@ export class LegadoClient {
    * vazio quando a pessoa não é encontrada (não lança erro).
    */
   async buscarPessoaPorCpf(cpf: string): Promise<LegadoPessoaCurso[]> {
+    return this.buscarPessoas(cpf, "cpf");
+  }
+
+  /**
+   * Mesma rota, buscando pelo começo do nome (`queryTipo=nome`): casa por PREFIXO, sem diferenciar
+   * maiúsculas/acentos, e devolve no máximo 40 linhas, sem paginação (confirmado ao vivo em
+   * 2026-10-14: `limit`/`length`/`page`/`start` são ignorados; "ilva" não acha "Silva"; "a" devolve
+   * 40). Por isso a listagem completa é feita varrendo prefixos — ver `legado-varredura.ts`.
+   */
+  async buscarPessoasPorPrefixoNome(prefixo: string): Promise<LegadoPessoaCurso[]> {
+    return this.buscarPessoas(prefixo, "nome");
+  }
+
+  private async buscarPessoas(termo: string, tipo: "cpf" | "nome"): Promise<LegadoPessoaCurso[]> {
     const query = new URLSearchParams({
-      query: cpf,
-      queryTipo: "cpf",
+      query: termo,
+      queryTipo: tipo,
       agruparAluno: "true",
       pesquisarPJ: "1",
       bloquearPesquisaPorPesId: "0",

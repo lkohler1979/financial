@@ -19,6 +19,7 @@ import {
 } from "../../shared/components/confirm-dialog.component";
 import { formatarCpf } from "../../shared/utils/cpf.util";
 import { ImportarLegadoDialogComponent } from "./importar-legado-dialog.component";
+import { ImportarLegadoLoteDialogComponent } from "./importar-legado-lote-dialog.component";
 
 @Component({
   selector: "app-alunos-list",
@@ -41,6 +42,9 @@ import { ImportarLegadoDialogComponent } from "./importar-legado-dialog.componen
       <div class="flex gap-2">
         <button mat-stroked-button (click)="consultarLegado()">
           <mat-icon>travel_explore</mat-icon> Consultar CPF no legado
+        </button>
+        <button mat-stroked-button (click)="buscarTodosLegado()">
+          <mat-icon>cloud_download</mat-icon> Buscar todos do legado
         </button>
         <a mat-raised-button color="primary" routerLink="/alunos/novo">
           <mat-icon>add</mat-icon> Novo aluno
@@ -165,6 +169,14 @@ export class AlunosListComponent implements OnInit {
       .subscribe((importou) => {
         if (importou) this.carregar();
       });
+  }
+
+  /** Busca em lote: todos os alunos do legado (varredura + importação em segundo plano). */
+  buscarTodosLegado(): void {
+    this.dialog
+      .open(ImportarLegadoLoteDialogComponent, { width: "720px", maxHeight: "90vh", disableClose: false })
+      .afterClosed()
+      .subscribe(() => this.carregar());
   }
 
   remover(aluno: Aluno): void {

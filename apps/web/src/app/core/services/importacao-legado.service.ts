@@ -56,6 +56,29 @@ export interface ResultadoImportacaoLegado {
   avisos: string[];
 }
 
+export type StatusLoteLegado = "ENUMERANDO" | "IMPORTANDO" | "CONCLUIDO" | "FALHOU";
+
+/** Andamento da busca em lote de todos os alunos do legado (roda em segundo plano no worker). */
+export interface LoteLegado {
+  id: string;
+  status: StatusLoteLegado;
+  consultas: number;
+  pessoasEncontradas: number;
+  pessoasProcessadas: number;
+  semCpf: number;
+  alunosCriados: number;
+  matriculasNovas: number;
+  parcelasNovas: number;
+  parcelasAtualizadas: number;
+  erros: number;
+  /** Nome do curso no legado → quantidade de matrículas ignoradas (curso não existe no Ethos). */
+  cursosSemCorrespondencia: Record<string, number> | null;
+  detalhes: { erros?: string[]; prefixosTruncados?: string[] } | null;
+  mensagemFalha: string | null;
+  criadoEm: string;
+  finalizadoEm: string | null;
+}
+
 @Injectable({ providedIn: "root" })
 export class ImportacaoLegadoService {
   private readonly http = inject(HttpClient);
@@ -64,6 +87,16 @@ export class ImportacaoLegadoService {
   buscarPorCpf(cpf: string): Observable<PreviaImportacaoLegado> {
     const params = new HttpParams().set("cpf", cpf);
     return this.http.get<PreviaImportacaoLegado>(`${this.baseUrl}/buscar-cpf`, { params });
+  }
+
+  /** Dispara a busca de TODOS os alunos do legado (segundo plano). */
+  iniciarLote(): Observable<LoteLegado> {
+    return this.http.post<LoteLegado>(`${this.baseUrl}/lote`, {});
+  }
+
+  /** Último lote (em andamento ou concluído); null se nunca rodou. */
+  ultimoLote(): Observable<LoteLegado | null> {
+    return this.http.get<LoteLegado | null>(`${this.baseUrl}/lote/atual`);
   }
 
   confirmar(payload: ConfirmarImportacaoLegadoPayload): Observable<ResultadoImportacaoLegado> {

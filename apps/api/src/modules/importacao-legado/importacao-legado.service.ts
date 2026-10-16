@@ -89,6 +89,122 @@ function agruparTitulosPorAlunocurso(titulos: LegadoTituloResumo[]): Map<string,
   return mapa;
 }
 
+/** Matrícula sem situação de cobrança entra como "Pendente" — nunca sobrescreve uma já atribuída
+ * (decisão do usuário, 2026-07-09, mesma regra de importacao.processor.ts). */
+export async function garantirSituacaoPendente(
+  matricula: { id: string; situacaoCobrancaId: string | null },
+  situacaoPendente: { id: string; nome: string },
+  usuarioId: string,
+): Promise<void> {
+  if (matricula.situacaoCobrancaId) return;
+  await matriculasRepository.update(matricula.id, {
+    situacaoCobranca: { connect: { id: situacaoPendente.id } },
+  });
+  await historicoRepository.registrar(
+    matricula.id,
+    usuarioId,
+    `Situação alterada para "${situacaoPendente.nome}" (importação do sistema legado)`,
+  );
+}
+
+/**
+ * Grava os títulos do legado numa matrícula: cria as parcelas que não existem e atualiza a
+ * situação de pagamento das que já existem (casando por código normalizado, para não duplicar
+ * com/sem zeros à esquerda). `auditar: false` (importação em lote) pula a auditoria parcela a
+ * parcela — o lote registra um resumo.
+ */
+export async function gravarTitulosNaMatricula(
+  matricula: { id: string },
+  titulos: LegadoTituloResumo[],
+  usuarioId: string,
+  avisos: string[],
+  opcoes: { auditar?: boolean } = {},
+): Promise<{ novas: number; atualizadas: number }> {
+  const auditar = opcoes.auditar ?? true;
+  let novas = 0;
+  let atualizadas = 0;
+
+  // Mapa por código normalizado (ver `normalizarCodTitulo`) — o legado
+  // pode devolver o mesmo título com/sem zeros à esquerda em relação ao
+  // que já está gravado (planilha antiga, digitação manual etc.); casar
+  // só pelo `codTitulo` exato duplicaria a Parcela em vez de atualizar.
+  const parcelasExistentesPorCodTitulo = new Map(
+    (await financeiroRepository.listarTodasPorMatricula(matricula.id)).map((p) => [
+      normalizarCodTitulo(p.codTitulo),
+      p,
+    ]),
+  );
+
+  for (const titulo of titulos) {
+    const existente = parcelasExistentesPorCodTitulo.get(normalizarCodTitulo(titulo.tituloId));
+
+    if (existente) {
+      // Já existe — atualiza a situação de pagamento a partir do legado
+      // (pedido do usuário, 2026-09-15), mesma regra da reconciliação:
+      // nunca rebaixa um status avançado (ex.: PROTESTADO).
+      const alteracoes = aplicarDetalheNaParcela(existente, titulo);
+      if (alteracoes) {
+        await financeiroRepository.update(existente.id, alteracoes);
+        atualizadas++;
+        if (auditar) {
+          await registrarAuditoria({
+            usuarioId,
+            entidade: "Parcela",
+            entidadeId: existente.id,
+            acao: "ATUALIZACAO",
+            detalhes: { origem: "importacao-legado", codTitulo: titulo.tituloId },
+          });
+        }
+      }
+      continue;
+    }
+
+    const vencimento = parseDataLegadoIso(titulo.tituloDataVencimento);
+    if (!vencimento) {
+      avisos.push(`Título ${titulo.tituloId} (${titulo.tituloDescricao}) sem data de vencimento válida — não importado`);
+      continue;
+    }
+
+    const status = statusLegadoParaEthos(titulo) ?? StatusParcela.EM_ABERTO;
+    const dataPagamento = parseDataLegadoIso(titulo.tituloDataPagamento ?? titulo.tituloDataBaixa);
+
+    const parcela = await financeiroRepository.create({
+      matricula: { connect: { id: matricula.id } },
+      codTitulo: titulo.tituloId,
+      parcela: titulo.tituloParcela,
+      vencimento,
+      valor: titulo.tituloValor,
+      tipoTitulo: titulo.tipoTituloNome ?? tipoTituloDaDescricao(titulo.tituloDescricao),
+      status,
+      valorPago: titulo.tituloValorPago || undefined,
+      dataPagamento,
+      // Decisão do usuário, 2026-09-15: Parcela importada do legado nunca
+      // tem multa/juros calculados pelo Ethos — sempre usa os valores que
+      // o próprio legado já calculou.
+      multaLegado: titulo.multaCalc,
+      jurosLegado: titulo.jurosCalc,
+      totalLegado: titulo.totalCalc,
+      // Campo estruturado de tipo de título do legado, confirmado ao vivo
+      // em 2026-09-17 — guardado para exibição/conferência na Ficha de
+      // Cobrança (ver Parcela.tipoTituloIdLegado no schema).
+      tipoTituloIdLegado: titulo.tipoTituloId,
+      tituloObservacoesLegado: titulo.tituloObservacoes,
+    });
+    novas++;
+    if (auditar) {
+      await registrarAuditoria({
+        usuarioId,
+        entidade: "Parcela",
+        entidadeId: parcela.id,
+        acao: "CRIACAO",
+        detalhes: { origem: "importacao-legado", codTitulo: titulo.tituloId },
+      });
+    }
+  }
+
+  return { novas, atualizadas };
+}
+
 export const importacaoLegadoService = {
   /** Botão "Consultar CPF no legado" na tela de Aluno — só consulta, não grava nada. */
   async buscarPorCpf(cpfBruto: string): Promise<PreviaImportacaoLegado> {
@@ -254,19 +370,7 @@ export const importacaoLegadoService = {
         });
       }
 
-      // Decisão do usuário, 2026-07-09 (mesma regra de importacao.processor.ts):
-      // matrícula sem situação de cobrança definida entra como "Pendente" —
-      // nunca sobrescreve uma situação já atribuída manualmente.
-      if (!matricula.situacaoCobrancaId) {
-        await matriculasRepository.update(matricula.id, {
-          situacaoCobranca: { connect: { id: situacaoPendente.id } },
-        });
-        await historicoRepository.registrar(
-          matricula.id,
-          usuarioId,
-          `Situação alterada para "${situacaoPendente.nome}" (importação do sistema legado)`,
-        );
-      }
+      await garantirSituacaoPendente(matricula, situacaoPendente, usuarioId);
 
       if (selecao.titulosSelecionados.length === 0) continue;
       const titulosSelecionadosSet = new Set(selecao.titulosSelecionados);
@@ -274,79 +378,9 @@ export const importacaoLegadoService = {
         titulosSelecionadosSet.has(t.tituloId),
       );
 
-      // Mapa por código normalizado (ver `normalizarCodTitulo`) — o legado
-      // pode devolver o mesmo título com/sem zeros à esquerda em relação ao
-      // que já está gravado (planilha antiga, digitação manual etc.); casar
-      // só pelo `codTitulo` exato duplicaria a Parcela em vez de atualizar.
-      const parcelasExistentesPorCodTitulo = new Map(
-        (await financeiroRepository.listarTodasPorMatricula(matricula.id)).map((p) => [
-          normalizarCodTitulo(p.codTitulo),
-          p,
-        ]),
-      );
-
-      for (const titulo of titulos) {
-        const existente = parcelasExistentesPorCodTitulo.get(normalizarCodTitulo(titulo.tituloId));
-
-        if (existente) {
-          // Já existe — atualiza a situação de pagamento a partir do legado
-          // (pedido do usuário, 2026-09-15), mesma regra da reconciliação:
-          // nunca rebaixa um status avançado (ex.: PROTESTADO).
-          const alteracoes = aplicarDetalheNaParcela(existente, titulo);
-          if (alteracoes) {
-            await financeiroRepository.update(existente.id, alteracoes);
-            parcelasAtualizadas++;
-            await registrarAuditoria({
-              usuarioId,
-              entidade: "Parcela",
-              entidadeId: existente.id,
-              acao: "ATUALIZACAO",
-              detalhes: { origem: "importacao-legado", codTitulo: titulo.tituloId },
-            });
-          }
-          continue;
-        }
-
-        const vencimento = parseDataLegadoIso(titulo.tituloDataVencimento);
-        if (!vencimento) {
-          avisos.push(`Título ${titulo.tituloId} (${titulo.tituloDescricao}) sem data de vencimento válida — não importado`);
-          continue;
-        }
-
-        const status = statusLegadoParaEthos(titulo) ?? StatusParcela.EM_ABERTO;
-        const dataPagamento = parseDataLegadoIso(titulo.tituloDataPagamento ?? titulo.tituloDataBaixa);
-
-        const parcela = await financeiroRepository.create({
-          matricula: { connect: { id: matricula.id } },
-          codTitulo: titulo.tituloId,
-          parcela: titulo.tituloParcela,
-          vencimento,
-          valor: titulo.tituloValor,
-          tipoTitulo: titulo.tipoTituloNome ?? tipoTituloDaDescricao(titulo.tituloDescricao),
-          status,
-          valorPago: titulo.tituloValorPago || undefined,
-          dataPagamento,
-          // Decisão do usuário, 2026-09-15: Parcela importada do legado nunca
-          // tem multa/juros calculados pelo Ethos — sempre usa os valores que
-          // o próprio legado já calculou.
-          multaLegado: titulo.multaCalc,
-          jurosLegado: titulo.jurosCalc,
-          totalLegado: titulo.totalCalc,
-          // Campo estruturado de tipo de título do legado, confirmado ao vivo
-          // em 2026-09-17 — guardado para exibição/conferência na Ficha de
-          // Cobrança (ver Parcela.tipoTituloIdLegado no schema).
-          tipoTituloIdLegado: titulo.tipoTituloId,
-          tituloObservacoesLegado: titulo.tituloObservacoes,
-        });
-        parcelasNovas++;
-        await registrarAuditoria({
-          usuarioId,
-          entidade: "Parcela",
-          entidadeId: parcela.id,
-          acao: "CRIACAO",
-          detalhes: { origem: "importacao-legado", codTitulo: titulo.tituloId },
-        });
-      }
+      const gravadas = await gravarTitulosNaMatricula(matricula, titulos, usuarioId, avisos);
+      parcelasNovas += gravadas.novas;
+      parcelasAtualizadas += gravadas.atualizadas;
     }
 
     return { alunoCriado, alunoId: aluno?.id ?? null, matriculasNovas, parcelasNovas, parcelasAtualizadas, avisos };

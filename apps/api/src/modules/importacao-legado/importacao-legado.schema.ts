@@ -33,3 +33,8 @@ export const confirmarImportacaoSchema = z.object({
 });
 
 export type ConfirmarImportacaoInput = z.infer<typeof confirmarImportacaoSchema>;
+
+export const iniciarLoteSchema = z.object({
+  // Só para testes/validação: interrompe a varredura ao atingir essa quantidade de pessoas.
+  limite: z.coerce.number().int().min(1).max(100000).optional(),
+});

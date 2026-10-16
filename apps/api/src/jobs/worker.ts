@@ -6,6 +6,7 @@ import "dotenv/config";
 import "./workers/importacao.worker";
 import "./workers/geracao-word.worker";
 import "./workers/sincronizacao-legado.worker";
+import "./workers/importacao-legado-lote.worker";
 import "./workers/emissao-cobranca.worker";
 import { configuracoesRepository } from "../modules/configuracoes/configuracoes.repository";
 import { reprogramarSincronizacaoAgendada } from "./queues/sincronizacao-legado.queue";

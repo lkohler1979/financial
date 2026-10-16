@@ -17,3 +17,15 @@ importacaoLegadoRouter.post(
   requireRole("ADMINISTRADOR", "FINANCEIRO"),
   importacaoLegadoController.confirmar,
 );
+
+// Busca em lote: cria aluno/matrícula/parcelas de todo o legado — mesmo critério de acesso acima.
+importacaoLegadoRouter.post(
+  "/lote",
+  requireRole("ADMINISTRADOR", "FINANCEIRO"),
+  importacaoLegadoController.iniciarLote,
+);
+importacaoLegadoRouter.get(
+  "/lote/atual",
+  requireRole("ADMINISTRADOR", "FINANCEIRO"),
+  importacaoLegadoController.ultimoLote,
+);

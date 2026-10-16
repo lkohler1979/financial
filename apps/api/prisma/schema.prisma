@@ -134,6 +134,7 @@ model Usuario {
   solicitacoesAtendidas   SolicitacaoDocumento[]
   historicoSituacoes      HistoricoSituacaoMatricula[]
   importacoes             Importacao[]
+  importacoesLegadoLote   ImportacaoLegadoLote[]
   auditorias              Auditoria[]
   historicosCobranca      HistoricoCobranca[]
   relatoriosInadimplencia RelatorioInadimplencia[]
@@ -931,4 +932,44 @@ model Sacado {
   matriculas Matricula[]
 
   @@map("sacados")
+}
+
+/// Importação em lote de TODOS os alunos do sistema legado (botão "Buscar todos do legado" em
+/// /alunos). O legado só oferece busca por prefixo do nome (máx. 40 por consulta), então o job
+/// varre os prefixos (ENUMERANDO) e depois importa aluno por aluno (IMPORTANDO). Os contadores
+/// são atualizados durante a execução para a tela mostrar o andamento.
+model ImportacaoLegadoLote {
+  id                       String           @id @default(uuid())
+  usuarioId                String           @map("usuario_id")
+  status                   StatusLoteLegado @default(ENUMERANDO)
+  /// Limite de pessoas (uso em testes); null = todas.
+  limite                   Int?
+  consultas                Int              @default(0)
+  pessoasEncontradas       Int              @default(0) @map("pessoas_encontradas")
+  pessoasProcessadas       Int              @default(0) @map("pessoas_processadas")
+  semCpf                   Int              @default(0) @map("sem_cpf")
+  alunosCriados            Int              @default(0) @map("alunos_criados")
+  matriculasNovas          Int              @default(0) @map("matriculas_novas")
+  parcelasNovas            Int              @default(0) @map("parcelas_novas")
+  parcelasAtualizadas      Int              @default(0) @map("parcelas_atualizadas")
+  erros                    Int              @default(0)
+  /// { "Nome do curso no legado": quantidade de matrículas ignoradas }
+  cursosSemCorrespondencia Json?            @map("cursos_sem_correspondencia")
+  /// Primeiras mensagens de erro (cpf/nome + motivo) e avisos de varredura.
+  detalhes                 Json?
+  mensagemFalha            String?          @map("mensagem_falha")
+  criadoEm                 DateTime         @default(now()) @map("criado_em")
+  atualizadoEm             DateTime         @updatedAt @map("atualizado_em")
+  finalizadoEm             DateTime?        @map("finalizado_em")
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id])
+
+  @@map("importacoes_legado_lote")
+}
+
+enum StatusLoteLegado {
+  ENUMERANDO
+  IMPORTANDO
+  CONCLUIDO
+  FALHOU
 }

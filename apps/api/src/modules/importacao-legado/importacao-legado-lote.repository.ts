@@ -41,6 +41,21 @@ export const importacaoLegadoLoteRepository = {
     });
   },
 
+  /**
+   * Marca como FALHOU os lotes ainda "em andamento" (opcionalmente só os sem atividade desde
+   * `semAtividadeDesde`): o servidor reiniciou ou o worker caiu no meio da busca.
+   */
+  async marcarInterrompidos(motivo: string, semAtividadeDesde?: Date) {
+    const resultado = await prisma.importacaoLegadoLote.updateMany({
+      where: {
+        status: { in: [StatusLoteLegado.ENUMERANDO, StatusLoteLegado.IMPORTANDO] },
+        ...(semAtividadeDesde ? { atualizadoEm: { lt: semAtividadeDesde } } : {}),
+      },
+      data: { status: StatusLoteLegado.FALHOU, finalizadoEm: new Date(), mensagemFalha: motivo },
+    });
+    return resultado.count;
+  },
+
   async registrarOcorrencias(loteId: string, ocorrencias: NovaOcorrencia[]) {
     for (let i = 0; i < ocorrencias.length; i += TAMANHO_LOTE_INSERT) {
       await prisma.importacaoLegadoOcorrencia.createMany({

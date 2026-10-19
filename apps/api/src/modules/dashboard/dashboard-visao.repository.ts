@@ -73,19 +73,9 @@ export const dashboardVisaoRepository = {
     const inicioSerieIso = dataIso(inicioSerie);
     const fimAVencerIso = dataIso(new Date(hoje.getFullYear(), hoje.getMonth() + 6, 1));
 
-    const [
-      [totais],
-      [parcelas],
-      matriculasMes,
-      alunosNovosMes,
-      recebidoMes,
-      aVencerMes,
-      faixas,
-      porCurso,
-      porTipo,
-      topDevedores,
-      situacoes,
-    ] = await Promise.all([
+    // Lotes de 3 consultas: o pool do Prisma tem 5 conexões e as outras telas do dashboard também
+    // consultam o banco — 11 em paralelo estouravam o pool (P2024: timeout de conexão).
+    const [[totais], [parcelas], matriculasMes] = await Promise.all([
       prisma.$queryRaw<
         {
           alunos: number;
@@ -135,7 +125,9 @@ export const dashboardVisaoRepository = {
         )
         SELECT to_char(date_trunc('month', dt), 'YYYY-MM') AS mes, COUNT(*)::int AS matriculas
         FROM entrada WHERE dt >= ${inicioSerieIso}::date AND dt < ${fimAVencerIso}::date GROUP BY 1`,
+    ]);
 
+    const [alunosNovosMes, recebidoMes, aVencerMes] = await Promise.all([
       // Alunos novos por mês: mês da primeira matrícula de cada aluno.
       prisma.$queryRaw<{ mes: string; alunos: number }[]>`WITH entrada AS (
           SELECT m.aluno_id,
@@ -160,7 +152,9 @@ export const dashboardVisaoRepository = {
         FROM parcelas
         WHERE status = 'EM_ABERTO' AND vencimento >= ${hojeIso}::date AND vencimento < ${fimAVencerIso}::date
         GROUP BY 1`,
+    ]);
 
+    const [faixas, porCurso, porTipo] = await Promise.all([
       // Faixas de atraso das parcelas vencidas.
       prisma.$queryRaw<
         { faixa: string; ordem: number; qtd: number; valor: number }[]
@@ -220,7 +214,9 @@ export const dashboardVisaoRepository = {
           COALESCE(SUM(valor) FILTER (WHERE vencimento < ${hojeIso}::date), 0)::float8 AS vencido
         FROM parcelas WHERE status = 'EM_ABERTO'
         GROUP BY 1 ORDER BY aberto DESC`,
+    ]);
 
+    const [topDevedores, situacoes] = await Promise.all([
       prisma.$queryRaw<
         {
           aluno_id: string;

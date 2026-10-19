@@ -29,7 +29,9 @@ LOCK_FILE="/tmp/ethos-deploy.lock"
 # Fora do repositorio: o deploy faz "git clean" em $ROOT_DIR e apagaria backups guardados la dentro.
 BACKUP_DIR="/opt/ethos-backups"
 BACKUPS_MANTIDOS=10
-HEALTH_URL="http://127.0.0.1:3070/api/health"
+# A API le a porta de PORT no .env (a producao usa 3075; o padrao dos docs e 3070).
+PORTA_API="$(grep -E '^PORT=' "$ROOT_DIR/.env" 2>/dev/null | head -n1 | cut -d= -f2- | tr -d "\"' \r")"
+HEALTH_URL="http://127.0.0.1:${PORTA_API:-3070}/api/health"
 HEALTH_TENTATIVAS=20
 
 log() {

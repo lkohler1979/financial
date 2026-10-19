@@ -73,9 +73,27 @@ function mensagemDe(erro: unknown): string {
   return erro instanceof Error ? erro.message : "erro desconhecido";
 }
 
+const MOTIVO_SEM_ATIVIDADE =
+  "A busca parou de responder (provavelmente o servidor foi reiniciado). Rode novamente: o que já foi importado não é duplicado.";
+const MOTIVO_REINICIO =
+  "O servidor foi reiniciado durante a busca. Rode novamente: o que já foi importado não é duplicado.";
+
 export const importacaoLegadoLoteService = {
+  /** Libera lotes que ficaram "em andamento" sem nenhum worker rodando (ex.: deploy no meio). */
+  async liberarInterrompidos(): Promise<number> {
+    return repo.marcarInterrompidos(
+      MOTIVO_SEM_ATIVIDADE,
+      new Date(Date.now() - LOTE_PARADO_APOS_MS),
+    );
+  },
+
+  /** Chamado quando o worker sobe ou recebe sinal de parada: nenhum lote pode continuar "rodando". */
+  async marcarInterrompidosPorReinicio(): Promise<number> {
+    return repo.marcarInterrompidos(MOTIVO_REINICIO);
+  },
   /** Cria o lote e o enfileira; a varredura e a importação rodam no worker. */
   async iniciar(usuarioId: string, limite?: number) {
+    await this.liberarInterrompidos();
     const ativo = await repo.emAndamento(new Date(Date.now() - LOTE_PARADO_APOS_MS));
     if (ativo)
       throw new ConflictError("Já existe uma busca em lote em andamento — aguarde terminar");
@@ -87,6 +105,7 @@ export const importacaoLegadoLoteService = {
 
   /** Último lote com a contagem de ocorrências por tipo (para a tela e o relatório). */
   async ultimo() {
+    await this.liberarInterrompidos();
     const lote = await repo.ultimo();
     if (!lote) return null;
     return { ...lote, ocorrenciasPorTipo: await repo.contarOcorrenciasPorTipo(lote.id) };

@@ -49,7 +49,7 @@ npm run lint && npm run format:check && npm run test:api
 O merge é feito pelo botão do PR, **squash**, e a branch é apagada. Ninguém faz push direto na `main`.
 O push na `main` roda o CI de novo e, passando, o job `deploy` publica em produção
 (`scripts/deploy.sh` na VPS): atualiza o código, instala, builda, aplica migrations, builda o front,
-reinicia o PM2 e confere o **health check** da API — se a API não responder, o deploy falha e o
+reinicia o PM2 e confere o **health check** da API (na porta definida em `PORT` no `/opt/financial/.env`, 3075 hoje; 3070 se não houver) — se a API não responder, o deploy falha e o
 GitHub avisa.
 
 **Backup do banco: desligado por padrão** (decisão de 2026-10-16, para o futuro). Para ligar, defina

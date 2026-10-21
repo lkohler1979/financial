@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import JSZip from "jszip";
 import { Request, Response } from "express";
 import { asyncHandler } from "../../shared/utils/async-handler";
 import { paramString, usuarioAtual } from "../../shared/utils/http";
@@ -5,6 +7,7 @@ import {
   atualizarDocumentoSchema,
   atualizarTipoDocumentoSchema,
   criarTipoDocumentoSchema,
+  downloadLoteSchema,
   listarDocumentosSchema,
 } from "./documentos.schema";
 import { documentosService } from "./documentos.service";
@@ -28,6 +31,36 @@ export const documentosController = {
 
   listar: asyncHandler(async (req: Request, res: Response) => {
     res.json(await documentosService.listar(listarDocumentosSchema.parse(req.query)));
+  }),
+
+  /** ZIP com os arquivos escolhidos (ids) ou todos os que casam com os filtros da consulta. */
+  baixarLote: asyncHandler(async (req: Request, res: Response) => {
+    const { arquivos, ausentes } = await documentosService.prepararLote(
+      downloadLoteSchema.parse(req.body),
+    );
+    const zip = new JSZip();
+    for (const a of arquivos) zip.file(a.nomeNoZip, fs.createReadStream(a.caminho));
+    if (ausentes.length) {
+      zip.file(
+        "_arquivos-nao-encontrados.txt",
+        [
+          "Estes arquivos constam no sistema mas não estavam no servidor:",
+          "",
+          ...ausentes,
+          "",
+        ].join("\n"),
+      );
+    }
+    const data = new Date().toISOString().slice(0, 10);
+    res.setHeader("Content-Type", "application/zip");
+    res.setHeader("Content-Disposition", `attachment; filename="documentos-${data}.zip"`);
+    res.setHeader("X-Documentos-Ausentes", String(ausentes.length));
+    res.setHeader("Access-Control-Expose-Headers", "X-Documentos-Ausentes");
+    // Em fluxo: o ZIP vai saindo enquanto é montado, sem carregar tudo na memória.
+    zip
+      .generateNodeStream({ streamFiles: true, compression: "DEFLATE" })
+      .on("error", () => res.destroy())
+      .pipe(res);
   }),
 
   aguardandoConferencia: asyncHandler(async (_req: Request, res: Response) => {

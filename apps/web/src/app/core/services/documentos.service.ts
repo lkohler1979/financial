@@ -1,4 +1,4 @@
-import { HttpClient, HttpParams } from "@angular/common/http";
+import { HttpClient, HttpParams, HttpResponse } from "@angular/common/http";
 import { inject, Injectable } from "@angular/core";
 import { Observable } from "rxjs";
 import { environment } from "../../../environments/environment";
@@ -12,6 +12,28 @@ import {
   SituacaoDeferimentoDocumento,
   TipoDocumento,
 } from "../models/documento.model";
+
+/** Filtros da consulta de documentos (e do download em lote). Datas em AAAA-MM-DD. */
+export interface FiltrosDocumentos {
+  situacao?: SituacaoDeferimentoDocumento | "";
+  busca?: string;
+  tipoId?: string;
+  cursoId?: string;
+  de?: string;
+  ate?: string;
+}
+
+/** Só os filtros preenchidos (sem vazios), prontos para a query string ou o corpo. */
+function filtrosLimpos(f: FiltrosDocumentos): Record<string, string> {
+  const saida: Record<string, string> = {};
+  for (const [chave, valor] of Object.entries(f)) {
+    const texto = typeof valor === "string" ? valor.trim() : "";
+    if (texto && ["situacao", "busca", "tipoId", "cursoId", "de", "ate"].includes(chave)) {
+      saida[chave] = texto;
+    }
+  }
+  return saida;
+}
 
 @Injectable({ providedIn: "root" })
 export class DocumentosService {
@@ -41,16 +63,28 @@ export class DocumentosService {
   }
 
   /** Todos os documentos enviados, com filtro de situação, busca por aluno e paginação. */
-  listar(filtros: {
-    situacao?: SituacaoDeferimentoDocumento | "";
-    busca?: string;
-    page: number;
-    pageSize: number;
-  }): Observable<PaginaDocumentos> {
+  listar(
+    filtros: FiltrosDocumentos & { page: number; pageSize: number },
+  ): Observable<PaginaDocumentos> {
     let params = new HttpParams().set("page", filtros.page).set("pageSize", filtros.pageSize);
-    if (filtros.situacao) params = params.set("situacao", filtros.situacao);
-    if (filtros.busca?.trim()) params = params.set("busca", filtros.busca.trim());
+    for (const [chave, valor] of Object.entries(filtrosLimpos(filtros))) {
+      params = params.set(chave, valor);
+    }
     return this.http.get<PaginaDocumentos>(this.baseUrl, { params });
+  }
+
+  /** ZIP com os documentos escolhidos (ids) ou com todos os que casam com os filtros. */
+  baixarLote(selecao: {
+    ids?: string[];
+    filtros?: FiltrosDocumentos;
+  }): Observable<HttpResponse<Blob>> {
+    const corpo = selecao.ids?.length
+      ? { ids: selecao.ids }
+      : { filtros: filtrosLimpos(selecao.filtros ?? {}) };
+    return this.http.post(`${this.baseUrl}/download-lote`, corpo, {
+      responseType: "blob",
+      observe: "response",
+    });
   }
 
   aguardandoConferencia(): Observable<DocumentoAguardandoConferencia[]> {

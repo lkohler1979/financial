@@ -3,6 +3,7 @@ import { armazenamento } from "../../shared/armazenamento/armazenamento";
 import { formatarCpf, normalizarCpf } from "../../shared/utils/cpf";
 import { alunosRepository } from "../alunos/alunos.repository";
 import { registrarAuditoria } from "../auditoria/auditoria.service";
+import { documentacaoService } from "../documentos/documentacao.service";
 import { documentosRepository } from "../documentos/documentos.repository";
 import type {
   LegadoClient,
@@ -85,6 +86,25 @@ export const documentosLegadoService = {
    * baixado de novo e um arquivo que já exista no Ethos nunca é substituído.
    */
   async importarDoAluno(
+    alunoId: string,
+    usuarioId: string,
+    cliente?: ClienteLegado,
+  ): Promise<ResumoDocumentosLegado> {
+    try {
+      return await this.baixarDoAluno(alunoId, usuarioId, cliente);
+    } finally {
+      // Qualquer que seja o resultado (baixou, não achou nada, legado fora do ar), a situação da
+      // documentação das matrículas do aluno é conferida: pode ser "sem documentos", "pendentes"
+      // ou "completa". Falha aqui não esconde o resultado da busca.
+      try {
+        await documentacaoService.recalcularAluno(alunoId);
+      } catch {
+        // Só a conferência da situação falhou; o resultado da busca segue.
+      }
+    }
+  },
+
+  async baixarDoAluno(
     alunoId: string,
     usuarioId: string,
     cliente?: ClienteLegado,

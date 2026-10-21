@@ -36,6 +36,25 @@ jobs:
   lint-and-test:
     runs-on: ubuntu-latest
 
+    # Banco de verdade para os testes que não são mockados (o schema vem das migrations do projeto).
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ethos
+          POSTGRES_PASSWORD: ethos_secret
+          POSTGRES_DB: ethos_financial
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ethos -d ethos_financial"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://ethos:ethos_secret@localhost:5432/ethos_financial
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -57,6 +76,9 @@ jobs:
 
       - name: Generate Prisma Client
         run: npm run prisma:generate
+
+      - name: Apply database migrations
+        run: npx prisma migrate deploy --schema=apps/api/prisma/schema.prisma
 
       - name: Run API tests
         run: npm run test:api

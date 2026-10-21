@@ -874,7 +874,7 @@ import {
           } @else {
             URL do webhook para cadastrar no painel da Autentique:
             <code class="bg-gray-100 px-1 rounded">{{ autentiqueWebhookUrl }}</code>
-            — eventos: <em>document.finished</em>, <em>signature.rejected</em> e
+            — eventos: <em>document.finished</em>, <em>document.updated</em> e
             <em>document.deleted</em>; o segredo é o campo acima.
           }
         </p>

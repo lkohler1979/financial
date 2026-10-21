@@ -1,5 +1,5 @@
 import { AppError } from "../../../shared/errors/app-error";
-import type { ProvedorDeAssinatura, RegrasWebhook, Signatario } from "./tipos";
+import type { ProvedorDeAssinatura, RegrasWebhook, Signatario, SituacaoAssinatura } from "./tipos";
 
 const URL_API = "https://api.autentique.com.br/v2/graphql";
 
@@ -107,6 +107,28 @@ export class AutentiqueClient {
     return r.document?.files?.signed ?? null;
   }
 
+  /**
+   * O link `files.signed` existe mesmo antes da assinatura, então a situação vem das assinaturas.
+   * Só contam os signatários com ação (o dono da conta aparece na lista sem ação).
+   */
+  async situacao(documentoId: string): Promise<SituacaoAssinatura> {
+    const r = await this.chamar<{
+      document: {
+        signatures: {
+          action: { name: string } | null;
+          signed: unknown | null;
+          rejected: unknown | null;
+        }[];
+      };
+    }>(
+      JSON.stringify({
+        query: `query { document(id: ${JSON.stringify(documentoId)}) { signatures { action { name } signed { created_at } rejected { created_at } } } }`,
+      }),
+      true,
+    );
+    return situacaoDasAssinaturas(r.document?.signatures ?? []);
+  }
+
   async excluirDocumento(documentoId: string): Promise<void> {
     await this.chamar(
       JSON.stringify({ query: `mutation { deleteDocument(id: ${JSON.stringify(documentoId)}) }` }),
@@ -123,6 +145,19 @@ export class AutentiqueClient {
     );
     return r.ok ? Buffer.from(await r.arrayBuffer()) : null;
   }
+}
+
+export function situacaoDasAssinaturas(
+  assinaturas: {
+    action: { name: string } | null;
+    signed: unknown | null;
+    rejected: unknown | null;
+  }[],
+): SituacaoAssinatura {
+  const exigidas = assinaturas.filter((a) => a.action);
+  if (exigidas.some((a) => a.rejected)) return "RECUSADO";
+  if (exigidas.length > 0 && exigidas.every((a) => a.signed)) return "ASSINADO";
+  return "PENDENTE";
 }
 
 function paraSignatarioAutentique(
@@ -171,6 +206,8 @@ export function criarProvedorAutentique(token: string, sandbox: boolean): Proved
     },
 
     cancelar: (ref) => cliente.excluirDocumento(ref.documentoId),
+
+    consultarSituacao: (ref) => cliente.situacao(ref.documentoId),
   };
 }
 
@@ -181,6 +218,8 @@ export const regrasWebhookAutentique: RegrasWebhook = {
     if (tipo === "document.finished") return "FINALIZADO";
     if (tipo === "signature.rejected") return "RECUSADO";
     if (tipo === "document.deleted") return "CANCELADO";
+    // O painel só oferece eventos de documento: uma recusa chega como atualização.
+    if (tipo === "document.updated" || tipo?.startsWith("signature.")) return "ATUALIZADO";
     return null;
   },
 };

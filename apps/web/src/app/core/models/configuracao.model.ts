@@ -13,6 +13,7 @@ export type PagamentoProvedor = "ASAAS" | "REDE";
 export type RedeAmbiente = "SANDBOX" | "PRODUCAO";
 
 export type ClicksignAmbiente = "SANDBOX" | "PRODUCAO";
+export type ProvedorAssinatura = "CLICKSIGN" | "AUTENTIQUE";
 export type ClicksignAutenticacao = "EMAIL" | "SMS" | "WHATSAPP" | "ICP_BRASIL";
 
 /** Quem emite a NFS-e: o Asaas ou direto no Portal Nacional (certificado A1). */
@@ -52,6 +53,11 @@ export interface Configuracao {
   /** Modelo (.docx) do contrato de prestação de serviços — só o nome; o arquivo fica no servidor. */
   contratoModeloNome: string | null;
   contratoModeloConfigurado: boolean;
+  assinaturaProvedor: ProvedorAssinatura;
+  autentiqueSandbox: boolean;
+  /** Nunca vem o token/segredo em si — só se já foram configurados. */
+  autentiqueTokenConfigurado: boolean;
+  autentiqueWebhookSecretConfigurado: boolean;
   clicksignAmbiente: ClicksignAmbiente;
   clicksignAutenticacao: ClicksignAutenticacao;
   clicksignEscolaNome: string | null;
@@ -122,6 +128,8 @@ export type AtualizarConfiguracaoPayload = Omit<
   | "contratoModeloConfigurado"
   | "clicksignTokenConfigurado"
   | "clicksignHmacConfigurado"
+  | "autentiqueTokenConfigurado"
+  | "autentiqueWebhookSecretConfigurado"
   | "nfseCertificadoConfigurado"
   | "nfseCertificadoTitular"
   | "nfseCertificadoCnpj"
@@ -143,6 +151,10 @@ export type AtualizarConfiguracaoPayload = Omit<
   clicksignToken?: string;
   /** Só enviado quando o admin digita um novo segredo HMAC do webhook da Clicksign. */
   clicksignHmacSecret?: string;
+  /** Só enviado quando o admin digita um novo token da Autentique. */
+  autentiqueToken?: string;
+  /** Só enviado quando o admin digita um novo segredo do webhook da Autentique. */
+  autentiqueWebhookSecret?: string;
 };
 
 /** Frase que precisa ser digitada exatamente para confirmar a limpeza da base (backend valida). */

@@ -27,7 +27,11 @@ import { portalRouter } from "./modules/portal/portal.routes";
 import { solicitacoesRouter } from "./modules/solicitacoes/solicitacoes.routes";
 import { sacadosRouter } from "./modules/sacados/sacados.routes";
 import { nfseRouter } from "./modules/nfse/nfse.routes";
-import { clicksignWebhookRouter, contratosRouter } from "./modules/contratos/contratos.routes";
+import {
+  autentiqueWebhookRouter,
+  clicksignWebhookRouter,
+  contratosRouter,
+} from "./modules/contratos/contratos.routes";
 import { dashboardRouter } from "./modules/dashboard/dashboard.routes";
 
 export const app = express();
@@ -73,6 +77,8 @@ app.use("/api/asaas/webhook", asaasWebhookRouter);
 app.use("/api/rede/webhook", redeWebhookRouter);
 // Webhook da Clicksign (assinatura de contratos) — público, validado por HMAC (header Content-Hmac).
 app.use("/api/clicksign/webhook", clicksignWebhookRouter);
+// Idem para a Autentique (header X-Autentique-Signature).
+app.use("/api/autentique/webhook", autentiqueWebhookRouter);
 
 // Área do aluno: autenticação própria (token de aluno), fora do RBAC interno.
 app.use("/api/portal", portalRouter);

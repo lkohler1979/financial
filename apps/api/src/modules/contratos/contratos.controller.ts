@@ -1,9 +1,11 @@
+import { ProvedorAssinatura } from "@prisma/client";
 import { Request, Response } from "express";
 import { ValidationError } from "../../shared/errors/app-error";
 import { asyncHandler } from "../../shared/utils/async-handler";
 import { paramString, usuarioAtual } from "../../shared/utils/http";
 import { CAMPOS_CONTRATO } from "./contrato-modelo";
 import { contratosService } from "./contratos.service";
+import { REGRAS_WEBHOOK } from "./provedores";
 
 export const contratosController = {
   campos: asyncHandler(async (_req: Request, res: Response) => {
@@ -77,9 +79,15 @@ export const contratosController = {
 
   // Rota pública (ver app.ts): quem chama é a Clicksign. A autenticidade vem do HMAC no header
   // `Content-Hmac`, calculado sobre o corpo bruto. Sempre 2xx para eventos válidos.
-  webhook: asyncHandler(async (req: Request, res: Response) => {
-    const bruto = (req as Request & { rawBody?: Buffer }).rawBody ?? Buffer.from("");
-    await contratosService.processarWebhook(bruto, req.header("content-hmac"), req.body);
-    res.status(200).json({ recebido: true });
-  }),
+  webhook: (provedor: ProvedorAssinatura) =>
+    asyncHandler(async (req: Request, res: Response) => {
+      const bruto = (req as Request & { rawBody?: Buffer }).rawBody ?? Buffer.from("");
+      await contratosService.processarWebhook(
+        provedor,
+        bruto,
+        req.header(REGRAS_WEBHOOK[provedor].headerAssinatura),
+        req.body,
+      );
+      res.status(200).json({ recebido: true });
+    }),
 };

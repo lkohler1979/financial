@@ -70,6 +70,10 @@ function serializarConfiguracao(configuracao: {
   redeWebhookTokenCriptografado: string | null;
   contratoModeloChave: string | null;
   contratoModeloNome: string | null;
+  assinaturaProvedor: "CLICKSIGN" | "AUTENTIQUE";
+  autentiqueTokenCriptografado: string | null;
+  autentiqueWebhookSecretCriptografado: string | null;
+  autentiqueSandbox: boolean;
   clicksignAmbiente: "SANDBOX" | "PRODUCAO";
   clicksignTokenCriptografado: string | null;
   clicksignHmacCriptografado: string | null;
@@ -89,6 +93,8 @@ function serializarConfiguracao(configuracao: {
     redeWebhookTokenCriptografado,
     clicksignTokenCriptografado,
     clicksignHmacCriptografado,
+    autentiqueTokenCriptografado,
+    autentiqueWebhookSecretCriptografado,
     contratoModeloChave,
     nfseCertificadoCriptografado,
     nfseCertificadoSenhaCriptografada,
@@ -120,6 +126,8 @@ function serializarConfiguracao(configuracao: {
     redeWebhookTokenConfigurado: Boolean(redeWebhookTokenCriptografado),
     clicksignTokenConfigurado: Boolean(clicksignTokenCriptografado),
     clicksignHmacConfigurado: Boolean(clicksignHmacCriptografado),
+    autentiqueTokenConfigurado: Boolean(autentiqueTokenCriptografado),
+    autentiqueWebhookSecretConfigurado: Boolean(autentiqueWebhookSecretCriptografado),
     contratoModeloConfigurado: Boolean(contratoModeloChave),
   };
 }
@@ -175,6 +183,18 @@ export const configuracoesService = {
       ...(input.provedorBoleto !== undefined ? { provedorBoleto: input.provedorBoleto } : {}),
       ...(input.provedorPix !== undefined ? { provedorPix: input.provedorPix } : {}),
       ...(input.provedorCartao !== undefined ? { provedorCartao: input.provedorCartao } : {}),
+      ...(input.assinaturaProvedor !== undefined
+        ? { assinaturaProvedor: input.assinaturaProvedor }
+        : {}),
+      ...(input.autentiqueToken !== undefined
+        ? { autentiqueTokenCriptografado: criptografar(input.autentiqueToken) }
+        : {}),
+      ...(input.autentiqueWebhookSecret !== undefined
+        ? { autentiqueWebhookSecretCriptografado: criptografar(input.autentiqueWebhookSecret) }
+        : {}),
+      ...(input.autentiqueSandbox !== undefined
+        ? { autentiqueSandbox: input.autentiqueSandbox }
+        : {}),
       ...(input.clicksignAmbiente !== undefined
         ? { clicksignAmbiente: input.clicksignAmbiente }
         : {}),
@@ -285,6 +305,8 @@ export const configuracoesService = {
       "redeWebhookToken",
       "clicksignToken",
       "clicksignHmacSecret",
+      "autentiqueToken",
+      "autentiqueWebhookSecret",
     ];
     await registrarAuditoria({
       usuarioId,

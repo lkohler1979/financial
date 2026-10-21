@@ -1,4 +1,4 @@
-import { ClicksignAutenticacao, Prisma } from "@prisma/client";
+import { ClicksignAutenticacao, Prisma, ProvedorAssinatura } from "@prisma/client";
 import { prisma } from "../../database/prisma";
 
 export const contratosRepository = {
@@ -30,15 +30,16 @@ export const contratosRepository = {
     const ids = [...new Set(textos.filter((t) => t.length >= 8 && t.length <= 64))];
     if (ids.length === 0) return Promise.resolve(null);
     return prisma.contratoMatricula.findFirst({
-      where: { OR: [{ envelopeId: { in: ids } }, { documentoClicksignId: { in: ids } }] },
+      where: { OR: [{ envelopeId: { in: ids } }, { documentoExternoId: { in: ids } }] },
       orderBy: { enviadoEm: "desc" },
     });
   },
 
   criar(dados: {
     matriculaId: string;
-    envelopeId: string;
-    documentoClicksignId: string;
+    provedor: ProvedorAssinatura;
+    envelopeId: string | null;
+    documentoExternoId: string;
     contratanteNome: string;
     contratanteEmail: string;
     autenticacao: ClicksignAutenticacao;

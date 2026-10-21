@@ -334,17 +334,30 @@ export const contratosService = {
     };
   },
 
-  /** Busca o PDF assinado na Clicksign e marca o contrato como assinado. */
-  async sincronizarAssinado(contratoId: string) {
+  /**
+   * Confere a situação do contrato na plataforma e, estando assinado, baixa o PDF. `confirmado`
+   * é para quando o próprio webhook já avisou que terminou (aí não se confere de novo).
+   */
+  async sincronizarAssinado(contratoId: string, opcoes: { confirmado?: boolean } = {}) {
     const contrato = await contratosRepository.porId(contratoId);
     if (!contrato || !contrato.documentoExternoId)
       throw new NotFoundError("Contrato não encontrado");
     const config = await configuracoesRepository.obterOuCriar();
     const provedor = obterProvedor(config, contrato.provedor);
-    const pdf = await provedor.baixarAssinado({
-      envelopeId: contrato.envelopeId,
-      documentoId: contrato.documentoExternoId,
-    });
+    const ref = { envelopeId: contrato.envelopeId, documentoId: contrato.documentoExternoId };
+    let confirmado = opcoes.confirmado ?? false;
+    if (!confirmado && provedor.consultarSituacao) {
+      const situacao = await provedor.consultarSituacao(ref);
+      if (situacao === "RECUSADO") {
+        await contratosRepository.atualizar(contrato.id, { status: "RECUSADO" });
+        return contratosRepository.porId(contratoId);
+      }
+      if (situacao === "PENDENTE") return contratosRepository.porId(contratoId);
+      confirmado = true;
+    }
+    const pdf = await provedor.baixarAssinado(ref);
+    // Sem confirmação da plataforma, só dá por assinado se o PDF assinado de fato existe.
+    if (!pdf && !confirmado) return contratosRepository.porId(contratoId);
     const chave = pdf
       ? await armazenamento.salvar(PASTA_CONTRATOS, "contrato-assinado.pdf", pdf)
       : null;
@@ -386,6 +399,8 @@ export const contratosService = {
     if (contrato.status !== "ENVIADO" && !faltaArquivo) return;
 
     if (evento === "FINALIZADO") {
+      await this.sincronizarAssinado(contrato.id, { confirmado: true });
+    } else if (evento === "ATUALIZADO") {
       await this.sincronizarAssinado(contrato.id);
     } else {
       await contratosRepository.atualizar(contrato.id, {

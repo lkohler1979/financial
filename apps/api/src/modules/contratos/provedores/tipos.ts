@@ -27,7 +27,10 @@ export interface ReferenciaContrato {
 }
 
 /** Resultado de um evento de webhook que interessa ao contrato. */
-export type EventoContrato = "FINALIZADO" | "RECUSADO" | "CANCELADO";
+/** "ATUALIZADO": algo mudou no documento; a situação real se confere consultando a plataforma. */
+export type EventoContrato = "FINALIZADO" | "RECUSADO" | "CANCELADO" | "ATUALIZADO";
+
+export type SituacaoAssinatura = "PENDENTE" | "ASSINADO" | "RECUSADO";
 
 /** Operações de uma plataforma de assinatura eletrônica. */
 export interface ProvedorDeAssinatura {
@@ -38,6 +41,8 @@ export interface ProvedorDeAssinatura {
   /** PDF assinado, ou null se ainda não está disponível. */
   baixarAssinado(ref: ReferenciaContrato): Promise<Buffer | null>;
   cancelar(ref: ReferenciaContrato): Promise<void>;
+  /** Situação das assinaturas, quando a plataforma permite consultar (senão, não existe). */
+  consultarSituacao?(ref: ReferenciaContrato): Promise<SituacaoAssinatura>;
 }
 
 /** Como cada plataforma assina e descreve seus webhooks. */

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   criarProvedorAutentique,
   regrasWebhookAutentique,
+  situacaoDasAssinaturas,
   telefoneInternacional,
 } from "../../src/modules/contratos/provedores/autentique.provider";
 import { regrasWebhookClicksign } from "../../src/modules/contratos/provedores/clicksign.provider";
@@ -156,7 +157,8 @@ describe("leitura dos eventos de webhook", () => {
     expect(e("document.finished")).toBe("FINALIZADO");
     expect(e("signature.rejected")).toBe("RECUSADO");
     expect(e("document.deleted")).toBe("CANCELADO");
-    expect(e("signature.viewed")).toBeNull();
+    expect(e("document.updated")).toBe("ATUALIZADO");
+    expect(e("document.created")).toBeNull();
     expect(regrasWebhookAutentique.headerAssinatura).toBe("x-autentique-signature");
   });
 
@@ -167,5 +169,24 @@ describe("leitura dos eventos de webhook", () => {
     expect(e("cancel")).toBe("CANCELADO");
     expect(e("sign")).toBeNull();
     expect(regrasWebhookClicksign.headerAssinatura).toBe("content-hmac");
+  });
+});
+
+describe("situacaoDasAssinaturas (Autentique)", () => {
+  const sim = { created_at: "2026-10-21" };
+  it("ignora o dono da conta (sem ação) e exige todos os signatários com ação", () => {
+    const dono = { action: null, signed: null, rejected: null };
+    const a = { action: { name: "SIGN" }, signed: null, rejected: null };
+    expect(situacaoDasAssinaturas([dono, a])).toBe("PENDENTE");
+    expect(situacaoDasAssinaturas([dono, { ...a, signed: sim }])).toBe("ASSINADO");
+    expect(situacaoDasAssinaturas([{ ...a, signed: sim }, a])).toBe("PENDENTE");
+  });
+  it("uma recusa vence", () => {
+    const a = { action: { name: "SIGN" }, signed: sim, rejected: null };
+    const b = { action: { name: "SIGN" }, signed: null, rejected: sim };
+    expect(situacaoDasAssinaturas([a, b])).toBe("RECUSADO");
+  });
+  it("sem signatários com ação fica pendente", () => {
+    expect(situacaoDasAssinaturas([])).toBe("PENDENTE");
   });
 });

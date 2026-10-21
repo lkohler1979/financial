@@ -60,7 +60,8 @@ const AUTENTICACAO = {
           </span>
           <span class="ml-2">
             Contratante: <strong>{{ c.contratanteNome }}</strong> ({{ c.contratanteEmail }}) —
-            autenticação por {{ autenticacao(c) }}
+            autenticação por {{ autenticacao(c) }} ·
+            {{ c.provedor === "AUTENTIQUE" ? "Autentique" : "Clicksign" }}
           </span>
           <div class="text-xs text-gray-500 mt-1">
             Enviado em {{ c.enviadoEm | date: "dd/MM/yyyy HH:mm" }}
@@ -70,7 +71,8 @@ const AUTENTICACAO = {
           </div>
           @if (c.status === "ASSINADO" && !c.arquivoAssinadoChave) {
             <div class="text-xs text-amber-700 mt-1">
-              O arquivo assinado ainda não chegou da Clicksign. Use "Atualizar situação".
+              O arquivo assinado ainda não chegou da plataforma de assinatura. Use "Atualizar
+              situação".
             </div>
           }
         </div>
@@ -267,7 +269,7 @@ export class ContratoMatriculaDialogComponent implements OnInit {
         this.contrato.set(c);
         this.ocupado.set(false);
       },
-      error: this.falhou("Não foi possível consultar a Clicksign."),
+      error: this.falhou("Não foi possível consultar a plataforma de assinatura."),
     });
   }
 

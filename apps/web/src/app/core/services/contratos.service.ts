@@ -9,6 +9,7 @@ export interface ContratoMatricula {
   id: string;
   matriculaId: string;
   status: StatusContrato;
+  provedor: "CLICKSIGN" | "AUTENTIQUE";
   contratanteNome: string;
   contratanteEmail: string;
   autenticacao: "EMAIL" | "SMS" | "WHATSAPP" | "ICP_BRASIL";
@@ -60,7 +61,7 @@ export class ContratosService {
     return this.http.post<void>(`${this.baseUrl}/matriculas/${matriculaId}/cancelar`, {});
   }
 
-  /** Busca na Clicksign o PDF assinado (usado quando o webhook não chegou). */
+  /** Busca na plataforma de assinatura o PDF assinado (usado quando o webhook não chegou). */
   sincronizar(matriculaId: string): Observable<ContratoMatricula> {
     return this.http.post<ContratoMatricula>(
       `${this.baseUrl}/matriculas/${matriculaId}/sincronizar`,

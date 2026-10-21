@@ -27,6 +27,7 @@ import {
   RedeAmbiente,
   ClicksignAmbiente,
   ClicksignAutenticacao,
+  ProvedorAssinatura,
   TipoTituloProtesto,
 } from "../../core/models/configuracao.model";
 import {
@@ -673,11 +674,11 @@ import {
 
       <section class="bg-white rounded-lg border p-5">
         <p class="text-sm font-medium text-gray-700 mb-1">
-          Contrato de prestação de serviços e assinatura (Clicksign)
+          Contrato de prestação de serviços e assinatura eletrônica
         </p>
         <p class="text-xs text-gray-500 mb-4">
-          O contrato é gerado na matrícula a partir do modelo abaixo e enviado para assinatura
-          eletrônica. Deixe token/segredo em branco para manter os atuais.
+          O contrato é gerado na matrícula a partir do modelo abaixo e enviado para assinatura na
+          plataforma escolhida. Deixe token/segredo em branco para manter os atuais.
         </p>
 
         <div class="border rounded-lg p-4 mb-4 bg-gray-50">
@@ -732,46 +733,99 @@ import {
           </details>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <mat-form-field appearance="outline">
-            <mat-label>Ambiente</mat-label>
-            <mat-select formControlName="clicksignAmbiente">
-              <mat-option value="SANDBOX">Sandbox (testes)</mat-option>
-              <mat-option value="PRODUCAO">Produção</mat-option>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-x-3 gap-y-6">
+          <mat-form-field appearance="outline" class="md:col-span-3">
+            <mat-label>Plataforma de assinatura</mat-label>
+            <mat-select formControlName="assinaturaProvedor">
+              <mat-option value="CLICKSIGN">Clicksign</mat-option>
+              <mat-option value="AUTENTIQUE">Autentique</mat-option>
             </mat-select>
+            <mat-hint>
+              Vale para os próximos envios; contratos já enviados seguem na plataforma de origem.
+            </mat-hint>
           </mat-form-field>
 
-          <mat-form-field appearance="outline">
-            <mat-label>{{
-              clicksignTokenConfigurado ? "Novo token (opcional)" : "Token de acesso"
-            }}</mat-label>
-            <input
-              matInput
-              type="password"
-              [formControl]="clicksignTokenControl"
-              autocomplete="new-password"
-            />
-            @if (clicksignTokenConfigurado) {
-              <mat-hint>Token já configurado — preencha só para trocar.</mat-hint>
-            }
-          </mat-form-field>
+          @if (form.controls.assinaturaProvedor.value === "CLICKSIGN") {
+            <mat-form-field appearance="outline">
+              <mat-label>Ambiente</mat-label>
+              <mat-select formControlName="clicksignAmbiente">
+                <mat-option value="SANDBOX">Sandbox (testes)</mat-option>
+                <mat-option value="PRODUCAO">Produção</mat-option>
+              </mat-select>
+            </mat-form-field>
 
-          <mat-form-field appearance="outline">
-            <mat-label>{{
-              clicksignHmacConfigurado ? "Novo segredo HMAC (opcional)" : "Segredo HMAC do webhook"
-            }}</mat-label>
-            <input
-              matInput
-              type="password"
-              [formControl]="clicksignHmacControl"
-              autocomplete="new-password"
-            />
-            @if (clicksignHmacConfigurado) {
-              <mat-hint>Segredo já configurado — preencha só para trocar.</mat-hint>
-            }
-          </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>{{
+                clicksignTokenConfigurado ? "Novo token (opcional)" : "Token de acesso"
+              }}</mat-label>
+              <input
+                matInput
+                type="password"
+                [formControl]="clicksignTokenControl"
+                autocomplete="new-password"
+              />
+              @if (clicksignTokenConfigurado) {
+                <mat-hint>Token já configurado — preencha só para trocar.</mat-hint>
+              }
+            </mat-form-field>
 
-          <mat-form-field appearance="outline">
+            <mat-form-field appearance="outline">
+              <mat-label>{{
+                clicksignHmacConfigurado
+                  ? "Novo segredo HMAC (opcional)"
+                  : "Segredo HMAC do webhook"
+              }}</mat-label>
+              <input
+                matInput
+                type="password"
+                [formControl]="clicksignHmacControl"
+                autocomplete="new-password"
+              />
+              @if (clicksignHmacConfigurado) {
+                <mat-hint>Segredo já configurado — preencha só para trocar.</mat-hint>
+              }
+            </mat-form-field>
+          } @else {
+            <mat-form-field appearance="outline">
+              <mat-label>{{
+                autentiqueTokenConfigurado ? "Novo token (opcional)" : "Token da API"
+              }}</mat-label>
+              <input
+                matInput
+                type="password"
+                [formControl]="autentiqueTokenControl"
+                autocomplete="new-password"
+              />
+              @if (autentiqueTokenConfigurado) {
+                <mat-hint>Token já configurado — preencha só para trocar.</mat-hint>
+              }
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>{{
+                autentiqueWebhookSecretConfigurado
+                  ? "Novo segredo do webhook (opcional)"
+                  : "Segredo do webhook"
+              }}</mat-label>
+              <input
+                matInput
+                type="password"
+                [formControl]="autentiqueSecretControl"
+                autocomplete="new-password"
+              />
+              @if (autentiqueWebhookSecretConfigurado) {
+                <mat-hint>Segredo já configurado — preencha só para trocar.</mat-hint>
+              }
+            </mat-form-field>
+
+            <div class="flex items-center">
+              <mat-checkbox formControlName="autentiqueSandbox">
+                Modo de teste (sandbox — não consome créditos)
+              </mat-checkbox>
+            </div>
+          }
+
+          <mat-form-field appearance="outline" class="md:col-span-3">
             <mat-label>Autenticação do signatário</mat-label>
             <mat-select formControlName="clicksignAutenticacao">
               <mat-option value="EMAIL">E-mail</mat-option>
@@ -780,7 +834,12 @@ import {
               <mat-option value="ICP_BRASIL">Certificado digital ICP-Brasil</mat-option>
             </mat-select>
             <mat-hint>
-              ICP-Brasil exige que o signatário tenha certificado digital (e-CPF).
+              @if (form.controls.assinaturaProvedor.value === "CLICKSIGN") {
+                ICP-Brasil exige que o signatário tenha certificado digital (e-CPF).
+              } @else {
+                Na Autentique, ICP-Brasil liga a assinatura qualificada (certificado digital) no
+                documento; pode exigir plano corporativo.
+              }
             </mat-hint>
           </mat-form-field>
         </div>
@@ -807,10 +866,17 @@ import {
         </div>
 
         <p class="text-xs text-gray-500 mt-2">
-          URL do webhook para cadastrar na Clicksign:
-          <code class="bg-gray-100 px-1 rounded">{{ clicksignWebhookUrl }}</code>
-          — eventos: <em>document_closed</em>, <em>refusal</em> e <em>cancel</em>; o segredo HMAC
-          gerado lá é o campo acima.
+          @if (form.controls.assinaturaProvedor.value === "CLICKSIGN") {
+            URL do webhook para cadastrar na Clicksign:
+            <code class="bg-gray-100 px-1 rounded">{{ clicksignWebhookUrl }}</code>
+            — eventos: <em>document_closed</em>, <em>refusal</em> e <em>cancel</em>; o segredo HMAC
+            gerado lá é o campo acima.
+          } @else {
+            URL do webhook para cadastrar no painel da Autentique:
+            <code class="bg-gray-100 px-1 rounded">{{ autentiqueWebhookUrl }}</code>
+            — eventos: <em>document.finished</em>, <em>signature.rejected</em> e
+            <em>document.deleted</em>; o segredo é o campo acima.
+          }
         </p>
       </section>
 
@@ -1125,6 +1191,8 @@ export class ConfiguracoesComponent implements OnInit {
     nfseSerieDps: this.fb.nonNullable.control(1, [Validators.min(1), Validators.max(89999)]),
     nfseProximoNumeroDps: this.fb.nonNullable.control(1, [Validators.min(1)]),
     redeAmbiente: this.fb.nonNullable.control<RedeAmbiente>("SANDBOX"),
+    assinaturaProvedor: this.fb.nonNullable.control<ProvedorAssinatura>("CLICKSIGN"),
+    autentiqueSandbox: this.fb.nonNullable.control(true),
     clicksignAmbiente: this.fb.nonNullable.control<ClicksignAmbiente>("SANDBOX"),
     clicksignAutenticacao: this.fb.nonNullable.control<ClicksignAutenticacao>("EMAIL"),
     clicksignEscolaNome: this.fb.control<string | null>(null),
@@ -1162,6 +1230,13 @@ export class ConfiguracoesComponent implements OnInit {
   clicksignTokenConfigurado = false;
   clicksignHmacConfigurado = false;
   readonly clicksignWebhookUrl = `${window.location.origin}/api/clicksign/webhook`;
+
+  /** Token e segredo do webhook da Autentique: nunca vêm do backend. */
+  readonly autentiqueTokenControl = this.fb.nonNullable.control("");
+  readonly autentiqueSecretControl = this.fb.nonNullable.control("");
+  autentiqueTokenConfigurado = false;
+  autentiqueWebhookSecretConfigurado = false;
+  readonly autentiqueWebhookUrl = `${window.location.origin}/api/autentique/webhook`;
 
   private readonly contratosService = inject(ContratosService);
   camposContrato: { campo: string; descricao: string }[] = [];
@@ -1211,6 +1286,8 @@ export class ConfiguracoesComponent implements OnInit {
         this.redeWebhookTokenConfigurado = configuracao.redeWebhookTokenConfigurado;
         this.clicksignTokenConfigurado = configuracao.clicksignTokenConfigurado;
         this.clicksignHmacConfigurado = configuracao.clicksignHmacConfigurado;
+        this.autentiqueTokenConfigurado = configuracao.autentiqueTokenConfigurado;
+        this.autentiqueWebhookSecretConfigurado = configuracao.autentiqueWebhookSecretConfigurado;
         this.contratoModeloNome = configuracao.contratoModeloNome;
         this.atualizarResumoCertificado(configuracao);
         this.carregando = false;
@@ -1325,6 +1402,8 @@ export class ConfiguracoesComponent implements OnInit {
     const novoTokenRede = this.redeWebhookTokenControl.value.trim();
     const novoTokenClicksign = this.clicksignTokenControl.value.trim();
     const novoHmacClicksign = this.clicksignHmacControl.value.trim();
+    const novoTokenAutentique = this.autentiqueTokenControl.value.trim();
+    const novoSegredoAutentique = this.autentiqueSecretControl.value.trim();
     const payload: AtualizarConfiguracaoPayload = {
       ...valor,
       legadoUrl: valor.legadoUrl.trim() || null,
@@ -1349,6 +1428,8 @@ export class ConfiguracoesComponent implements OnInit {
       clicksignEscolaCpf: valor.clicksignEscolaCpf?.trim() || null,
       ...(novoTokenClicksign ? { clicksignToken: novoTokenClicksign } : {}),
       ...(novoHmacClicksign ? { clicksignHmacSecret: novoHmacClicksign } : {}),
+      ...(novoTokenAutentique ? { autentiqueToken: novoTokenAutentique } : {}),
+      ...(novoSegredoAutentique ? { autentiqueWebhookSecret: novoSegredoAutentique } : {}),
     };
 
     this.service.atualizar(payload).subscribe({
@@ -1375,6 +1456,10 @@ export class ConfiguracoesComponent implements OnInit {
         this.clicksignHmacConfigurado = configuracao.clicksignHmacConfigurado;
         this.clicksignTokenControl.setValue("");
         this.clicksignHmacControl.setValue("");
+        this.autentiqueTokenConfigurado = configuracao.autentiqueTokenConfigurado;
+        this.autentiqueWebhookSecretConfigurado = configuracao.autentiqueWebhookSecretConfigurado;
+        this.autentiqueTokenControl.setValue("");
+        this.autentiqueSecretControl.setValue("");
         this.salvando = false;
         this.snackBar.open("Configurações salvas", "Fechar", { duration: 3000 });
       },

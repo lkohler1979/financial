@@ -36,6 +36,8 @@ contratosRouter.post(
   contratosController.sincronizar,
 );
 
-// Webhook público da Clicksign — fora do requireAuth (ver app.ts).
+// Webhooks públicos das plataformas de assinatura — fora do requireAuth (ver app.ts).
 export const clicksignWebhookRouter = Router();
-clicksignWebhookRouter.post("/", contratosController.webhook);
+clicksignWebhookRouter.post("/", contratosController.webhook("CLICKSIGN"));
+export const autentiqueWebhookRouter = Router();
+autentiqueWebhookRouter.post("/", contratosController.webhook("AUTENTIQUE"));

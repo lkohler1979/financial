@@ -1,4 +1,4 @@
-import { ClicksignAutenticacao, Prisma } from "@prisma/client";
+import { Prisma, ProvedorAssinatura } from "@prisma/client";
 import { armazenamento } from "../../shared/armazenamento/armazenamento";
 import {
   AppError,
@@ -6,25 +6,17 @@ import {
   NotFoundError,
   ValidationError,
 } from "../../shared/errors/app-error";
-import { decifrar } from "../../shared/utils/criptografia";
 import { validarCpf } from "../../shared/utils/cpf";
 import { registrarAuditoria } from "../auditoria/auditoria.service";
 import { configuracoesRepository } from "../configuracoes/configuracoes.repository";
-import { ClicksignClient, type AuthClicksign } from "./clicksign-client";
 import { ehDocx, preencherModeloDocx } from "./contrato-modelo";
 import { contratosRepository } from "./contratos.repository";
 import { verificarAssinaturaWebhook } from "./clicksign-webhook";
+import { obterProvedor, REGRAS_WEBHOOK, segredoWebhook } from "./provedores";
 
 const MIME_DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 const PASTA_MODELO = "contratos/modelo";
 const PASTA_CONTRATOS = "contratos";
-
-const AUTH: Record<ClicksignAutenticacao, AuthClicksign> = {
-  EMAIL: "email",
-  SMS: "sms",
-  WHATSAPP: "whatsapp",
-  ICP_BRASIL: "icp_brasil",
-};
 
 const MESES = [
   "janeiro",
@@ -180,18 +172,6 @@ function nomeArquivo(aluno: string, curso: string): string {
   return `${limpo.slice(0, 120)}.docx`;
 }
 
-function clienteClicksign(
-  config: Awaited<ReturnType<typeof configuracoesRepository.obterOuCriar>>,
-): ClicksignClient {
-  if (!config.clicksignTokenCriptografado) {
-    throw new ValidationError("Informe o token da Clicksign em Configurações.");
-  }
-  return new ClicksignClient(
-    decifrar(config.clicksignTokenCriptografado),
-    config.clicksignAmbiente,
-  );
-}
-
 export const contratosService = {
   /** Modelo: grava o .docx enviado em Configurações. */
   async salvarModelo(arquivo: Buffer, nomeOriginal: string, usuarioId: string) {
@@ -243,9 +223,9 @@ export const contratosService = {
     }
 
     const { matricula, config, arquivo } = await gerarDocx(matriculaId);
+    const provedor = obterProvedor(config);
     const contratante = definirContratante(matricula);
-    const cliente = clienteClicksign(config);
-    const auth = AUTH[config.clicksignAutenticacao];
+    const autenticacao = config.clicksignAutenticacao;
 
     const email = contratante.email?.trim();
     if (!email)
@@ -253,59 +233,53 @@ export const contratosService = {
     if (!validarCpf(contratante.documento))
       throw new ValidationError(`CPF de ${contratante.nome} inválido ou ausente.`);
     if (contratante.nome.trim().split(/\s+/).length < 2)
-      throw new ValidationError("A Clicksign exige nome e sobrenome do signatário.");
+      throw new ValidationError("O signatário precisa ter nome e sobrenome.");
     const telefone = digitos(contratante.telefone);
-    if ((auth === "sms" || auth === "whatsapp") && telefone.length < 10)
+    if ((autenticacao === "SMS" || autenticacao === "WHATSAPP") && telefone.length < 10)
       throw new ValidationError(
-        `Cadastre o telefone de ${contratante.nome} (autenticação por ${auth}).`,
+        `Cadastre o telefone de ${contratante.nome} (autenticação por ${autenticacao}).`,
       );
 
     const nome = nomeArquivo(matricula.aluno.nome, matricula.curso.nome);
     const chaveGerado = await armazenamento.salvar(PASTA_CONTRATOS, nome, arquivo);
 
-    let envelopeId: string | null = null;
     try {
-      envelopeId = await cliente.criarEnvelope(`Contrato - ${matricula.aluno.nome}`);
-      const documentoId = await cliente.adicionarDocumento(envelopeId, nome, arquivo, MIME_DOCX);
-
-      const signatarioId = await cliente.adicionarSignatario(envelopeId, {
-        nome: contratante.nome,
-        email,
-        cpf: cpfFormatado(contratante.documento),
-        telefone: telefone || undefined,
-        nascimento: contratante.nascimento?.toISOString().slice(0, 10),
-      });
-      await cliente.adicionarRequisitos(envelopeId, documentoId, signatarioId, auth);
-
-      // Representante da escola assina também, se estiver configurado. Sem telefone cadastrado,
-      // a autenticação dele é por e-mail (ou ICP-Brasil, quando for o método escolhido).
-      if (
+      // Representante da escola assina também, se estiver configurado.
+      const escola =
         config.clicksignEscolaNome &&
         config.clicksignEscolaEmail &&
         validarCpf(config.clicksignEscolaCpf ?? "")
-      ) {
-        const escolaId = await cliente.adicionarSignatario(envelopeId, {
-          nome: config.clicksignEscolaNome,
-          email: config.clicksignEscolaEmail,
-          cpf: cpfFormatado(config.clicksignEscolaCpf as string),
-        });
-        await cliente.adicionarRequisitos(
-          envelopeId,
-          documentoId,
-          escolaId,
-          auth === "icp_brasil" ? "icp_brasil" : "email",
-        );
-      }
+          ? {
+              nome: config.clicksignEscolaNome,
+              email: config.clicksignEscolaEmail,
+              cpf: cpfFormatado(config.clicksignEscolaCpf as string),
+            }
+          : undefined;
 
-      await cliente.ativarEnvelope(envelopeId);
+      const ref = await provedor.enviar({
+        nomeDocumento: `Contrato - ${matricula.aluno.nome}`,
+        filename: nome,
+        arquivo,
+        mime: MIME_DOCX,
+        autenticacao,
+        contratante: {
+          nome: contratante.nome,
+          email,
+          cpf: cpfFormatado(contratante.documento),
+          telefone: telefone || undefined,
+          nascimento: contratante.nascimento?.toISOString().slice(0, 10),
+        },
+        escola,
+      });
 
       const contrato = await contratosRepository.criar({
         matriculaId,
-        envelopeId,
-        documentoClicksignId: documentoId,
+        provedor: provedor.id,
+        envelopeId: ref.envelopeId,
+        documentoExternoId: ref.documentoId,
         contratanteNome: contratante.nome,
         contratanteEmail: email,
-        autenticacao: config.clicksignAutenticacao,
+        autenticacao,
         arquivoGeradoChave: chaveGerado,
         enviadoPorId: usuarioId,
       });
@@ -314,13 +288,11 @@ export const contratosService = {
         entidade: "ContratoMatricula",
         entidadeId: contrato.id,
         acao: "CRIACAO",
-        detalhes: { matriculaId, envelopeId, autenticacao: config.clicksignAutenticacao },
+        detalhes: { matriculaId, provedor: provedor.id, autenticacao },
       });
       return contrato;
     } catch (erro) {
       await armazenamento.remover(chaveGerado);
-      // Tenta não deixar envelope órfão na Clicksign.
-      if (envelopeId) await cliente.cancelarEnvelope(envelopeId).catch(() => undefined);
       throw erro;
     }
   },
@@ -333,9 +305,12 @@ export const contratosService = {
     const contrato = await contratosRepository.ultimoDaMatricula(matriculaId);
     if (!contrato || contrato.status !== "ENVIADO")
       throw new NotFoundError("Não há contrato aguardando assinatura");
-    if (contrato.envelopeId) {
+    if (contrato.documentoExternoId) {
       const config = await configuracoesRepository.obterOuCriar();
-      await clienteClicksign(config).cancelarEnvelope(contrato.envelopeId);
+      await obterProvedor(config, contrato.provedor).cancelar({
+        envelopeId: contrato.envelopeId,
+        documentoId: contrato.documentoExternoId,
+      });
     }
     await contratosRepository.atualizar(contrato.id, { status: "CANCELADO" });
     await registrarAuditoria({
@@ -362,17 +337,18 @@ export const contratosService = {
   /** Busca o PDF assinado na Clicksign e marca o contrato como assinado. */
   async sincronizarAssinado(contratoId: string) {
     const contrato = await contratosRepository.porId(contratoId);
-    if (!contrato || !contrato.envelopeId || !contrato.documentoClicksignId)
+    if (!contrato || !contrato.documentoExternoId)
       throw new NotFoundError("Contrato não encontrado");
     const config = await configuracoesRepository.obterOuCriar();
-    const pdf = await clienteClicksign(config).baixarAssinado(
-      contrato.envelopeId,
-      contrato.documentoClicksignId,
-    );
+    const provedor = obterProvedor(config, contrato.provedor);
+    const pdf = await provedor.baixarAssinado({
+      envelopeId: contrato.envelopeId,
+      documentoId: contrato.documentoExternoId,
+    });
     const chave = pdf
       ? await armazenamento.salvar(PASTA_CONTRATOS, "contrato-assinado.pdf", pdf)
       : null;
-    if (!pdf) console.warn("[clicksign] arquivo assinado ainda indisponível", contratoId);
+    if (!pdf) console.warn(`[${provedor.nome}] arquivo assinado ainda indisponível`, contratoId);
     await contratosRepository.marcarAssinado(contrato, chave);
     return contratosRepository.porId(contratoId);
   },
@@ -384,33 +360,36 @@ export const contratosService = {
   },
 
   /**
-   * Webhook da Clicksign (rota pública). Valida o HMAC-SHA256 do corpo bruto com o segredo
-   * configurado; eventos que não interessam são aceitos e ignorados.
+   * Webhook de uma plataforma (rota pública). Valida o HMAC-SHA256 do corpo bruto com o segredo
+   * configurado para ela; eventos que não interessam são aceitos e ignorados.
    */
-  async processarWebhook(corpoBruto: Buffer, assinatura: string | undefined, payload: unknown) {
+  async processarWebhook(
+    provedorId: ProvedorAssinatura,
+    corpoBruto: Buffer,
+    assinatura: string | undefined,
+    payload: unknown,
+  ) {
     const config = await configuracoesRepository.obterOuCriar();
-    if (!config.clicksignHmacCriptografado)
-      throw new AppError("Webhook da Clicksign não configurado", 401, "NAO_AUTORIZADO");
-    if (
-      !verificarAssinaturaWebhook(
-        corpoBruto,
-        assinatura,
-        decifrar(config.clicksignHmacCriptografado),
-      )
-    )
+    const segredo = segredoWebhook(config, provedorId);
+    if (!segredo) throw new AppError("Webhook não configurado", 401, "NAO_AUTORIZADO");
+    if (!verificarAssinaturaWebhook(corpoBruto, assinatura, segredo))
       throw new AppError("Assinatura do webhook inválida", 401, "NAO_AUTORIZADO");
 
-    const evento = (payload as { event?: { name?: string } })?.event?.name;
-    if (!evento || !["document_closed", "refusal", "cancel"].includes(evento)) return;
+    const evento = REGRAS_WEBHOOK[provedorId].interpretar(payload);
+    if (!evento) return;
 
     const contrato = await contratosRepository.porIdentificadores(coletarTextos(payload));
-    if (!contrato || contrato.status !== "ENVIADO") return;
+    if (!contrato || contrato.provedor !== provedorId) return;
+    // Reentregas do mesmo evento são ignoradas; só se refaz o download se o PDF ainda faltava.
+    const faltaArquivo =
+      evento === "FINALIZADO" && contrato.status === "ASSINADO" && !contrato.arquivoAssinadoChave;
+    if (contrato.status !== "ENVIADO" && !faltaArquivo) return;
 
-    if (evento === "document_closed") {
+    if (evento === "FINALIZADO") {
       await this.sincronizarAssinado(contrato.id);
     } else {
       await contratosRepository.atualizar(contrato.id, {
-        status: evento === "refusal" ? "RECUSADO" : "CANCELADO",
+        status: evento === "RECUSADO" ? "RECUSADO" : "CANCELADO",
       });
     }
   },

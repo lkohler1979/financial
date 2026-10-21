@@ -81,6 +81,12 @@ export const atualizarConfiguracaoSchema = z
     nfseSerieDps: z.coerce.number().int().min(1).max(89999).optional(),
     nfseProximoNumeroDps: z.coerce.number().int().min(1).max(999999999999999).optional(),
     // Clicksign: token e segredo do webhook em texto puro só nesta entrada (gravados cifrados).
+    // Plataforma de assinatura dos contratos e credenciais da Autentique (texto puro só nesta
+    // entrada; gravadas cifradas).
+    assinaturaProvedor: z.enum(["CLICKSIGN", "AUTENTIQUE"]).optional(),
+    autentiqueToken: z.string().trim().min(1).max(300).optional(),
+    autentiqueWebhookSecret: z.string().trim().min(1).max(300).optional(),
+    autentiqueSandbox: z.boolean().optional(),
     clicksignAmbiente: z.enum(["SANDBOX", "PRODUCAO"]).optional(),
     clicksignToken: z.string().trim().min(1).max(200).optional(),
     clicksignHmacSecret: z.string().trim().min(1).max(200).optional(),

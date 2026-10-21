@@ -106,6 +106,12 @@ enum NfseProvedor {
   NACIONAL
 }
 
+/// Plataforma de assinatura eletrônica usada nos contratos (escolhida em Configurações).
+enum ProvedorAssinatura {
+  CLICKSIGN
+  AUTENTIQUE
+}
+
 enum ClicksignAmbiente {
   SANDBOX
   PRODUCAO
@@ -562,14 +568,20 @@ model Configuracao {
   contratoModeloNome  String? @map("contrato_modelo_nome")
 
   /// Integração Clicksign (assinatura eletrônica / ICP-Brasil). Token e segredo do webhook cifrados.
-  clicksignAmbiente           ClicksignAmbiente     @default(SANDBOX) @map("clicksign_ambiente")
-  clicksignTokenCriptografado String?               @map("clicksign_token_criptografado")
-  clicksignHmacCriptografado  String?               @map("clicksign_hmac_criptografado")
-  clicksignAutenticacao       ClicksignAutenticacao @default(EMAIL) @map("clicksign_autenticacao")
+  /// Plataforma de assinatura em uso (Clicksign ou Autentique).
+  assinaturaProvedor                   ProvedorAssinatura    @default(CLICKSIGN) @map("assinatura_provedor")
+  /// Autentique: token da API, segredo do webhook (HMAC) e modo de teste (`sandbox: true`).
+  autentiqueTokenCriptografado         String?               @map("autentique_token_criptografado")
+  autentiqueWebhookSecretCriptografado String?               @map("autentique_webhook_secret_criptografado")
+  autentiqueSandbox                    Boolean               @default(true) @map("autentique_sandbox")
+  clicksignAmbiente                    ClicksignAmbiente     @default(SANDBOX) @map("clicksign_ambiente")
+  clicksignTokenCriptografado          String?               @map("clicksign_token_criptografado")
+  clicksignHmacCriptografado           String?               @map("clicksign_hmac_criptografado")
+  clicksignAutenticacao                ClicksignAutenticacao @default(EMAIL) @map("clicksign_autenticacao")
   /// Representante da escola que assina o contrato (opcional; sem e-mail, só o contratante assina).
-  clicksignEscolaNome         String?               @map("clicksign_escola_nome")
-  clicksignEscolaEmail        String?               @map("clicksign_escola_email")
-  clicksignEscolaCpf          String?               @map("clicksign_escola_cpf")
+  clicksignEscolaNome                  String?               @map("clicksign_escola_nome")
+  clicksignEscolaEmail                 String?               @map("clicksign_escola_email")
+  clicksignEscolaCpf                   String?               @map("clicksign_escola_cpf")
 
   @@map("configuracoes")
 }
@@ -1047,8 +1059,11 @@ model ContratoMatricula {
   id                   String                @id @default(uuid())
   matriculaId          String                @map("matricula_id")
   status               StatusContrato        @default(ENVIADO)
+  provedor             ProvedorAssinatura    @default(CLICKSIGN)
+  /// Clicksign: id do envelope. Autentique: não usado.
   envelopeId           String?               @map("envelope_id")
-  documentoClicksignId String?               @map("documento_clicksign_id")
+  /// Id do documento na plataforma (Clicksign ou Autentique); coluna mantida por compatibilidade.
+  documentoExternoId   String?               @map("documento_clicksign_id")
   /// Quem assina como contratante (sacado, se houver, senão o aluno) — só para consulta.
   contratanteNome      String                @map("contratante_nome")
   contratanteEmail     String                @map("contratante_email")

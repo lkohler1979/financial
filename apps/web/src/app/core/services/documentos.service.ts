@@ -1,4 +1,4 @@
-import { HttpClient } from "@angular/common/http";
+import { HttpClient, HttpParams } from "@angular/common/http";
 import { inject, Injectable } from "@angular/core";
 import { Observable } from "rxjs";
 import { environment } from "../../../environments/environment";
@@ -8,6 +8,8 @@ import {
   DocumentoAguardandoConferencia,
   DocumentosDaMatricula,
   EscopoDocumento,
+  PaginaDocumentos,
+  SituacaoDeferimentoDocumento,
   TipoDocumento,
 } from "../models/documento.model";
 
@@ -36,6 +38,19 @@ export class DocumentosService {
     payload: { nome?: string; obrigatorio?: boolean; ordem?: number; ativo?: boolean },
   ): Observable<TipoDocumento> {
     return this.http.put<TipoDocumento>(`${this.baseUrl}/tipos/${id}`, payload);
+  }
+
+  /** Todos os documentos enviados, com filtro de situação, busca por aluno e paginação. */
+  listar(filtros: {
+    situacao?: SituacaoDeferimentoDocumento | "";
+    busca?: string;
+    page: number;
+    pageSize: number;
+  }): Observable<PaginaDocumentos> {
+    let params = new HttpParams().set("page", filtros.page).set("pageSize", filtros.pageSize);
+    if (filtros.situacao) params = params.set("situacao", filtros.situacao);
+    if (filtros.busca?.trim()) params = params.set("busca", filtros.busca.trim());
+    return this.http.get<PaginaDocumentos>(this.baseUrl, { params });
   }
 
   aguardandoConferencia(): Observable<DocumentoAguardandoConferencia[]> {
@@ -70,6 +85,14 @@ export class DocumentosService {
 
   removerArquivo(documentoId: string): Observable<Documento> {
     return this.http.delete<Documento>(`${this.baseUrl}/${documentoId}/arquivo`);
+  }
+
+  /** O arquivo para exibir na tela (Content-Disposition: inline). */
+  visualizar(documentoId: string): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/${documentoId}/arquivo`, {
+      params: { inline: "1" },
+      responseType: "blob",
+    });
   }
 
   /** Baixa via HttpClient (precisa do header de autenticação, então não dá

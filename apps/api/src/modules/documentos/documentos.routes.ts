@@ -16,6 +16,7 @@ documentosRouter.put(
   requireRole("ADMINISTRADOR"),
   documentosController.atualizarTipo,
 );
+documentosRouter.get("/", documentosController.listar);
 documentosRouter.get("/aguardando-conferencia", documentosController.aguardandoConferencia);
 documentosRouter.get("/matriculas/:matriculaId", documentosController.listarDaMatricula);
 documentosRouter.post(

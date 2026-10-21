@@ -8,6 +8,7 @@ import type {
   AtualizarDocumentoInput,
   AtualizarTipoDocumentoInput,
   CriarTipoDocumentoInput,
+  ListarDocumentosInput,
 } from "./documentos.schema";
 
 const ENTIDADE = "Documento";
@@ -95,6 +96,17 @@ export const documentosService = {
     return tipo;
   },
 
+  /** Todos os documentos enviados, com aluno/matrículas e situação — tela Documentos. */
+  async listar({ situacao, busca, page, pageSize }: ListarDocumentosInput) {
+    const { data, total, totais } = await documentosRepository.listarEnviados({
+      situacao,
+      busca,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    });
+    return { data, total, page, pageSize, totais };
+  },
+
   listarAguardandoConferencia() {
     return documentosRepository.listarAguardandoConferencia();
   },
@@ -128,7 +140,12 @@ export const documentosService = {
         ),
     ).length;
 
-    return { podeDeferir: await podeDeferir(usuarioId), pendentesObrigatorios, itens };
+    return {
+      aluno: matricula.aluno,
+      podeDeferir: await podeDeferir(usuarioId),
+      pendentesObrigatorios,
+      itens,
+    };
   },
 
   async anexarArquivo(

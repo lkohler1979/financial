@@ -26,6 +26,37 @@ export interface DocumentoAguardandoConferencia {
   matricula: { id: string; numeroMatricula: string | null } | null;
 }
 
+/** Documento enviado, como aparece na tela Documentos (com o aluno e as matrículas dele). */
+export interface DocumentoListado {
+  id: string;
+  tipo: { id: string; nome: string; escopo: EscopoDocumento };
+  situacaoEntrega: SituacaoEntregaDocumento;
+  situacaoDeferimento: SituacaoDeferimentoDocumento;
+  anexadoEm: string | null;
+  deferidoEm: string | null;
+  arquivoNome: string | null;
+  arquivoMime: string | null;
+  arquivoTamanho: number | null;
+  validadoPor: { id: string; nome: string } | null;
+  aluno: {
+    id: string;
+    codigo: string | null;
+    nome: string;
+    cpf: string;
+    matriculas: { id: string; numeroMatricula: string | null; curso: { nome: string } }[];
+  };
+  matricula: { id: string; numeroMatricula: string | null } | null;
+}
+
+export interface PaginaDocumentos {
+  data: DocumentoListado[];
+  total: number;
+  page: number;
+  pageSize: number;
+  /** Quantos documentos há em cada situação (respeitando a busca, não o filtro de situação). */
+  totais: Record<SituacaoDeferimentoDocumento, number>;
+}
+
 export interface Documento {
   id: string;
   situacaoEntrega: SituacaoEntregaDocumento;
@@ -40,6 +71,7 @@ export interface Documento {
   observacaoInterna?: string | null;
   observacaoAluno?: string | null;
   arquivoNome?: string | null;
+  arquivoMime?: string | null;
   arquivoTamanho?: number | null;
   atualizadoEm?: string;
 }
@@ -51,6 +83,8 @@ export interface ItemDocumento {
 }
 
 export interface DocumentosDaMatricula {
+  /** Aluno dono da matrícula (para buscar os documentos dele no legado). */
+  aluno: { id: string; nome: string };
   /** Se o usuário logado pode alterar a situação de deferimento. */
   podeDeferir: boolean;
   pendentesObrigatorios: number;

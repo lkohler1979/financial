@@ -6,6 +6,15 @@ const incluiTipo = {
   validadoPor: { select: { id: true, nome: true } },
 } satisfies Prisma.DocumentoInclude;
 
+export interface FiltrosDocumentos {
+  situacao?: "PENDENTE" | "DEFERIDO" | "INDEFERIDO";
+  busca?: string;
+  tipoId?: string;
+  cursoId?: string;
+  de?: string;
+  ate?: string;
+}
+
 export const documentosRepository = {
   listarTiposAtivos() {
     return prisma.tipoDocumento.findMany({ where: { ativo: true }, orderBy: { ordem: "asc" } });
@@ -55,30 +64,74 @@ export const documentosRepository = {
    * Todos os documentos com arquivo enviado (qualquer situação de deferimento), do mais recente ao
    * mais antigo, com aluno e as matrículas dele. `busca` procura no nome, CPF e código do aluno.
    */
+  /** Filtro comum da consulta e do download em lote (sem a situação de deferimento). */
+  whereEnviados(f: FiltrosDocumentos): Prisma.DocumentoWhereInput {
+    const digitos = f.busca?.replace(/\D/g, "");
+    const e: Prisma.DocumentoWhereInput[] = [{ situacaoEntrega: "ENVIADO" }];
+    if (f.busca) {
+      e.push({
+        aluno: {
+          OR: [
+            { nome: { contains: f.busca, mode: "insensitive" } },
+            { codigo: { contains: f.busca, mode: "insensitive" } },
+            ...(digitos && digitos.length >= 3 ? [{ cpf: { contains: digitos } }] : []),
+          ],
+        },
+      });
+    }
+    if (f.tipoId) e.push({ tipoDocumentoId: f.tipoId });
+    if (f.cursoId) {
+      // Documento de matrícula: o curso da matrícula; de aluno: qualquer matrícula dele no curso.
+      e.push({
+        OR: [
+          { matricula: { cursoId: f.cursoId } },
+          { matriculaId: null, aluno: { matriculas: { some: { cursoId: f.cursoId } } } },
+        ],
+      });
+    }
+    if (f.de || f.ate) {
+      e.push({
+        anexadoEm: {
+          ...(f.de ? { gte: new Date(`${f.de}T00:00:00.000-03:00`) } : {}),
+          ...(f.ate ? { lte: new Date(`${f.ate}T23:59:59.999-03:00`) } : {}),
+        },
+      });
+    }
+    return { AND: e };
+  },
+
+  /** Documentos (com arquivo) para o ZIP: por ids ou pelos filtros, limitado a `limite + 1`. */
+  paraLote(selecao: { ids?: string[]; filtros?: FiltrosDocumentos }, limite: number) {
+    const where: Prisma.DocumentoWhereInput = {
+      arquivoChave: { not: null },
+      ...(selecao.ids ? { id: { in: selecao.ids } } : this.whereEnviados(selecao.filtros ?? {})),
+      ...(selecao.filtros?.situacao && !selecao.ids
+        ? { situacaoDeferimento: selecao.filtros.situacao }
+        : {}),
+    };
+    return prisma.documento.findMany({
+      where,
+      take: limite + 1,
+      orderBy: [{ aluno: { nome: "asc" } }, { anexadoEm: "desc" }, { id: "asc" }],
+      select: {
+        id: true,
+        arquivoNome: true,
+        arquivoChave: true,
+        arquivoTamanho: true,
+        tipo: { select: { nome: true } },
+        aluno: { select: { nome: true, codigo: true } },
+        matricula: { select: { numeroMatricula: true } },
+      },
+    });
+  },
+
   async listarEnviados({
     situacao,
-    busca,
     skip,
     take,
-  }: {
-    situacao?: "PENDENTE" | "DEFERIDO" | "INDEFERIDO";
-    busca?: string;
-    skip: number;
-    take: number;
-  }) {
-    const digitos = busca?.replace(/\D/g, "");
-    const filtroAluno: Prisma.DocumentoWhereInput = busca
-      ? {
-          aluno: {
-            OR: [
-              { nome: { contains: busca, mode: "insensitive" } },
-              { codigo: { contains: busca, mode: "insensitive" } },
-              ...(digitos && digitos.length >= 3 ? [{ cpf: { contains: digitos } }] : []),
-            ],
-          },
-        }
-      : {};
-    const base: Prisma.DocumentoWhereInput = { situacaoEntrega: "ENVIADO", ...filtroAluno };
+    ...filtros
+  }: FiltrosDocumentos & { skip: number; take: number }) {
+    const base = this.whereEnviados(filtros);
 
     const [data, total, porSituacao] = await Promise.all([
       prisma.documento.findMany({

@@ -1,17 +1,23 @@
+import fs from "node:fs";
 import path from "node:path";
 import { AppError, NotFoundError, ValidationError } from "../../shared/errors/app-error";
 import { armazenamento } from "../../shared/armazenamento/armazenamento";
 import { registrarAuditoria } from "../auditoria/auditoria.service";
 import { documentosRepository } from "./documentos.repository";
+import { nomesNoZip } from "./documentos-lote";
 import { ConflictError } from "../../shared/errors/app-error";
+import { MAX_DOCUMENTOS_LOTE } from "./documentos.schema";
 import type {
   AtualizarDocumentoInput,
   AtualizarTipoDocumentoInput,
   CriarTipoDocumentoInput,
+  DownloadLoteInput,
   ListarDocumentosInput,
 } from "./documentos.schema";
 
 const ENTIDADE = "Documento";
+/** Soma máxima dos arquivos de um download em lote. */
+const TAMANHO_MAX_LOTE = 500 * 1024 * 1024;
 const EXTENSOES_PERMITIDAS = [".pdf", ".jpg", ".jpeg", ".png"];
 
 export interface ArquivoEnviado {
@@ -97,10 +103,9 @@ export const documentosService = {
   },
 
   /** Todos os documentos enviados, com aluno/matrículas e situação — tela Documentos. */
-  async listar({ situacao, busca, page, pageSize }: ListarDocumentosInput) {
+  async listar({ page, pageSize, ...filtros }: ListarDocumentosInput) {
     const { data, total, totais } = await documentosRepository.listarEnviados({
-      situacao,
-      busca,
+      ...filtros,
       skip: (page - 1) * pageSize,
       take: pageSize,
     });
@@ -280,6 +285,38 @@ export const documentosService = {
       detalhes: { acao: "arquivo_removido", tipo: documento.tipo.nome },
     });
     return atualizado;
+  },
+
+  /**
+   * Arquivos de um download em lote (ZIP): os ids escolhidos ou todos os que casam com os filtros.
+   * Recusa lotes grandes demais e devolve também os que não estão mais no armazenamento.
+   */
+  async prepararLote(entrada: DownloadLoteInput) {
+    const documentos = await documentosRepository.paraLote(entrada, MAX_DOCUMENTOS_LOTE);
+    if (documentos.length === 0) throw new NotFoundError("Nenhum documento com arquivo encontrado");
+    if (documentos.length > MAX_DOCUMENTOS_LOTE) {
+      throw new ValidationError(
+        `O download em lote aceita até ${MAX_DOCUMENTOS_LOTE} documentos. Refine o filtro (curso, tipo ou período).`,
+      );
+    }
+    const total = documentos.reduce((s, d) => s + (d.arquivoTamanho ?? 0), 0);
+    if (total > TAMANHO_MAX_LOTE) {
+      throw new ValidationError(
+        `Os arquivos somam ${Math.round(total / 1048576)} MB (limite ${TAMANHO_MAX_LOTE / 1048576} MB). Refine o filtro.`,
+      );
+    }
+    const nomes = nomesNoZip(documentos);
+    const arquivos: { caminho: string; nomeNoZip: string }[] = [];
+    const ausentes: string[] = [];
+    for (const d of documentos) {
+      const caminho = armazenamento.caminho(d.arquivoChave as string);
+      const nomeNoZip = nomes.get(d.id) as string;
+      if (fs.existsSync(caminho)) arquivos.push({ caminho, nomeNoZip });
+      else ausentes.push(nomeNoZip);
+    }
+    if (arquivos.length === 0)
+      throw new NotFoundError("Os arquivos desses documentos não estão mais no servidor");
+    return { arquivos, ausentes };
   },
 
   async obterArquivo(documentoId: string) {

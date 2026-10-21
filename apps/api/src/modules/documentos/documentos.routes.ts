@@ -17,6 +17,7 @@ documentosRouter.put(
   documentosController.atualizarTipo,
 );
 documentosRouter.get("/", documentosController.listar);
+documentosRouter.post("/download-lote", documentosController.baixarLote);
 documentosRouter.get("/aguardando-conferencia", documentosController.aguardandoConferencia);
 documentosRouter.get("/matriculas/:matriculaId", documentosController.listarDaMatricula);
 documentosRouter.post(

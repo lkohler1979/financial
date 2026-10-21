@@ -18,12 +18,6 @@ vi.mock("../../src/modules/documentos/documentos.repository", () => ({
   },
 }));
 vi.mock("../../src/modules/auditoria/auditoria.service", () => ({ registrarAuditoria: vi.fn() }));
-vi.mock("../../src/modules/documentos/documentacao.service", () => ({
-  documentacaoService: {
-    recalcularAluno: vi.fn().mockResolvedValue({}),
-    recalcularTodas: vi.fn().mockResolvedValue({}),
-  },
-}));
 vi.mock("../../src/shared/armazenamento/armazenamento", () => ({
   armazenamento: {
     salvar: vi.fn().mockResolvedValue("aluno-1/arquivo.pdf"),

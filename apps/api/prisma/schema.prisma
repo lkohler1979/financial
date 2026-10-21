@@ -106,6 +106,26 @@ enum NfseProvedor {
   NACIONAL
 }
 
+enum ClicksignAmbiente {
+  SANDBOX
+  PRODUCAO
+}
+
+/// Como o signatário se autentica na Clicksign (valor `auth` do requisito de autenticação).
+enum ClicksignAutenticacao {
+  EMAIL
+  SMS
+  WHATSAPP
+  ICP_BRASIL
+}
+
+enum StatusContrato {
+  ENVIADO
+  ASSINADO
+  RECUSADO
+  CANCELADO
+}
+
 enum NfseAmbiente {
   HOMOLOGACAO
   PRODUCAO
@@ -250,6 +270,7 @@ model Matricula {
   sacado              Sacado?                      @relation(fields: [sacadoId], references: [id])
   cupom               Cupom?                       @relation(fields: [cupomId], references: [id])
   parcelas            Parcela[]
+  contratos           ContratoMatricula[]
   tags                MatriculaTag[]
   historicoCobranca   HistoricoCobranca[]
   observacoesCobranca ObservacaoCobranca[]
@@ -535,6 +556,20 @@ model Configuracao {
   /// Rede — cadastrado junto com a URL (sandbox: self-service; produção:
   /// precisa repassar pro suporte da Rede, ver tela de Configurações).
   redeWebhookTokenCriptografado    String?      @map("rede_webhook_token_criptografado")
+
+  /// Modelo (.docx) do contrato de prestação de serviços: chave no armazenamento + nome original.
+  contratoModeloChave String? @map("contrato_modelo_chave")
+  contratoModeloNome  String? @map("contrato_modelo_nome")
+
+  /// Integração Clicksign (assinatura eletrônica / ICP-Brasil). Token e segredo do webhook cifrados.
+  clicksignAmbiente           ClicksignAmbiente     @default(SANDBOX) @map("clicksign_ambiente")
+  clicksignTokenCriptografado String?               @map("clicksign_token_criptografado")
+  clicksignHmacCriptografado  String?               @map("clicksign_hmac_criptografado")
+  clicksignAutenticacao       ClicksignAutenticacao @default(EMAIL) @map("clicksign_autenticacao")
+  /// Representante da escola que assina o contrato (opcional; sem e-mail, só o contratante assina).
+  clicksignEscolaNome         String?               @map("clicksign_escola_nome")
+  clicksignEscolaEmail        String?               @map("clicksign_escola_email")
+  clicksignEscolaCpf          String?               @map("clicksign_escola_cpf")
 
   @@map("configuracoes")
 }
@@ -1005,4 +1040,29 @@ enum TipoOcorrenciaLote {
   PARCELA_NAO_IMPORTADA
   ERRO
   VARREDURA_INCOMPLETA
+}
+
+/// Contrato de prestação de serviços de uma matrícula, enviado à Clicksign para assinatura.
+model ContratoMatricula {
+  id                   String                @id @default(uuid())
+  matriculaId          String                @map("matricula_id")
+  status               StatusContrato        @default(ENVIADO)
+  envelopeId           String?               @map("envelope_id")
+  documentoClicksignId String?               @map("documento_clicksign_id")
+  /// Quem assina como contratante (sacado, se houver, senão o aluno) — só para consulta.
+  contratanteNome      String                @map("contratante_nome")
+  contratanteEmail     String                @map("contratante_email")
+  autenticacao         ClicksignAutenticacao
+  arquivoGeradoChave   String                @map("arquivo_gerado_chave")
+  arquivoAssinadoChave String?               @map("arquivo_assinado_chave")
+  enviadoPorId         String?               @map("enviado_por_id")
+  enviadoEm            DateTime              @default(now()) @map("enviado_em")
+  assinadoEm           DateTime?             @map("assinado_em")
+  atualizadoEm         DateTime              @updatedAt @map("atualizado_em")
+
+  matricula Matricula @relation(fields: [matriculaId], references: [id], onDelete: Cascade)
+
+  @@index([matriculaId])
+  @@index([envelopeId])
+  @@map("contratos_matricula")
 }

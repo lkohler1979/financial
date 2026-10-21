@@ -40,6 +40,27 @@ export interface EmissaoCobrancas {
   falhas: { parcelaId: string; erro: string }[];
 }
 
+export type SituacaoDocumentacao =
+  "SEM_DOCUMENTOS" | "DOCUMENTOS_PENDENTES" | "DOCUMENTACAO_COMPLETA";
+
+export const SITUACOES_DOCUMENTACAO: {
+  valor: SituacaoDocumentacao;
+  rotulo: string;
+  classe: string;
+}[] = [
+  { valor: "SEM_DOCUMENTOS", rotulo: "Sem documentos", classe: "bg-red-100 text-red-800" },
+  {
+    valor: "DOCUMENTOS_PENDENTES",
+    rotulo: "Documentos pendentes",
+    classe: "bg-amber-100 text-amber-800",
+  },
+  {
+    valor: "DOCUMENTACAO_COMPLETA",
+    rotulo: "Documentação completa",
+    classe: "bg-green-100 text-green-800",
+  },
+];
+
 export interface Matricula {
   /** Só vem na resposta da criação. */
   emissaoCobrancas?: EmissaoCobrancas;
@@ -50,6 +71,8 @@ export interface Matricula {
   dataMatricula?: string | null;
   contratoAssinado: boolean;
   tcdAssinado: boolean;
+  /** Resumo dos documentos, mantido pelo sistema (envio, conferência, importação do legado). */
+  situacaoDocumentacao: SituacaoDocumentacao;
   situacao: string;
   observacoes?: string | null;
   situacaoCobrancaId?: string | null;

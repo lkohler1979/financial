@@ -3,6 +3,7 @@ import path from "node:path";
 import { AppError, NotFoundError, ValidationError } from "../../shared/errors/app-error";
 import { armazenamento } from "../../shared/armazenamento/armazenamento";
 import { registrarAuditoria } from "../auditoria/auditoria.service";
+import { documentacaoService } from "./documentacao.service";
 import { documentosRepository } from "./documentos.repository";
 import { nomesNoZip } from "./documentos-lote";
 import { ConflictError } from "../../shared/errors/app-error";
@@ -76,6 +77,8 @@ export const documentosService = {
       acao: "CRIACAO",
       detalhes: { nome: tipo.nome },
     });
+    // Um novo tipo obrigatório muda a situação de quem já tinha tudo.
+    await documentacaoService.recalcularTodas();
     return tipo;
   },
 
@@ -99,6 +102,8 @@ export const documentosService = {
       acao: "ATUALIZACAO",
       detalhes: { camposAlterados: Object.keys(input) },
     });
+    // Obrigatoriedade/ativo de um tipo mudam a situação das matrículas.
+    await documentacaoService.recalcularTodas();
     return tipo;
   },
 
@@ -204,6 +209,7 @@ export const documentosService = {
         },
       });
     }
+    await documentacaoService.recalcularAluno(documento.alunoId);
     return atualizado;
   },
 
@@ -255,6 +261,7 @@ export const documentosService = {
       acao: "ATUALIZACAO",
       detalhes: { tipo: documento.tipo.nome, camposAlterados: Object.keys(input) },
     });
+    await documentacaoService.recalcularAluno(documento.alunoId);
     return atualizado;
   },
 
@@ -284,6 +291,7 @@ export const documentosService = {
       acao: "ATUALIZACAO",
       detalhes: { acao: "arquivo_removido", tipo: documento.tipo.nome },
     });
+    await documentacaoService.recalcularAluno(documento.alunoId);
     return atualizado;
   },
 

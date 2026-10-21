@@ -4,6 +4,7 @@ import {
   parseDataHoraLegado,
 } from "../../src/modules/importacao-legado/documentos-legado.service";
 import { alunosRepository } from "../../src/modules/alunos/alunos.repository";
+import { documentacaoService } from "../../src/modules/documentos/documentacao.service";
 import { documentosRepository } from "../../src/modules/documentos/documentos.repository";
 import { armazenamento } from "../../src/shared/armazenamento/armazenamento";
 import { registrarAuditoria } from "../../src/modules/auditoria/auditoria.service";
@@ -29,6 +30,9 @@ vi.mock("../../src/shared/armazenamento/armazenamento", () => ({
   armazenamento: { salvar: vi.fn(), remover: vi.fn() },
 }));
 vi.mock("../../src/modules/auditoria/auditoria.service", () => ({ registrarAuditoria: vi.fn() }));
+vi.mock("../../src/modules/documentos/documentacao.service", () => ({
+  documentacaoService: { recalcularAluno: vi.fn().mockResolvedValue({}) },
+}));
 vi.mock("../../src/modules/sincronizacao-legado/sincronizacao-legado.service", () => ({
   montarClient: vi.fn(),
 }));
@@ -36,6 +40,7 @@ vi.mock("../../src/modules/sincronizacao-legado/sincronizacao-legado.service", (
 const alunos = vi.mocked(alunosRepository);
 const docs = vi.mocked(documentosRepository);
 const storage = vi.mocked(armazenamento);
+const documentacao = vi.mocked(documentacaoService);
 
 const PESSOA = {
   pesId: "00000000046",
@@ -104,6 +109,39 @@ beforeEach(() => {
   docs.findPorTipo.mockResolvedValue(null);
   docs.create.mockResolvedValue({ id: "d1" } as never);
   storage.salvar.mockResolvedValue("a1/abc.pdf");
+});
+
+describe("documentosLegadoService.importarDoAluno — situação da documentação", () => {
+  it("recalcula a situação das matrículas do aluno depois de baixar", async () => {
+    const legado = legadoFalso({ CPF: documento() });
+    await documentosLegadoService.importarDoAluno("a1", "u1", legado as never);
+    expect(documentacao.recalcularAluno).toHaveBeenCalledWith("a1");
+  });
+
+  it("recalcula também quando o aluno não existe no legado ou o legado falha", async () => {
+    const semPessoa = legadoFalso({});
+    semPessoa.buscarPessoaPorCpf.mockResolvedValue([]);
+    await expect(
+      documentosLegadoService.importarDoAluno("a1", "u1", semPessoa as never),
+    ).rejects.toThrow(/não encontrado/i);
+    expect(documentacao.recalcularAluno).toHaveBeenCalledWith("a1");
+
+    documentacao.recalcularAluno.mockClear();
+    const fora = legadoFalso({});
+    fora.buscarPessoaPorCpf.mockRejectedValue(new Error("legado fora do ar"));
+    await expect(
+      documentosLegadoService.importarDoAluno("a1", "u1", fora as never),
+    ).rejects.toThrow(/fora do ar/);
+    expect(documentacao.recalcularAluno).toHaveBeenCalledWith("a1");
+  });
+
+  it("falha no recálculo não esconde o resultado da busca", async () => {
+    documentacao.recalcularAluno.mockRejectedValueOnce(new Error("banco"));
+    const legado = legadoFalso({ CPF: documento() });
+    await expect(
+      documentosLegadoService.importarDoAluno("a1", "u1", legado as never),
+    ).resolves.toMatchObject({ aluno: { id: "a1" } });
+  });
 });
 
 describe("documentosLegadoService.importarDoAluno", () => {

@@ -68,6 +68,15 @@ function serializarConfiguracao(configuracao: {
   redePvCriptografado: string | null;
   redeChaveIntegracaoCriptografada: string | null;
   redeWebhookTokenCriptografado: string | null;
+  contratoModeloChave: string | null;
+  contratoModeloNome: string | null;
+  clicksignAmbiente: "SANDBOX" | "PRODUCAO";
+  clicksignTokenCriptografado: string | null;
+  clicksignHmacCriptografado: string | null;
+  clicksignAutenticacao: "EMAIL" | "SMS" | "WHATSAPP" | "ICP_BRASIL";
+  clicksignEscolaNome: string | null;
+  clicksignEscolaEmail: string | null;
+  clicksignEscolaCpf: string | null;
 }) {
   // A senha/API key/token/chave criptografados nunca saem da API — só um
   // indicador se já foram definidos.
@@ -78,6 +87,9 @@ function serializarConfiguracao(configuracao: {
     redePvCriptografado,
     redeChaveIntegracaoCriptografada,
     redeWebhookTokenCriptografado,
+    clicksignTokenCriptografado,
+    clicksignHmacCriptografado,
+    contratoModeloChave,
     nfseCertificadoCriptografado,
     nfseCertificadoSenhaCriptografada,
     ...resto
@@ -106,6 +118,9 @@ function serializarConfiguracao(configuracao: {
     nfseAliquotaSimples: Number(configuracao.nfseAliquotaSimples),
     redeChaveIntegracaoConfigurada: Boolean(redeChaveIntegracaoCriptografada),
     redeWebhookTokenConfigurado: Boolean(redeWebhookTokenCriptografado),
+    clicksignTokenConfigurado: Boolean(clicksignTokenCriptografado),
+    clicksignHmacConfigurado: Boolean(clicksignHmacCriptografado),
+    contratoModeloConfigurado: Boolean(contratoModeloChave),
   };
 }
 
@@ -160,6 +175,27 @@ export const configuracoesService = {
       ...(input.provedorBoleto !== undefined ? { provedorBoleto: input.provedorBoleto } : {}),
       ...(input.provedorPix !== undefined ? { provedorPix: input.provedorPix } : {}),
       ...(input.provedorCartao !== undefined ? { provedorCartao: input.provedorCartao } : {}),
+      ...(input.clicksignAmbiente !== undefined
+        ? { clicksignAmbiente: input.clicksignAmbiente }
+        : {}),
+      ...(input.clicksignToken !== undefined
+        ? { clicksignTokenCriptografado: criptografar(input.clicksignToken) }
+        : {}),
+      ...(input.clicksignHmacSecret !== undefined
+        ? { clicksignHmacCriptografado: criptografar(input.clicksignHmacSecret) }
+        : {}),
+      ...(input.clicksignAutenticacao !== undefined
+        ? { clicksignAutenticacao: input.clicksignAutenticacao }
+        : {}),
+      ...(input.clicksignEscolaNome !== undefined
+        ? { clicksignEscolaNome: input.clicksignEscolaNome || null }
+        : {}),
+      ...(input.clicksignEscolaEmail !== undefined
+        ? { clicksignEscolaEmail: input.clicksignEscolaEmail || null }
+        : {}),
+      ...(input.clicksignEscolaCpf !== undefined
+        ? { clicksignEscolaCpf: input.clicksignEscolaCpf?.replace(/\D/g, "") || null }
+        : {}),
       ...(input.redeAmbiente !== undefined ? { redeAmbiente: input.redeAmbiente } : {}),
       ...(input.redePv !== undefined ? { redePvCriptografado: criptografar(input.redePv) } : {}),
       ...(input.redeChaveIntegracao !== undefined
@@ -247,6 +283,8 @@ export const configuracoesService = {
       "redePv",
       "redeChaveIntegracao",
       "redeWebhookToken",
+      "clicksignToken",
+      "clicksignHmacSecret",
     ];
     await registrarAuditoria({
       usuarioId,

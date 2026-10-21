@@ -27,6 +27,7 @@ import { portalRouter } from "./modules/portal/portal.routes";
 import { solicitacoesRouter } from "./modules/solicitacoes/solicitacoes.routes";
 import { sacadosRouter } from "./modules/sacados/sacados.routes";
 import { nfseRouter } from "./modules/nfse/nfse.routes";
+import { clicksignWebhookRouter, contratosRouter } from "./modules/contratos/contratos.routes";
 import { dashboardRouter } from "./modules/dashboard/dashboard.routes";
 
 export const app = express();
@@ -37,7 +38,14 @@ if (process.env.TRUST_PROXY)
 
 app.use(helmet());
 app.use(cors());
-app.use(express.json());
+// Guarda o corpo bruto: o webhook da Clicksign valida um HMAC calculado sobre ele.
+app.use(
+  express.json({
+    verify: (req, _res, buf) => {
+      (req as Request & { rawBody?: Buffer }).rawBody = buf;
+    },
+  }),
+);
 
 // Alguns proxies reversos na frente da API (ex.: Traefik/EasyPanel) removem o
 // prefixo público "/api" antes de repassar a requisição pro container. Em
@@ -63,6 +71,8 @@ app.use("/api/asaas/webhook", asaasWebhookRouter);
 // Webhook da Rede (Pix) — mesma lógica, público, autenticado pelo token
 // configurado em Configurações (header `authorization`).
 app.use("/api/rede/webhook", redeWebhookRouter);
+// Webhook da Clicksign (assinatura de contratos) — público, validado por HMAC (header Content-Hmac).
+app.use("/api/clicksign/webhook", clicksignWebhookRouter);
 
 // Área do aluno: autenticação própria (token de aluno), fora do RBAC interno.
 app.use("/api/portal", portalRouter);
@@ -109,6 +119,7 @@ app.use("/api/sincronizacao-legado", sincronizacaoLegadoRouter);
 // RBAC fino por rota dentro do próprio módulo (ver importacao-legado.routes.ts).
 app.use("/api/importacao-legado", importacaoLegadoRouter);
 app.use("/api/asaas", requireRole("ADMINISTRADOR", "FINANCEIRO"), asaasRouter);
+app.use("/api/contratos", contratosRouter);
 app.use("/api/configuracoes", requireRole("ADMINISTRADOR"), configuracoesRouter);
 app.use("/api/auditoria", requireRole("ADMINISTRADOR"), auditoriaRouter);
 

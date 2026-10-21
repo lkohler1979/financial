@@ -12,6 +12,9 @@ export type PagamentoProvedor = "ASAAS" | "REDE";
 
 export type RedeAmbiente = "SANDBOX" | "PRODUCAO";
 
+export type ClicksignAmbiente = "SANDBOX" | "PRODUCAO";
+export type ClicksignAutenticacao = "EMAIL" | "SMS" | "WHATSAPP" | "ICP_BRASIL";
+
 /** Quem emite a NFS-e: o Asaas ou direto no Portal Nacional (certificado A1). */
 export type NfseProvedor = "ASAAS" | "NACIONAL";
 
@@ -46,6 +49,17 @@ export interface Configuracao {
   provedorPix: PagamentoProvedor | null;
   provedorCartao: PagamentoProvedor | null;
   redeAmbiente: RedeAmbiente;
+  /** Modelo (.docx) do contrato de prestação de serviços — só o nome; o arquivo fica no servidor. */
+  contratoModeloNome: string | null;
+  contratoModeloConfigurado: boolean;
+  clicksignAmbiente: ClicksignAmbiente;
+  clicksignAutenticacao: ClicksignAutenticacao;
+  clicksignEscolaNome: string | null;
+  clicksignEscolaEmail: string | null;
+  clicksignEscolaCpf: string | null;
+  /** Nunca vem o token/segredo em si — só se já foram configurados. */
+  clicksignTokenConfigurado: boolean;
+  clicksignHmacConfigurado: boolean;
   /** Nunca vem o PV em si — só se já foi configurado. */
   redePvConfigurado: boolean;
   /** Nunca vem a chave em si — só se já foi configurada. */
@@ -104,6 +118,10 @@ export type AtualizarConfiguracaoPayload = Omit<
   | "redePvConfigurado"
   | "redeChaveIntegracaoConfigurada"
   | "redeWebhookTokenConfigurado"
+  | "contratoModeloNome"
+  | "contratoModeloConfigurado"
+  | "clicksignTokenConfigurado"
+  | "clicksignHmacConfigurado"
   | "nfseCertificadoConfigurado"
   | "nfseCertificadoTitular"
   | "nfseCertificadoCnpj"
@@ -121,6 +139,10 @@ export type AtualizarConfiguracaoPayload = Omit<
   redeChaveIntegracao?: string;
   /** Só enviado quando o admin digita um novo token — deixe undefined para manter o atual. */
   redeWebhookToken?: string;
+  /** Só enviado quando o admin digita um novo token da Clicksign. */
+  clicksignToken?: string;
+  /** Só enviado quando o admin digita um novo segredo HMAC do webhook da Clicksign. */
+  clicksignHmacSecret?: string;
 };
 
 /** Frase que precisa ser digitada exatamente para confirmar a limpeza da base (backend valida). */

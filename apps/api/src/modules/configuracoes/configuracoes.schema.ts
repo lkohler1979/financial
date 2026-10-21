@@ -80,6 +80,19 @@ export const atualizarConfiguracaoSchema = z
     nfseCodigoTributacaoMunicipal: z.string().trim().max(3).nullable().optional(),
     nfseSerieDps: z.coerce.number().int().min(1).max(89999).optional(),
     nfseProximoNumeroDps: z.coerce.number().int().min(1).max(999999999999999).optional(),
+    // Clicksign: token e segredo do webhook em texto puro só nesta entrada (gravados cifrados).
+    clicksignAmbiente: z.enum(["SANDBOX", "PRODUCAO"]).optional(),
+    clicksignToken: z.string().trim().min(1).max(200).optional(),
+    clicksignHmacSecret: z.string().trim().min(1).max(200).optional(),
+    clicksignAutenticacao: z.enum(["EMAIL", "SMS", "WHATSAPP", "ICP_BRASIL"]).optional(),
+    clicksignEscolaNome: z.string().trim().max(150).nullable().optional(),
+    clicksignEscolaEmail: z.string().trim().email().max(150).nullable().optional(),
+    clicksignEscolaCpf: z
+      .string()
+      .trim()
+      .regex(/^(\d{11}|\d{3}\.\d{3}\.\d{3}-\d{2})$/, "CPF inválido")
+      .nullable()
+      .optional(),
     redeAmbiente: z.enum(["SANDBOX", "PRODUCAO"]).optional(),
     // PV/chave de integração/token em texto puro, só nesta entrada — o
     // service criptografa antes de persistir e nunca os devolve (mesmo

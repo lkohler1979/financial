@@ -12,6 +12,8 @@ import { MatSnackBar } from "@angular/material/snack-bar";
 import { ConfiguracoesService } from "../../core/services/configuracoes.service";
 import { MapeamentoImportacaoService } from "../../core/services/mapeamento-importacao.service";
 import { NfseService } from "../../core/services/nfse.service";
+import { ContratosService } from "../../core/services/contratos.service";
+import { salvarBlobComoArquivo } from "../../shared/utils/download.util";
 import {
   AsaasAmbiente,
   AtualizarConfiguracaoPayload,
@@ -23,6 +25,8 @@ import {
   NfseProvedor,
   PagamentoProvedor,
   RedeAmbiente,
+  ClicksignAmbiente,
+  ClicksignAutenticacao,
   TipoTituloProtesto,
 } from "../../core/models/configuracao.model";
 import {
@@ -667,6 +671,149 @@ import {
         </p>
       </section>
 
+      <section class="bg-white rounded-lg border p-5">
+        <p class="text-sm font-medium text-gray-700 mb-1">
+          Contrato de prestação de serviços e assinatura (Clicksign)
+        </p>
+        <p class="text-xs text-gray-500 mb-4">
+          O contrato é gerado na matrícula a partir do modelo abaixo e enviado para assinatura
+          eletrônica. Deixe token/segredo em branco para manter os atuais.
+        </p>
+
+        <div class="border rounded-lg p-4 mb-4 bg-gray-50">
+          <p class="text-sm font-medium text-gray-700 mb-1">Modelo do contrato (.docx)</p>
+          <p class="text-xs text-gray-500 mb-2">
+            Escreva o contrato no Word e use os campos entre colchetes onde os dados devem entrar,
+            por exemplo <code class="bg-white px-1 rounded">[NOMEALUNO]</code> e
+            <code class="bg-white px-1 rounded">[CPF]</code>.
+          </p>
+          @if (contratoModeloNome) {
+            <p class="text-sm m-0 mb-2">
+              <mat-icon class="!text-base !w-4 !h-4 align-middle text-green-600"
+                >description</mat-icon
+              >
+              Modelo atual: <strong>{{ contratoModeloNome }}</strong>
+            </p>
+          }
+          <div class="flex flex-wrap items-center gap-3">
+            <input
+              type="file"
+              accept=".docx"
+              class="text-sm"
+              (change)="escolherModeloContrato($event)"
+            />
+            <button
+              mat-flat-button
+              color="primary"
+              type="button"
+              [disabled]="!modeloContratoArquivo || enviandoModeloContrato"
+              (click)="enviarModeloContrato()"
+            >
+              {{ contratoModeloNome ? "Substituir modelo" : "Enviar modelo" }}
+            </button>
+            @if (contratoModeloNome) {
+              <button mat-stroked-button type="button" (click)="baixarModeloContrato()">
+                Baixar modelo atual
+              </button>
+            }
+          </div>
+          <details class="mt-3">
+            <summary class="text-xs text-blue-700 cursor-pointer">
+              Campos disponíveis ({{ camposContrato.length }})
+            </summary>
+            <table class="text-xs mt-2">
+              @for (c of camposContrato; track c.campo) {
+                <tr>
+                  <td class="pr-4 py-0.5 font-mono">[{{ c.campo }}]</td>
+                  <td class="text-gray-600">{{ c.descricao }}</td>
+                </tr>
+              }
+            </table>
+          </details>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <mat-form-field appearance="outline">
+            <mat-label>Ambiente</mat-label>
+            <mat-select formControlName="clicksignAmbiente">
+              <mat-option value="SANDBOX">Sandbox (testes)</mat-option>
+              <mat-option value="PRODUCAO">Produção</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>{{
+              clicksignTokenConfigurado ? "Novo token (opcional)" : "Token de acesso"
+            }}</mat-label>
+            <input
+              matInput
+              type="password"
+              [formControl]="clicksignTokenControl"
+              autocomplete="new-password"
+            />
+            @if (clicksignTokenConfigurado) {
+              <mat-hint>Token já configurado — preencha só para trocar.</mat-hint>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>{{
+              clicksignHmacConfigurado ? "Novo segredo HMAC (opcional)" : "Segredo HMAC do webhook"
+            }}</mat-label>
+            <input
+              matInput
+              type="password"
+              [formControl]="clicksignHmacControl"
+              autocomplete="new-password"
+            />
+            @if (clicksignHmacConfigurado) {
+              <mat-hint>Segredo já configurado — preencha só para trocar.</mat-hint>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Autenticação do signatário</mat-label>
+            <mat-select formControlName="clicksignAutenticacao">
+              <mat-option value="EMAIL">E-mail</mat-option>
+              <mat-option value="SMS">SMS</mat-option>
+              <mat-option value="WHATSAPP">WhatsApp</mat-option>
+              <mat-option value="ICP_BRASIL">Certificado digital ICP-Brasil</mat-option>
+            </mat-select>
+            <mat-hint>
+              ICP-Brasil exige que o signatário tenha certificado digital (e-CPF).
+            </mat-hint>
+          </mat-form-field>
+        </div>
+
+        <p class="text-sm font-medium text-gray-700 mt-4 mb-1">
+          Representante da escola (opcional)
+        </p>
+        <p class="text-xs text-gray-500 mb-2">
+          Se preenchido (nome, e-mail e CPF), o representante também assina o contrato.
+        </p>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <mat-form-field appearance="outline">
+            <mat-label>Nome completo</mat-label>
+            <input matInput formControlName="clicksignEscolaNome" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>E-mail</mat-label>
+            <input matInput type="email" formControlName="clicksignEscolaEmail" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>CPF</mat-label>
+            <input matInput formControlName="clicksignEscolaCpf" />
+          </mat-form-field>
+        </div>
+
+        <p class="text-xs text-gray-500 mt-2">
+          URL do webhook para cadastrar na Clicksign:
+          <code class="bg-gray-100 px-1 rounded">{{ clicksignWebhookUrl }}</code>
+          — eventos: <em>document_closed</em>, <em>refusal</em> e <em>cancel</em>; o segredo HMAC
+          gerado lá é o campo acima.
+        </p>
+      </section>
+
       <div class="flex justify-end">
         <button
           mat-raised-button
@@ -978,6 +1125,11 @@ export class ConfiguracoesComponent implements OnInit {
     nfseSerieDps: this.fb.nonNullable.control(1, [Validators.min(1), Validators.max(89999)]),
     nfseProximoNumeroDps: this.fb.nonNullable.control(1, [Validators.min(1)]),
     redeAmbiente: this.fb.nonNullable.control<RedeAmbiente>("SANDBOX"),
+    clicksignAmbiente: this.fb.nonNullable.control<ClicksignAmbiente>("SANDBOX"),
+    clicksignAutenticacao: this.fb.nonNullable.control<ClicksignAutenticacao>("EMAIL"),
+    clicksignEscolaNome: this.fb.control<string | null>(null),
+    clicksignEscolaEmail: this.fb.control<string | null>(null, [Validators.email]),
+    clicksignEscolaCpf: this.fb.control<string | null>(null),
   });
 
   /** Senha do sistema legado: nunca vem do backend — campo separado, só
@@ -1004,6 +1156,19 @@ export class ConfiguracoesComponent implements OnInit {
   redeWebhookTokenConfigurado = false;
   readonly redeWebhookUrl = `${window.location.origin}/api/rede/webhook`;
 
+  /** Token e segredo HMAC da Clicksign: nunca vêm do backend (mesmo padrão do Asaas). */
+  readonly clicksignTokenControl = this.fb.nonNullable.control("");
+  readonly clicksignHmacControl = this.fb.nonNullable.control("");
+  clicksignTokenConfigurado = false;
+  clicksignHmacConfigurado = false;
+  readonly clicksignWebhookUrl = `${window.location.origin}/api/clicksign/webhook`;
+
+  private readonly contratosService = inject(ContratosService);
+  camposContrato: { campo: string; descricao: string }[] = [];
+  contratoModeloNome: string | null = null;
+  modeloContratoArquivo: File | null = null;
+  enviandoModeloContrato = false;
+
   carregando = false;
   salvando = false;
 
@@ -1026,6 +1191,7 @@ export class ConfiguracoesComponent implements OnInit {
   ngOnInit(): void {
     this.carregar();
     this.carregarMapeamentos();
+    this.contratosService.campos().subscribe((campos) => (this.camposContrato = campos));
   }
 
   carregar(): void {
@@ -1043,6 +1209,9 @@ export class ConfiguracoesComponent implements OnInit {
         this.redePvConfigurado = configuracao.redePvConfigurado;
         this.redeChaveIntegracaoConfigurada = configuracao.redeChaveIntegracaoConfigurada;
         this.redeWebhookTokenConfigurado = configuracao.redeWebhookTokenConfigurado;
+        this.clicksignTokenConfigurado = configuracao.clicksignTokenConfigurado;
+        this.clicksignHmacConfigurado = configuracao.clicksignHmacConfigurado;
+        this.contratoModeloNome = configuracao.contratoModeloNome;
         this.atualizarResumoCertificado(configuracao);
         this.carregando = false;
       },
@@ -1088,6 +1257,32 @@ export class ConfiguracoesComponent implements OnInit {
     });
   }
 
+  escolherModeloContrato(evento: Event): void {
+    this.modeloContratoArquivo = (evento.target as HTMLInputElement).files?.[0] ?? null;
+  }
+
+  enviarModeloContrato(): void {
+    if (!this.modeloContratoArquivo) return;
+    this.enviandoModeloContrato = true;
+    this.contratosService.enviarModelo(this.modeloContratoArquivo).subscribe({
+      next: (r) => {
+        this.contratoModeloNome = r.nome;
+        this.modeloContratoArquivo = null;
+        this.enviandoModeloContrato = false;
+        this.snackBar.open("Modelo do contrato atualizado", "Fechar", { duration: 4000 });
+      },
+      error: () => (this.enviandoModeloContrato = false),
+    });
+  }
+
+  baixarModeloContrato(): void {
+    this.contratosService
+      .baixarModelo()
+      .subscribe((blob) =>
+        salvarBlobComoArquivo(blob, this.contratoModeloNome ?? "modelo-contrato.docx"),
+      );
+  }
+
   removerCertificado(): void {
     const dados: ConfirmDialogData = {
       titulo: "Remover certificado",
@@ -1128,6 +1323,8 @@ export class ConfiguracoesComponent implements OnInit {
     const novoPvRede = this.redePvControl.value.trim();
     const novaChaveRede = this.redeChaveIntegracaoControl.value.trim();
     const novoTokenRede = this.redeWebhookTokenControl.value.trim();
+    const novoTokenClicksign = this.clicksignTokenControl.value.trim();
+    const novoHmacClicksign = this.clicksignHmacControl.value.trim();
     const payload: AtualizarConfiguracaoPayload = {
       ...valor,
       legadoUrl: valor.legadoUrl.trim() || null,
@@ -1147,6 +1344,11 @@ export class ConfiguracoesComponent implements OnInit {
       ...(novoPvRede ? { redePv: novoPvRede } : {}),
       ...(novaChaveRede ? { redeChaveIntegracao: novaChaveRede } : {}),
       ...(novoTokenRede ? { redeWebhookToken: novoTokenRede } : {}),
+      clicksignEscolaNome: valor.clicksignEscolaNome?.trim() || null,
+      clicksignEscolaEmail: valor.clicksignEscolaEmail?.trim() || null,
+      clicksignEscolaCpf: valor.clicksignEscolaCpf?.trim() || null,
+      ...(novoTokenClicksign ? { clicksignToken: novoTokenClicksign } : {}),
+      ...(novoHmacClicksign ? { clicksignHmacSecret: novoHmacClicksign } : {}),
     };
 
     this.service.atualizar(payload).subscribe({
@@ -1169,6 +1371,10 @@ export class ConfiguracoesComponent implements OnInit {
         this.redePvControl.setValue("");
         this.redeChaveIntegracaoControl.setValue("");
         this.redeWebhookTokenControl.setValue("");
+        this.clicksignTokenConfigurado = configuracao.clicksignTokenConfigurado;
+        this.clicksignHmacConfigurado = configuracao.clicksignHmacConfigurado;
+        this.clicksignTokenControl.setValue("");
+        this.clicksignHmacControl.setValue("");
         this.salvando = false;
         this.snackBar.open("Configurações salvas", "Fechar", { duration: 3000 });
       },

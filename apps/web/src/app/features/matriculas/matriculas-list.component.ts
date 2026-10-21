@@ -23,6 +23,7 @@ import {
 import { formatarCpf } from "../../shared/utils/cpf.util";
 import { AuthService } from "../../core/auth/auth.service";
 import { DocumentosLegadoDialogComponent } from "../alunos/documentos-legado-dialog.component";
+import { ContratoMatriculaDialogComponent } from "./contrato-matricula-dialog.component";
 import { DocumentosMatriculaDialogComponent } from "./documentos-matricula-dialog.component";
 import { CobrancaService } from "../../core/services/cobranca.service";
 import { SituacaoCobranca, Tag } from "../../core/models/cobranca.model";
@@ -212,6 +213,15 @@ import {
               <mat-icon>folder_open</mat-icon>
             </button>
             @if (authService.temPerfil("ADMINISTRADOR", "FINANCEIRO")) {
+              <button
+                mat-icon-button
+                type="button"
+                aria-label="Contrato de prestação de serviços"
+                title="Gerar, visualizar e enviar o contrato para assinatura"
+                (click)="abrirContrato(m)"
+              >
+                <mat-icon [class.text-green-600]="m.contratoAssinado">draw</mat-icon>
+              </button>
               <button
                 mat-icon-button
                 type="button"
@@ -406,6 +416,21 @@ export class MatriculasListComponent implements OnInit {
       width: "980px",
       maxWidth: "95vw",
       maxHeight: "90vh",
+      data: {
+        matriculaId: m.id,
+        aluno: m.aluno?.nome ?? "aluno",
+        numeroMatricula: m.numeroMatricula ?? null,
+        curso: m.curso?.nome ?? null,
+      },
+    });
+  }
+
+  /** Contrato de prestação de serviços: gerar, visualizar e enviar para assinatura. */
+  abrirContrato(m: Matricula): void {
+    this.dialog.open(ContratoMatriculaDialogComponent, {
+      width: "980px",
+      maxWidth: "95vw",
+      maxHeight: "92vh",
       data: {
         matriculaId: m.id,
         aluno: m.aluno?.nome ?? "aluno",

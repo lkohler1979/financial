@@ -737,8 +737,8 @@ import {
           <mat-form-field appearance="outline" class="md:col-span-3">
             <mat-label>Plataforma de assinatura</mat-label>
             <mat-select formControlName="assinaturaProvedor">
-              <mat-option value="CLICKSIGN">Clicksign</mat-option>
               <mat-option value="AUTENTIQUE">Autentique</mat-option>
+              <mat-option value="CLICKSIGN">Clicksign</mat-option>
             </mat-select>
             <mat-hint>
               Vale para os próximos envios; contratos já enviados seguem na plataforma de origem.
@@ -1191,7 +1191,7 @@ export class ConfiguracoesComponent implements OnInit {
     nfseSerieDps: this.fb.nonNullable.control(1, [Validators.min(1), Validators.max(89999)]),
     nfseProximoNumeroDps: this.fb.nonNullable.control(1, [Validators.min(1)]),
     redeAmbiente: this.fb.nonNullable.control<RedeAmbiente>("SANDBOX"),
-    assinaturaProvedor: this.fb.nonNullable.control<ProvedorAssinatura>("CLICKSIGN"),
+    assinaturaProvedor: this.fb.nonNullable.control<ProvedorAssinatura>("AUTENTIQUE"),
     autentiqueSandbox: this.fb.nonNullable.control(true),
     clicksignAmbiente: this.fb.nonNullable.control<ClicksignAmbiente>("SANDBOX"),
     clicksignAutenticacao: this.fb.nonNullable.control<ClicksignAutenticacao>("EMAIL"),

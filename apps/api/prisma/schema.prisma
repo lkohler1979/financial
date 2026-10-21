@@ -569,7 +569,7 @@ model Configuracao {
 
   /// Integração Clicksign (assinatura eletrônica / ICP-Brasil). Token e segredo do webhook cifrados.
   /// Plataforma de assinatura em uso (Clicksign ou Autentique).
-  assinaturaProvedor                   ProvedorAssinatura    @default(CLICKSIGN) @map("assinatura_provedor")
+  assinaturaProvedor                   ProvedorAssinatura    @default(AUTENTIQUE) @map("assinatura_provedor")
   /// Autentique: token da API, segredo do webhook (HMAC) e modo de teste (`sandbox: true`).
   autentiqueTokenCriptografado         String?               @map("autentique_token_criptografado")
   autentiqueWebhookSecretCriptografado String?               @map("autentique_webhook_secret_criptografado")

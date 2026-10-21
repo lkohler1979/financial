@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { asyncHandler } from "../../shared/utils/async-handler";
 import { paramString, usuarioAtual } from "../../shared/utils/http";
 import { importacaoLegadoService } from "./importacao-legado.service";
+import { documentosLegadoService } from "./documentos-legado.service";
 import { importacaoLegadoLoteService } from "./importacao-legado-lote.service";
 import {
   buscarPorCpfSchema,
@@ -20,6 +21,13 @@ export const importacaoLegadoController = {
     const input = confirmarImportacaoSchema.parse(req.body);
     const resultado = await importacaoLegadoService.confirmarImportacao(input, usuarioAtual(req));
     res.status(201).json(resultado);
+  }),
+
+  /** Busca no legado os documentos do aluno e baixa os arquivos para a pasta de documentos. */
+  importarDocumentos: asyncHandler(async (req: Request, res: Response) => {
+    res.json(
+      await documentosLegadoService.importarDoAluno(paramString(req, "alunoId"), usuarioAtual(req)),
+    );
   }),
 
   /** Dispara a busca de TODOS os alunos do legado (roda em segundo plano no worker). */

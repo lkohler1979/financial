@@ -16,10 +16,12 @@ export interface Armazenamento {
   remover(chave: string): Promise<void>;
 }
 
-const RAIZ = path.resolve(
-  process.cwd(),
-  process.env.ARMAZENAMENTO_DIR ?? "output/documentos-alunos",
-);
+// Pasta dos documentos dos alunos: `apps/documentos` (o processo roda em `apps/api`). Fica fora do
+// Git (ver .gitignore) e fora de `apps/api/output`, que o deploy pode recriar. Pode ser trocada por
+// ARMAZENAMENTO_DIR.
+const RAIZ = path.resolve(process.cwd(), process.env.ARMAZENAMENTO_DIR ?? "../documentos");
+// Local usado antes da mudança: arquivos já enviados por lá continuam sendo encontrados.
+const RAIZ_ANTIGA = path.resolve(process.cwd(), "output/documentos-alunos");
 
 export const armazenamentoLocal: Armazenamento = {
   async salvar(pasta, nomeOriginal, conteudo) {
@@ -37,7 +39,9 @@ export const armazenamentoLocal: Armazenamento = {
     const completo = path.resolve(RAIZ, chave);
     // Barra qualquer chave que tente sair da pasta raiz (path traversal).
     if (!completo.startsWith(RAIZ + path.sep)) throw new Error("Chave de arquivo inválida");
-    return completo;
+    if (fs.existsSync(completo)) return completo;
+    const antigo = path.resolve(RAIZ_ANTIGA, chave);
+    return antigo.startsWith(RAIZ_ANTIGA + path.sep) && fs.existsSync(antigo) ? antigo : completo;
   },
 
   async remover(chave) {

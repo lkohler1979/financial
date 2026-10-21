@@ -17,6 +17,9 @@ apps/api/prisma/dev.db
 
 # Documentos gerados
 apps/api/output/
+
+# Documentos dos alunos (arquivos enviados e baixados do legado)
+apps/documentos/
 *.docx.tmp
 
 # Uploads temporários de importação

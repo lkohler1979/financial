@@ -41,3 +41,27 @@ importacaoLegadoRouter.post(
   requireRole("ADMINISTRADOR", "FINANCEIRO"),
   importacaoLegadoController.importarDocumentos,
 );
+
+// Busca de documentos no legado em lote (várias matrículas): roda no worker, com andamento,
+// cancelamento e relatório — mesmo critério de acesso do botão de um aluno.
+const financeiro = requireRole("ADMINISTRADOR", "FINANCEIRO");
+importacaoLegadoRouter.post(
+  "/documentos/lote",
+  financeiro,
+  importacaoLegadoController.iniciarDocumentosLote,
+);
+importacaoLegadoRouter.get(
+  "/documentos/lote/atual",
+  financeiro,
+  importacaoLegadoController.ultimoDocumentosLote,
+);
+importacaoLegadoRouter.post(
+  "/documentos/lote/:loteId/cancelar",
+  financeiro,
+  importacaoLegadoController.cancelarDocumentosLote,
+);
+importacaoLegadoRouter.get(
+  "/documentos/lote/:loteId/relatorio",
+  financeiro,
+  importacaoLegadoController.relatorioDocumentosLote,
+);

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { listarMatriculasSchema } from "../matriculas/matriculas.schema";
 
 export const buscarPorCpfSchema = z.object({
   cpf: z.string().trim().min(1, "CPF é obrigatório"),
@@ -38,3 +39,14 @@ export const iniciarLoteSchema = z.object({
   // Só para testes/validação: interrompe a varredura ao atingir essa quantidade de pessoas.
   limite: z.coerce.number().int().min(1).max(100000).optional(),
 });
+
+/**
+ * Busca de documentos no legado para várias matrículas: as marcadas na tela (`matriculaIds`) ou
+ * todas as que casam com os filtros da lista de matrículas (`filtros`, os mesmos da listagem).
+ */
+export const iniciarDocumentosLoteSchema = z
+  .object({
+    matriculaIds: z.array(z.string().uuid()).min(1).max(5000).optional(),
+    filtros: listarMatriculasSchema.omit({ page: true, pageSize: true }).optional(),
+  })
+  .refine((v) => v.matriculaIds || v.filtros, "Informe as matrículas ou os filtros da busca");

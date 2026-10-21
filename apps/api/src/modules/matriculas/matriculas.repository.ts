@@ -2,6 +2,8 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../database/prisma";
 import { proximoCodigoSequencial } from "../../shared/utils/sequencial";
 
+export type FiltrosMatriculas = Omit<ListarMatriculasParams, "skip" | "take">;
+
 export interface ListarMatriculasParams {
   alunoId?: string;
   cursoId?: string;
@@ -66,7 +68,8 @@ export const matriculasRepository = {
     return prisma.matricula.findFirst({ where: { alunoId, cursoId } });
   },
 
-  async list({
+  /** Filtros da listagem de matrículas (a mesma regra vale para a busca em lote no legado). */
+  whereDaListagem({
     alunoId,
     cursoId,
     situacao,
@@ -79,10 +82,8 @@ export const matriculasRepository = {
     contratoAssinado,
     tcdAssinado,
     situacaoDocumentacao,
-    skip,
-    take,
-  }: ListarMatriculasParams) {
-    const where: Prisma.MatriculaWhereInput = {
+  }: FiltrosMatriculas): Prisma.MatriculaWhereInput {
+    return {
       ...(alunoId ? { alunoId } : {}),
       ...(cursoId ? { cursoId } : {}),
       ...(situacao ? { situacao: { contains: situacao, mode: "insensitive" } } : {}),
@@ -102,6 +103,58 @@ export const matriculasRepository = {
       ...(tcdAssinado !== undefined ? { tcdAssinado } : {}),
       ...(situacaoDocumentacao ? { situacaoDocumentacao } : {}),
     };
+  },
+
+  /**
+   * Alunos (sem repetir) das matrículas escolhidas: por ids marcados na tela ou por todos os que
+   * casam com os filtros. Devolve até `limite + 1` para o serviço saber se passou do máximo.
+   */
+  async alunosDasMatriculas(
+    selecao: { ids?: string[]; filtros?: FiltrosMatriculas },
+    limite: number,
+  ) {
+    const where: Prisma.MatriculaWhereInput = selecao.ids
+      ? { id: { in: selecao.ids } }
+      : this.whereDaListagem(selecao.filtros ?? {});
+    const alunos = await prisma.aluno.findMany({
+      where: { matriculas: { some: where } },
+      select: { id: true, nome: true, cpf: true },
+      orderBy: { nome: "asc" },
+      take: limite + 1,
+    });
+    return alunos;
+  },
+
+  async list({
+    alunoId,
+    cursoId,
+    situacao,
+    alunoNome,
+    alunoCpf,
+    dataMatriculaInicio,
+    dataMatriculaFim,
+    situacaoCobrancaId,
+    tagId,
+    contratoAssinado,
+    tcdAssinado,
+    situacaoDocumentacao,
+    skip,
+    take,
+  }: ListarMatriculasParams) {
+    const where = this.whereDaListagem({
+      alunoId,
+      cursoId,
+      situacao,
+      alunoNome,
+      alunoCpf,
+      dataMatriculaInicio,
+      dataMatriculaFim,
+      situacaoCobrancaId,
+      tagId,
+      contratoAssinado,
+      tcdAssinado,
+      situacaoDocumentacao,
+    });
 
     const [data, total] = await Promise.all([
       prisma.matricula.findMany({

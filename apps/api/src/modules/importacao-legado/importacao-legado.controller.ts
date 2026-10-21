@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { documentosLegadoLoteService } from "./documentos-legado-lote.service";
 import { asyncHandler } from "../../shared/utils/async-handler";
 import { paramString, usuarioAtual } from "../../shared/utils/http";
 import { importacaoLegadoService } from "./importacao-legado.service";
@@ -7,6 +8,7 @@ import { importacaoLegadoLoteService } from "./importacao-legado-lote.service";
 import {
   buscarPorCpfSchema,
   confirmarImportacaoSchema,
+  iniciarDocumentosLoteSchema,
   iniciarLoteSchema,
 } from "./importacao-legado.schema";
 
@@ -40,6 +42,36 @@ export const importacaoLegadoController = {
   /** Planilha com o relatório de ocorrências do lote (`atual` = o último). */
   relatorioLote: asyncHandler(async (req: Request, res: Response) => {
     const { arquivo, nome } = await importacaoLegadoLoteService.relatorio(
+      paramString(req, "loteId"),
+    );
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
+    res.setHeader("Content-Disposition", `attachment; filename="${nome}"`);
+    res.send(arquivo);
+  }),
+
+  /** Busca de documentos no legado para várias matrículas (roda em segundo plano). */
+  iniciarDocumentosLote: asyncHandler(async (req: Request, res: Response) => {
+    const { matriculaIds, filtros } = iniciarDocumentosLoteSchema.parse(req.body ?? {});
+    const lote = await documentosLegadoLoteService.iniciar(usuarioAtual(req), {
+      matriculaIds,
+      filtros,
+    });
+    res.status(202).json(lote);
+  }),
+
+  ultimoDocumentosLote: asyncHandler(async (_req: Request, res: Response) => {
+    res.json((await documentosLegadoLoteService.ultimo()) ?? null);
+  }),
+
+  cancelarDocumentosLote: asyncHandler(async (req: Request, res: Response) => {
+    res.json(await documentosLegadoLoteService.cancelar(paramString(req, "loteId")));
+  }),
+
+  relatorioDocumentosLote: asyncHandler(async (req: Request, res: Response) => {
+    const { arquivo, nome } = await documentosLegadoLoteService.relatorio(
       paramString(req, "loteId"),
     );
     res.setHeader(

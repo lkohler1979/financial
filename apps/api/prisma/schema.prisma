@@ -154,17 +154,18 @@ model Usuario {
   /// ADMINISTRADOR sempre pode, independente deste campo.
   podeDeferirDocumentos Boolean       @default(false) @map("pode_deferir_documentos")
 
-  alunosComoAgente        Aluno[]                      @relation("AlunoAgenteEducacional")
-  matriculasComoAgente    Matricula[]                  @relation("MatriculaAgenteEducacional")
-  documentosValidados     Documento[]
-  solicitacoesAtendidas   SolicitacaoDocumento[]
-  historicoSituacoes      HistoricoSituacaoMatricula[]
-  importacoes             Importacao[]
-  importacoesLegadoLote   ImportacaoLegadoLote[]
-  auditorias              Auditoria[]
-  historicosCobranca      HistoricoCobranca[]
-  relatoriosInadimplencia RelatorioInadimplencia[]
-  sincronizacoesLegado    SincronizacaoLegado[]
+  alunosComoAgente          Aluno[]                      @relation("AlunoAgenteEducacional")
+  matriculasComoAgente      Matricula[]                  @relation("MatriculaAgenteEducacional")
+  documentosValidados       Documento[]
+  solicitacoesAtendidas     SolicitacaoDocumento[]
+  historicoSituacoes        HistoricoSituacaoMatricula[]
+  importacoes               Importacao[]
+  importacoesLegadoLote     ImportacaoLegadoLote[]
+  importacoesDocumentosLote ImportacaoDocumentosLote[]
+  auditorias                Auditoria[]
+  historicosCobranca        HistoricoCobranca[]
+  relatoriosInadimplencia   RelatorioInadimplencia[]
+  sincronizacoesLegado      SincronizacaoLegado[]
 
   @@map("usuarios")
 }
@@ -1064,6 +1065,69 @@ enum TipoOcorrenciaLote {
   PARCELA_NAO_IMPORTADA
   ERRO
   VARREDURA_INCOMPLETA
+}
+
+/// Busca em lote dos documentos de vários alunos no sistema legado (botão em /matriculas): para
+/// cada aluno escolhido, baixa os arquivos do legado para o Ethos (mesma rotina do botão "Buscar
+/// no legado" de um aluno) e atualiza a situação da documentação das matrículas. Roda no worker.
+model ImportacaoDocumentosLote {
+  id              String               @id @default(uuid())
+  usuarioId       String               @map("usuario_id")
+  status          StatusLoteDocumentos @default(EM_ANDAMENTO)
+  total           Int
+  processados     Int                  @default(0)
+  baixados        Int                  @default(0)
+  jaImportados    Int                  @default(0) @map("ja_importados")
+  mantidos        Int                  @default(0)
+  semDocumento    Int                  @default(0) @map("sem_documento")
+  /// Erros de documentos individuais (dentro de alunos que foram processados).
+  errosDocumentos Int                  @default(0) @map("erros_documentos")
+  /// Alunos que não puderam ser processados (não achados no legado, sem CPF, falha geral).
+  alunosComErro   Int                  @default(0) @map("alunos_com_erro")
+  mensagemFalha   String?              @map("mensagem_falha")
+  criadoEm        DateTime             @default(now()) @map("criado_em")
+  atualizadoEm    DateTime             @updatedAt @map("atualizado_em")
+  finalizadoEm    DateTime?            @map("finalizado_em")
+
+  usuario Usuario                    @relation(fields: [usuarioId], references: [id])
+  itens   ImportacaoDocumentosItem[]
+
+  @@map("importacoes_documentos_lote")
+}
+
+enum StatusLoteDocumentos {
+  EM_ANDAMENTO
+  CONCLUIDO
+  FALHOU
+  CANCELADO
+}
+
+/// Um aluno dentro de uma busca em lote de documentos, com o que aconteceu com ele.
+model ImportacaoDocumentosItem {
+  id           String                  @id @default(uuid())
+  loteId       String                  @map("lote_id")
+  alunoId      String                  @map("aluno_id")
+  alunoNome    String                  @map("aluno_nome")
+  cpf          String
+  resultado    ResultadoItemDocumentos @default(PENDENTE)
+  baixados     Int                     @default(0)
+  jaImportados Int                     @default(0) @map("ja_importados")
+  mantidos     Int                     @default(0)
+  semDocumento Int                     @default(0) @map("sem_documento")
+  erros        Int                     @default(0)
+  mensagem     String?
+  processadoEm DateTime?               @map("processado_em")
+
+  lote ImportacaoDocumentosLote @relation(fields: [loteId], references: [id], onDelete: Cascade)
+
+  @@index([loteId, resultado])
+  @@map("importacoes_documentos_itens")
+}
+
+enum ResultadoItemDocumentos {
+  PENDENTE
+  CONCLUIDO
+  ERRO
 }
 
 /// Contrato de prestação de serviços de uma matrícula, enviado à Clicksign para assinatura.

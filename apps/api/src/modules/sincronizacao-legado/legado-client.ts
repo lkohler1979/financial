@@ -121,6 +121,38 @@ export interface LegadoTituloDetalhe {
   tituloObservacoes: string | null;
 }
 
+/** Tipo de documento exigido de uma pessoa (`busca-tipo-documento-por-grupo`). */
+export interface LegadoTipoDocumento {
+  docgruporegraId: string;
+  tdocId: string;
+  descricao: string;
+  chaveGed: string;
+}
+
+/** Arquivo anexado a um documento do legado. */
+export interface LegadoArquivoDocumento {
+  id: string;
+  nome: string;
+  mime: string;
+  /** Bytes informados pelo legado — usado para conferir o download. */
+  tamanho: number;
+  /** Chave de `gerenciador-arquivos/arquivo/download/{chave}`. */
+  chave: string;
+}
+
+/** Documento de um aluno no legado (`busca-informacao-documento`); null quando não foi entregue. */
+export interface LegadoDocumentoAluno {
+  /** "Deferido", "Indeferido", "Pendente"… como o legado escreve. */
+  situacao: string;
+  submissao: string | null;
+  deferido: string | null;
+  vencimento: string | null;
+  validador: string | null;
+  obsInterna: string | null;
+  obsAluno: string | null;
+  arquivos: LegadoArquivoDocumento[];
+}
+
 class SessaoExpiradaError extends Error {
   constructor() {
     super("Sessão com o sistema legado expirou ou não foi autenticada");
@@ -258,6 +290,114 @@ export class LegadoClient {
     }));
   }
 
+  private async postarFormulario(
+    caminho: string,
+    campos: Record<string, string>,
+  ): Promise<unknown> {
+    const resposta = await this.requisitar(caminho, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded; charset=UTF-8" },
+      body: new URLSearchParams(campos),
+    });
+    return resposta.json();
+  }
+
+  /**
+   * POST /documentos/documento-tipo/busca-tipo-documento-por-grupo — tipos de documento do grupo
+   * "Documentos pessoais" (docgrupoId=1) exigidos de uma pessoa (CPF, RG, comprovante de
+   * residência…). Formato confirmado ao vivo em 2026-10-21. Os ids vão SEM zeros à esquerda
+   * (como a própria tela do legado envia).
+   */
+  async listarTiposDocumento(pesId: string): Promise<LegadoTipoDocumento[]> {
+    const corpo = await this.postarFormulario(
+      "/documentos/documento-tipo/busca-tipo-documento-por-grupo",
+      {
+        docgrupoId: "1",
+        docgruporegraRequerido: "'Aluno'",
+        pesId: semZerosId(pesId),
+        alunocursoId: "",
+        alunoperId: "",
+      },
+    );
+    return (Array.isArray(corpo) ? corpo : []).map((t: Record<string, unknown>) => ({
+      docgruporegraId: String(t.docgruporegra_id ?? ""),
+      tdocId: String(t.tdoc_id ?? ""),
+      descricao: String(t.tdoc_descricao ?? ""),
+      chaveGed: String(t.tdoc_chave_ged ?? ""),
+    }));
+  }
+
+  /**
+   * POST /documentos/documento-aluno/busca-informacao-documento — o documento de UM tipo de um
+   * aluno, com situação, datas e a lista de arquivos. Sem entrega, `arrDocumentoPessoa` vem como
+   * lista vazia e o resultado é null. Formato confirmado ao vivo em 2026-10-21.
+   */
+  async buscarDocumentoAluno(
+    alunoId: string,
+    tipo: LegadoTipoDocumento,
+  ): Promise<LegadoDocumentoAluno | null> {
+    const corpo = (await this.postarFormulario(
+      "/documentos/documento-aluno/busca-informacao-documento",
+      {
+        alunoId: semZerosId(alunoId),
+        alunocursoId: "",
+        tdocId: semZerosId(tipo.tdocId),
+        docgruporegraId: semZerosId(tipo.docgruporegraId),
+        tdocChaveGed: tipo.chaveGed,
+        docgrupoId: "1",
+        docgrupoChaveGed: "",
+        alunoperId: "",
+      },
+    )) as { arrDados?: { arrDocumentoPessoa?: unknown; arrArquivo?: unknown } };
+
+    const doc = corpo.arrDados?.arrDocumentoPessoa;
+    if (!doc || Array.isArray(doc)) return null;
+    const d = doc as Record<string, unknown>;
+    const texto = (v: unknown) => (v === null || v === undefined || v === "" ? null : String(v));
+    const arquivos = (
+      Array.isArray(corpo.arrDados?.arrArquivo) ? corpo.arrDados.arrArquivo : []
+    ).map((a: Record<string, unknown>) => ({
+      id: String(a.id ?? ""),
+      nome: String(a.nome ?? ""),
+      mime: String(a.tipo ?? ""),
+      tamanho: Number(a.tamanho ?? 0),
+      chave: String(a.chave ?? ""),
+    }));
+    return {
+      situacao: String(d.docpessoaSituacao ?? ""),
+      submissao: texto(d.docpessoaSubmissao),
+      deferido: texto(d.docpessoaDeferido),
+      vencimento: texto(d.docpessoaVencimento),
+      validador: texto(d.validador),
+      obsInterna: texto(d.docpessoaObsInterna),
+      obsAluno: texto(d.docpessoaObsAluno),
+      arquivos: arquivos.filter((a) => a.chave),
+    };
+  }
+
+  /**
+   * GET /gerenciador-arquivos/arquivo/download/{chave} — o arquivo em si. Atenção: uma chave
+   * inválida NÃO dá erro HTTP, devolve uma página HTML com status 200 (confirmado ao vivo em
+   * 2026-10-21); por isso valida que não é HTML e, quando o legado informou o tamanho, que os bytes
+   * batem.
+   */
+  async baixarArquivo(chave: string, tamanhoEsperado?: number): Promise<Buffer> {
+    const resposta = await this.requisitar(
+      `/gerenciador-arquivos/arquivo/download/${encodeURIComponent(chave)}`,
+    );
+    const conteudo = Buffer.from(await resposta.arrayBuffer());
+    const tipo = resposta.headers.get("content-type") ?? "";
+    if (/text\/html/i.test(tipo) || conteudo.length === 0) {
+      throw new Error("O legado não devolveu o arquivo (chave inválida ou arquivo removido)");
+    }
+    if (tamanhoEsperado && conteudo.length !== tamanhoEsperado) {
+      throw new Error(
+        `Arquivo incompleto: baixou ${conteudo.length} bytes, o legado informa ${tamanhoEsperado}`,
+      );
+    }
+    return conteudo;
+  }
+
   /**
    * POST /financeiro/financeiro-titulo/search — lista os títulos (parcelas)
    * de uma pessoa (todos os cursos juntos), filtrando por `filter[pesId]`
@@ -373,6 +513,11 @@ export class LegadoClient {
       tituloObservacoes: d.tituloObservacoes != null ? String(d.tituloObservacoes) : null,
     };
   }
+}
+
+/** Ids do legado vêm preenchidos com zeros ("0000000007"); as telas dele enviam "7". */
+export function semZerosId(id: string): string {
+  return id.replace(/^0+(?=\d)/, "");
 }
 
 /** Converte a data no formato "DD/MM/AAAA" (ou "DD/MM/AAAA HH:mm:ss") usado

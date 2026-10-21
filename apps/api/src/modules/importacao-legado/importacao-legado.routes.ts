@@ -34,3 +34,10 @@ importacaoLegadoRouter.get(
   requireRole("ADMINISTRADOR", "FINANCEIRO"),
   importacaoLegadoController.relatorioLote,
 );
+
+// Documentos do aluno: baixa do legado para apps/documentos e cria/atualiza o Documento.
+importacaoLegadoRouter.post(
+  "/alunos/:alunoId/documentos",
+  requireRole("ADMINISTRADOR", "FINANCEIRO"),
+  importacaoLegadoController.importarDocumentos,
+);

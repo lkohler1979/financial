@@ -20,6 +20,8 @@ import {
 import { formatarCpf } from "../../shared/utils/cpf.util";
 import { ImportarLegadoDialogComponent } from "./importar-legado-dialog.component";
 import { ImportarLegadoLoteDialogComponent } from "./importar-legado-lote-dialog.component";
+import { DocumentosLegadoDialogComponent } from "./documentos-legado-dialog.component";
+import { AuthService } from "../../core/auth/auth.service";
 
 @Component({
   selector: "app-alunos-list",
@@ -98,6 +100,16 @@ import { ImportarLegadoLoteDialogComponent } from "./importar-legado-lote-dialog
             <a mat-icon-button [routerLink]="['/alunos', a.id]" aria-label="Editar">
               <mat-icon>edit</mat-icon>
             </a>
+            @if (authService.temPerfil("ADMINISTRADOR", "FINANCEIRO")) {
+              <button
+                mat-icon-button
+                (click)="buscarDocumentosLegado(a)"
+                aria-label="Buscar documentos no legado"
+                title="Buscar os documentos deste aluno no sistema legado e baixar os arquivos"
+              >
+                <mat-icon>cloud_download</mat-icon>
+              </button>
+            }
             <button mat-icon-button color="warn" (click)="remover(a)" aria-label="Remover">
               <mat-icon>delete</mat-icon>
             </button>
@@ -125,6 +137,7 @@ import { ImportarLegadoLoteDialogComponent } from "./importar-legado-lote-dialog
 export class AlunosListComponent implements OnInit {
   private readonly service = inject(AlunosService);
   private readonly dialog = inject(MatDialog);
+  readonly authService = inject(AuthService);
   private readonly snackBar = inject(MatSnackBar);
   protected readonly formatarCpf = formatarCpf;
 
@@ -171,6 +184,15 @@ export class AlunosListComponent implements OnInit {
       .subscribe((importou) => {
         if (importou) this.carregar();
       });
+  }
+
+  /** Busca no legado os documentos do aluno e baixa os arquivos para apps/documentos. */
+  buscarDocumentosLegado(aluno: Aluno): void {
+    this.dialog.open(DocumentosLegadoDialogComponent, {
+      width: "760px",
+      maxHeight: "90vh",
+      data: { id: aluno.id, nome: aluno.nome },
+    });
   }
 
   /** Busca em lote: todos os alunos do legado (varredura + importação em segundo plano). */

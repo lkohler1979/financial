@@ -56,6 +56,30 @@ export interface ResultadoImportacaoLegado {
   avisos: string[];
 }
 
+export type ResultadoDocumentoLegado =
+  "BAIXADO" | "JA_IMPORTADO" | "MANTIDO_ETHOS" | "SEM_DOCUMENTO" | "SEM_ARQUIVO" | "ERRO";
+
+export interface ItemDocumentoLegado {
+  tipo: string;
+  resultado: ResultadoDocumentoLegado;
+  arquivo: string | null;
+  bytes: number | null;
+  /** Situação no Ethos depois da importação: PENDENTE | DEFERIDO | INDEFERIDO. */
+  situacao: string | null;
+  detalhe: string | null;
+}
+
+/** Resultado de buscar no legado os documentos de UM aluno e baixá-los para apps/documentos. */
+export interface ResumoDocumentosLegado {
+  aluno: { id: string; nome: string; cpf: string };
+  baixados: number;
+  jaImportados: number;
+  mantidos: number;
+  semDocumento: number;
+  erros: number;
+  itens: ItemDocumentoLegado[];
+}
+
 export type StatusLoteLegado = "ENUMERANDO" | "IMPORTANDO" | "CONCLUIDO" | "FALHOU";
 
 /** Andamento da busca em lote de todos os alunos do legado (roda em segundo plano no worker). */
@@ -87,6 +111,14 @@ export class ImportacaoLegadoService {
   buscarPorCpf(cpf: string): Observable<PreviaImportacaoLegado> {
     const params = new HttpParams().set("cpf", cpf);
     return this.http.get<PreviaImportacaoLegado>(`${this.baseUrl}/buscar-cpf`, { params });
+  }
+
+  /** Busca no legado os documentos do aluno e baixa os arquivos (CPF, RG, comprovante…). */
+  importarDocumentos(alunoId: string): Observable<ResumoDocumentosLegado> {
+    return this.http.post<ResumoDocumentosLegado>(
+      `${this.baseUrl}/alunos/${alunoId}/documentos`,
+      {},
+    );
   }
 
   /** Dispara a busca de TODOS os alunos do legado (segundo plano). */

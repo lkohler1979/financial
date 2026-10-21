@@ -5,6 +5,7 @@ import { FormBuilder, ReactiveFormsModule } from "@angular/forms";
 import { MatTableModule } from "@angular/material/table";
 import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
+import { MatCheckboxModule } from "@angular/material/checkbox";
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatInputModule } from "@angular/material/input";
 import { MatPaginatorModule, PageEvent } from "@angular/material/paginator";
@@ -25,6 +26,10 @@ import { formatarCpf } from "../../shared/utils/cpf.util";
 import { AuthService } from "../../core/auth/auth.service";
 import { DocumentosLegadoDialogComponent } from "../alunos/documentos-legado-dialog.component";
 import { ContratoMatriculaDialogComponent } from "./contrato-matricula-dialog.component";
+import {
+  DadosDocumentosLegadoLote,
+  DocumentosLegadoLoteDialogComponent,
+} from "./documentos-legado-lote-dialog.component";
 import { DocumentosMatriculaDialogComponent } from "./documentos-matricula-dialog.component";
 import { CobrancaService } from "../../core/services/cobranca.service";
 import { SituacaoCobranca, Tag } from "../../core/models/cobranca.model";
@@ -44,6 +49,7 @@ import {
     MatTableModule,
     MatButtonModule,
     MatIconModule,
+    MatCheckboxModule,
     MatFormFieldModule,
     MatInputModule,
     MatPaginatorModule,
@@ -54,9 +60,36 @@ import {
   template: `
     <div class="flex items-center justify-between mb-4">
       <h1 class="text-2xl font-medium m-0">Matrículas</h1>
-      <a mat-raised-button color="primary" routerLink="/matriculas/cadastro">
-        <mat-icon>add</mat-icon> Nova matrícula
-      </a>
+      <div class="flex items-center gap-2 flex-wrap">
+        @if (authService.temPerfil("ADMINISTRADOR", "FINANCEIRO")) {
+          @if (selecionadas.size > 0) {
+            <button
+              mat-flat-button
+              color="primary"
+              type="button"
+              title="Busca no sistema legado os documentos dos alunos das matrículas marcadas"
+              (click)="buscarDocumentosEmLote(true)"
+            >
+              <mat-icon>cloud_download</mat-icon> Buscar documentos no legado ({{
+                selecionadas.size
+              }}
+              marcadas)
+            </button>
+          }
+          <button
+            mat-stroked-button
+            type="button"
+            [disabled]="total === 0"
+            title="Busca no sistema legado os documentos dos alunos de todas as matrículas desta consulta"
+            (click)="buscarDocumentosEmLote(false)"
+          >
+            <mat-icon>cloud_download</mat-icon> Buscar documentos de todas do filtro ({{ total }})
+          </button>
+        }
+        <a mat-raised-button color="primary" routerLink="/matriculas/cadastro">
+          <mat-icon>add</mat-icon> Nova matrícula
+        </a>
+      </div>
     </div>
 
     <form
@@ -139,6 +172,23 @@ import {
 
     <div class="bg-white rounded shadow-sm overflow-x-auto mt-2 w-full">
       <table mat-table [dataSource]="matriculas" class="w-full table-compact">
+        <ng-container matColumnDef="selecionar">
+          <th mat-header-cell *matHeaderCellDef class="w-10">
+            <mat-checkbox
+              aria-label="Selecionar todas desta página"
+              [checked]="todasDaPaginaMarcadas()"
+              [indeterminate]="algumasDaPaginaMarcadas()"
+              (change)="marcarPagina($event.checked)"
+            ></mat-checkbox>
+          </th>
+          <td mat-cell *matCellDef="let m">
+            <mat-checkbox
+              [aria-label]="'Selecionar a matrícula de ' + (m.aluno?.nome || 'aluno')"
+              [checked]="selecionadas.has(m.id)"
+              (change)="marcar(m.id, $event.checked)"
+            ></mat-checkbox>
+          </td>
+        </ng-container>
         <ng-container matColumnDef="aluno">
           <th mat-header-cell *matHeaderCellDef>Aluno</th>
           <td mat-cell *matCellDef="let m">
@@ -305,6 +355,7 @@ export class MatriculasListComponent implements OnInit {
   });
 
   colunas = [
+    "selecionar",
     "aluno",
     "cpf",
     "celular",
@@ -337,6 +388,7 @@ export class MatriculasListComponent implements OnInit {
     this.carregar();
     this.filtros.valueChanges.pipe(debounceTime(400), distinctUntilChanged()).subscribe(() => {
       this.page = 1;
+      this.selecionadas.clear();
       this.carregar();
     });
   }
@@ -412,6 +464,67 @@ export class MatriculasListComponent implements OnInit {
       });
     }
     return badges;
+  }
+
+  // ---- seleção e busca de documentos no legado em lote
+
+  /** Matrículas marcadas (mantidas ao trocar de página; zeradas ao mudar o filtro). */
+  readonly selecionadas = new Set<string>();
+
+  marcar(id: string, marcada: boolean): void {
+    if (marcada) this.selecionadas.add(id);
+    else this.selecionadas.delete(id);
+  }
+
+  marcarPagina(marcada: boolean): void {
+    for (const m of this.matriculas) this.marcar(m.id, marcada);
+  }
+
+  todasDaPaginaMarcadas(): boolean {
+    return this.matriculas.length > 0 && this.matriculas.every((m) => this.selecionadas.has(m.id));
+  }
+
+  algumasDaPaginaMarcadas(): boolean {
+    return (
+      !this.todasDaPaginaMarcadas() && this.matriculas.some((m) => this.selecionadas.has(m.id))
+    );
+  }
+
+  /** Abre a busca em lote: das matrículas marcadas, ou de todas as que casam com o filtro atual. */
+  buscarDocumentosEmLote(marcadas: boolean): void {
+    const v = this.filtros.getRawValue();
+    const dados: DadosDocumentosLegadoLote = marcadas
+      ? {
+          matriculaIds: [...this.selecionadas],
+          quantidade: this.selecionadas.size,
+          origem: "marcadas",
+        }
+      : {
+          filtros: {
+            alunoNome: v.alunoNome || undefined,
+            alunoCpf: v.alunoCpf || undefined,
+            situacao: v.situacao || undefined,
+            situacaoCobrancaId: v.situacaoCobrancaId || undefined,
+            tagId: v.tagId || undefined,
+            contratoAssinado: v.contratoAssinado ?? undefined,
+            tcdAssinado: v.tcdAssinado ?? undefined,
+            situacaoDocumentacao: v.situacaoDocumentacao || undefined,
+            dataMatriculaInicio: v.dataMatriculaInicio || undefined,
+            dataMatriculaFim: v.dataMatriculaFim || undefined,
+          },
+          quantidade: this.total,
+          origem: "do filtro atual",
+        };
+    this.dialog
+      .open(DocumentosLegadoLoteDialogComponent, {
+        width: "760px",
+        maxWidth: "95vw",
+        maxHeight: "90vh",
+        data: dados,
+      })
+      .afterClosed()
+      // A situação da documentação das linhas muda com a busca.
+      .subscribe(() => this.carregar());
   }
 
   mudarPagina(evento: PageEvent): void {

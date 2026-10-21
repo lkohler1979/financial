@@ -80,6 +80,41 @@ export interface ResumoDocumentosLegado {
   itens: ItemDocumentoLegado[];
 }
 
+export type StatusLoteDocumentos = "EM_ANDAMENTO" | "CONCLUIDO" | "FALHOU" | "CANCELADO";
+
+/** Filtros da lista de matrículas (os mesmos valem para escolher "todas do filtro"). */
+export interface FiltrosMatriculasLote {
+  alunoNome?: string;
+  alunoCpf?: string;
+  situacao?: string;
+  situacaoCobrancaId?: string;
+  tagId?: string;
+  contratoAssinado?: boolean;
+  tcdAssinado?: boolean;
+  situacaoDocumentacao?: string;
+  dataMatriculaInicio?: string;
+  dataMatriculaFim?: string;
+}
+
+/** Andamento da busca em lote de documentos no legado (roda em segundo plano no worker). */
+export interface LoteDocumentos {
+  id: string;
+  status: StatusLoteDocumentos;
+  total: number;
+  processados: number;
+  baixados: number;
+  jaImportados: number;
+  mantidos: number;
+  semDocumento: number;
+  errosDocumentos: number;
+  alunosComErro: number;
+  mensagemFalha: string | null;
+  criadoEm: string;
+  finalizadoEm: string | null;
+  /** Primeiros alunos com erro (o relatório traz todos). */
+  problemas: { id: string; alunoNome: string; mensagem: string | null }[];
+}
+
 export type StatusLoteLegado = "ENUMERANDO" | "IMPORTANDO" | "CONCLUIDO" | "FALHOU";
 
 /** Andamento da busca em lote de todos os alunos do legado (roda em segundo plano no worker). */
@@ -119,6 +154,28 @@ export class ImportacaoLegadoService {
       `${this.baseUrl}/alunos/${alunoId}/documentos`,
       {},
     );
+  }
+
+  /** Busca no legado os documentos dos alunos de várias matrículas (marcadas, ou todas do filtro). */
+  iniciarDocumentosLote(selecao: {
+    matriculaIds?: string[];
+    filtros?: FiltrosMatriculasLote;
+  }): Observable<LoteDocumentos> {
+    return this.http.post<LoteDocumentos>(`${this.baseUrl}/documentos/lote`, selecao);
+  }
+
+  ultimoDocumentosLote(): Observable<LoteDocumentos | null> {
+    return this.http.get<LoteDocumentos | null>(`${this.baseUrl}/documentos/lote/atual`);
+  }
+
+  cancelarDocumentosLote(id: string): Observable<LoteDocumentos> {
+    return this.http.post<LoteDocumentos>(`${this.baseUrl}/documentos/lote/${id}/cancelar`, {});
+  }
+
+  baixarRelatorioDocumentosLote(id: string): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/documentos/lote/${id}/relatorio`, {
+      responseType: "blob",
+    });
   }
 
   /** Dispara a busca de TODOS os alunos do legado (segundo plano). */

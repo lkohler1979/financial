@@ -28,6 +28,15 @@ export const atualizarTipoDocumentoSchema = z
   .partial()
   .refine((obj) => Object.keys(obj).length > 0, "Informe ao menos um campo para atualizar");
 
+/** Listagem de todos os documentos enviados (tela Documentos). */
+export const listarDocumentosSchema = z.object({
+  situacao: z.enum(["PENDENTE", "DEFERIDO", "INDEFERIDO"]).optional(),
+  busca: z.string().trim().max(100).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+});
+
+export type ListarDocumentosInput = z.infer<typeof listarDocumentosSchema>;
 export type CriarTipoDocumentoInput = z.infer<typeof criarTipoDocumentoSchema>;
 export type AtualizarTipoDocumentoInput = z.infer<typeof atualizarTipoDocumentoSchema>;
 export type AtualizarDocumentoInput = z.infer<typeof atualizarDocumentoSchema>;

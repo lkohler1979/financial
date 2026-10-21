@@ -5,6 +5,7 @@ import {
   atualizarDocumentoSchema,
   atualizarTipoDocumentoSchema,
   criarTipoDocumentoSchema,
+  listarDocumentosSchema,
 } from "./documentos.schema";
 import { documentosService } from "./documentos.service";
 
@@ -23,6 +24,10 @@ export const documentosController = {
     res.json(
       await documentosService.atualizarTipo(paramString(req, "id"), input, usuarioAtual(req)),
     );
+  }),
+
+  listar: asyncHandler(async (req: Request, res: Response) => {
+    res.json(await documentosService.listar(listarDocumentosSchema.parse(req.query)));
   }),
 
   aguardandoConferencia: asyncHandler(async (_req: Request, res: Response) => {
@@ -66,6 +71,15 @@ export const documentosController = {
   baixarArquivo: asyncHandler(async (req: Request, res: Response) => {
     const arquivo = await documentosService.obterArquivo(paramString(req, "documentoId"));
     res.type(arquivo.mime);
+    // ?inline=1 abre no próprio navegador (visualização); sem isso baixa o arquivo.
+    if (req.query.inline === "1") {
+      res.setHeader(
+        "Content-Disposition",
+        `inline; filename*=UTF-8''${encodeURIComponent(arquivo.nome)}`,
+      );
+      res.sendFile(arquivo.caminho);
+      return;
+    }
     res.download(arquivo.caminho, arquivo.nome);
   }),
 };

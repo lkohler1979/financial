@@ -9,6 +9,7 @@ vi.mock("../../src/modules/documentos/documentos.repository", () => ({
     findTipo: vi.fn(),
     findMatricula: vi.fn(),
     listarDaMatricula: vi.fn(),
+    listarEnviados: vi.fn(),
     findById: vi.fn(),
     findPorTipo: vi.fn(),
     create: vi.fn(),
@@ -182,5 +183,46 @@ describe("documentosService.listarDaMatricula", () => {
     expect(r.itens[1].documento).toBeNull();
     expect(r.pendentesObrigatorios).toBe(1);
     expect(r.podeDeferir).toBe(false);
+  });
+});
+
+describe("documentosService.listar (tela Documentos)", () => {
+  it("pagina, repassa filtros e devolve os totais por situação", async () => {
+    repo.listarEnviados.mockResolvedValue({
+      data: [{ id: "d1" }],
+      total: 41,
+      totais: { PENDENTE: 3, DEFERIDO: 35, INDEFERIDO: 3 },
+    } as never);
+
+    const r = await documentosService.listar({
+      situacao: "DEFERIDO",
+      busca: "ana",
+      page: 3,
+      pageSize: 20,
+    });
+
+    expect(repo.listarEnviados).toHaveBeenCalledWith({
+      situacao: "DEFERIDO",
+      busca: "ana",
+      skip: 40,
+      take: 20,
+    });
+    expect(r).toMatchObject({ total: 41, page: 3, pageSize: 20, totais: { DEFERIDO: 35 } });
+  });
+});
+
+describe("documentosService.listarDaMatricula — aluno", () => {
+  it("informa o aluno da matrícula (usado pelo botão de buscar no legado)", async () => {
+    repo.findMatricula.mockResolvedValue({
+      id: "m1",
+      alunoId: "aluno-1",
+      aluno: { id: "aluno-1", nome: "Ana Souza" },
+    } as never);
+    repo.listarTiposAtivos.mockResolvedValue([] as never);
+    repo.listarDaMatricula.mockResolvedValue([] as never);
+    repo.findUsuario.mockResolvedValue(admin as never);
+
+    const r = await documentosService.listarDaMatricula("m1", "a");
+    expect(r.aluno).toEqual({ id: "aluno-1", nome: "Ana Souza" });
   });
 });

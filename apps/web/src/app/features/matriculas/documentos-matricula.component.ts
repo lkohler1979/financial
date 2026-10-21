@@ -2,6 +2,7 @@ import { DatePipe } from "@angular/common";
 import { Component, inject, Input, OnChanges } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
+import { MatDialog } from "@angular/material/dialog";
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatIconModule } from "@angular/material/icon";
 import { MatInputModule } from "@angular/material/input";
@@ -16,6 +17,7 @@ import {
   SituacaoEntregaDocumento,
 } from "../../core/models/documento.model";
 import { DocumentosService } from "../../core/services/documentos.service";
+import { DocumentoVisualizadorDialogComponent } from "../../shared/components/documento-visualizador-dialog.component";
 import { salvarBlobComoArquivo } from "../../shared/utils/download.util";
 
 /** Valores editáveis de um documento enquanto o usuário mexe (só vão pro
@@ -105,6 +107,15 @@ interface Edicao {
               {{ item.documento?.arquivoNome ? "Trocar arquivo" : "Anexar arquivo" }}
             </button>
             @if (item.documento?.arquivoNome) {
+              <button
+                mat-icon-button
+                type="button"
+                aria-label="Visualizar documento"
+                title="Visualizar"
+                (click)="visualizar(item.documento!)"
+              >
+                <mat-icon>visibility</mat-icon>
+              </button>
               <button mat-button type="button" (click)="baixar(item.documento!)">
                 <mat-icon>download</mat-icon> {{ item.documento!.arquivoNome }}
               </button>
@@ -201,6 +212,7 @@ interface Edicao {
 })
 export class DocumentosMatriculaComponent implements OnChanges {
   private readonly service = inject(DocumentosService);
+  private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
 
   @Input({ required: true }) matriculaId!: string;
@@ -281,6 +293,18 @@ export class DocumentosMatriculaComponent implements OnChanges {
         this.snackBar.open(erro?.error?.mensagem ?? "Não foi possível anexar", "Fechar", {
           duration: 5000,
         });
+      },
+    });
+  }
+
+  visualizar(documento: Documento): void {
+    this.dialog.open(DocumentoVisualizadorDialogComponent, {
+      width: "900px",
+      maxWidth: "95vw",
+      data: {
+        id: documento.id,
+        nome: documento.arquivoNome ?? "documento",
+        mime: documento.arquivoMime,
       },
     });
   }

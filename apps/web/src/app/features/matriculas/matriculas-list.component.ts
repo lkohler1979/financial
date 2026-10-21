@@ -21,6 +21,9 @@ import {
   SituacaoMatriculaOpcao,
 } from "../../core/models/matricula.model";
 import { formatarCpf } from "../../shared/utils/cpf.util";
+import { AuthService } from "../../core/auth/auth.service";
+import { DocumentosLegadoDialogComponent } from "../alunos/documentos-legado-dialog.component";
+import { DocumentosMatriculaDialogComponent } from "./documentos-matricula-dialog.component";
 import { CobrancaService } from "../../core/services/cobranca.service";
 import { SituacaoCobranca, Tag } from "../../core/models/cobranca.model";
 import {
@@ -199,6 +202,26 @@ import {
             >
               <mat-icon>receipt_long</mat-icon>
             </a>
+            <button
+              mat-icon-button
+              type="button"
+              aria-label="Documentos da matrícula"
+              title="Ver os documentos (visualizar e baixar)"
+              (click)="abrirDocumentos(m)"
+            >
+              <mat-icon>folder_open</mat-icon>
+            </button>
+            @if (authService.temPerfil("ADMINISTRADOR", "FINANCEIRO")) {
+              <button
+                mat-icon-button
+                type="button"
+                aria-label="Buscar documentos no legado"
+                title="Buscar os documentos do aluno no sistema legado e baixar os arquivos"
+                (click)="buscarDocumentosLegado(m)"
+              >
+                <mat-icon>cloud_download</mat-icon>
+              </button>
+            }
             <a mat-icon-button [routerLink]="['/matriculas', m.id]" aria-label="Editar">
               <mat-icon>edit</mat-icon>
             </a>
@@ -230,6 +253,7 @@ export class MatriculasListComponent implements OnInit {
   private readonly service = inject(MatriculasService);
   private readonly cobrancaService = inject(CobrancaService);
   private readonly dialog = inject(MatDialog);
+  readonly authService = inject(AuthService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly fb = inject(FormBuilder);
 
@@ -374,5 +398,29 @@ export class MatriculasListComponent implements OnInit {
           this.carregar();
         });
       });
+  }
+
+  /** Lista de documentos da matrícula, com visualizar e baixar. */
+  abrirDocumentos(m: Matricula): void {
+    this.dialog.open(DocumentosMatriculaDialogComponent, {
+      width: "980px",
+      maxWidth: "95vw",
+      maxHeight: "90vh",
+      data: {
+        matriculaId: m.id,
+        aluno: m.aluno?.nome ?? "aluno",
+        numeroMatricula: m.numeroMatricula ?? null,
+        curso: m.curso?.nome ?? null,
+      },
+    });
+  }
+
+  /** Busca no legado os documentos do aluno da matrícula e baixa os arquivos. */
+  buscarDocumentosLegado(m: Matricula): void {
+    this.dialog.open(DocumentosLegadoDialogComponent, {
+      width: "760px",
+      maxHeight: "90vh",
+      data: { id: m.alunoId, nome: m.aluno?.nome ?? "aluno" },
+    });
   }
 }

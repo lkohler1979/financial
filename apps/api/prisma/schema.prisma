@@ -244,6 +244,8 @@ model Matricula {
   dataMatricula             DateTime?                 @map("data_matricula")
   contratoAssinado          Boolean                   @default(false) @map("contrato_assinado")
   tcdAssinado               Boolean                   @default(false) @map("tcd_assinado")
+  /// Mantida pelo sistema sempre que um documento muda (envio, conferência, remoção, importação do legado).
+  situacaoDocumentacao      SituacaoDocumentacao      @default(SEM_DOCUMENTOS) @map("situacao_documentacao")
   situacao                  String                    @default("ATIVA")
   observacoes               String?
   /// Ver StatusSincronizacaoLegado — marcado SINCRONIZADO quando a
@@ -284,6 +286,7 @@ model Matricula {
   situacaoCobranca    SituacaoCobranca?            @relation(fields: [situacaoCobrancaId], references: [id])
 
   @@unique([alunoId, cursoId, numeroMatricula])
+  @@index([situacaoDocumentacao])
   @@map("matriculas")
 }
 
@@ -740,6 +743,15 @@ model Sequencial {
   valor Int    @default(0)
 
   @@map("sequenciais")
+}
+
+/// Resumo da documentação de uma matrícula (calculado a partir dos documentos; ver
+/// documentos/situacao-documentacao.ts): nenhum documento enviado, algum obrigatório faltando ou
+/// indeferido, ou todos os obrigatórios enviados e deferidos.
+enum SituacaoDocumentacao {
+  SEM_DOCUMENTOS
+  DOCUMENTOS_PENDENTES
+  DOCUMENTACAO_COMPLETA
 }
 
 enum EscopoDocumento {

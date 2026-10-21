@@ -1,4 +1,5 @@
 import { Prisma, type AsaasBillingType, type EmissaoCobranca } from "@prisma/client";
+import { documentacaoService } from "../documentos/documentacao.service";
 import { ConflictError, NotFoundError, ValidationError } from "../../shared/errors/app-error";
 import { registrarAuditoria } from "../auditoria/auditoria.service";
 import { alunosRepository } from "../alunos/alunos.repository";
@@ -288,6 +289,7 @@ export const matriculasService = {
       tagId,
       contratoAssinado,
       tcdAssinado,
+      situacaoDocumentacao,
     } = params;
     const { data, total } = await matriculasRepository.list({
       alunoId,
@@ -301,6 +303,7 @@ export const matriculasService = {
       tagId,
       contratoAssinado,
       tcdAssinado,
+      situacaoDocumentacao,
       skip: (page - 1) * pageSize,
       take: pageSize,
     });
@@ -390,6 +393,8 @@ export const matriculasService = {
 
     const matricula = await matriculasRepository.create(data);
     await situacaoService.registrarInicial(matricula.id, matricula.situacao, usuarioId);
+    // O aluno pode já ter documentos que valem para esta matrícula.
+    await documentacaoService.recalcularMatricula(matricula.id);
 
     // Só as parcelas que "precisam" já nascem com boleto/Pix emitido (taxas e a
     // 1ª mensalidade, conforme a política do tipo) — as demais são emitidas aos

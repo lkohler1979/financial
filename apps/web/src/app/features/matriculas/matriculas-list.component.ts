@@ -18,6 +18,7 @@ import {
   classeSituacaoMatricula,
   Matricula,
   rotuloSituacaoMatricula,
+  SITUACOES_DOCUMENTACAO,
   SituacaoMatriculaOpcao,
 } from "../../core/models/matricula.model";
 import { formatarCpf } from "../../shared/utils/cpf.util";
@@ -94,6 +95,15 @@ import {
           <mat-option [value]="undefined">Todas</mat-option>
           @for (tag of tags; track tag.id) {
             <mat-option [value]="tag.id">{{ tag.nome }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>Documentação</mat-label>
+        <mat-select formControlName="situacaoDocumentacao">
+          <mat-option [value]="undefined">Todas</mat-option>
+          @for (s of situacoesDocumentacao; track s.valor) {
+            <mat-option [value]="s.valor">{{ s.rotulo }}</mat-option>
           }
         </mat-select>
       </mat-form-field>
@@ -176,6 +186,20 @@ import {
               [class]="classeSituacao(m.situacao)"
               >{{ rotuloSituacao(m.situacao) }}</span
             >
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="documentacao">
+          <th mat-header-cell *matHeaderCellDef>Documentação</th>
+          <td mat-cell *matCellDef="let m">
+            <button
+              type="button"
+              class="px-2 py-0.5 rounded text-xs whitespace-nowrap cursor-pointer border-0"
+              [class]="situacaoDocumentacao(m).classe"
+              title="Ver os documentos desta matrícula"
+              (click)="abrirDocumentos(m)"
+            >
+              {{ situacaoDocumentacao(m).rotulo }}
+            </button>
           </td>
         </ng-container>
         <ng-container matColumnDef="parcelas">
@@ -275,6 +299,7 @@ export class MatriculasListComponent implements OnInit {
     tagId: this.fb.control<string | undefined>(undefined),
     contratoAssinado: this.fb.control<boolean | undefined>(undefined),
     tcdAssinado: this.fb.control<boolean | undefined>(undefined),
+    situacaoDocumentacao: this.fb.control<string | undefined>(undefined),
     dataMatriculaInicio: this.fb.control<string | undefined>(undefined),
     dataMatriculaFim: this.fb.control<string | undefined>(undefined),
   });
@@ -288,10 +313,12 @@ export class MatriculasListComponent implements OnInit {
     "numero",
     "data",
     "situacao",
+    "documentacao",
     "parcelas",
     "acoes",
   ];
   situacoesMatricula: SituacaoMatriculaOpcao[] = [];
+  protected readonly situacoesDocumentacao = SITUACOES_DOCUMENTACAO;
   protected readonly formatarCpf = formatarCpf;
   protected readonly rotuloSituacao = rotuloSituacaoMatricula;
   protected readonly classeSituacao = classeSituacaoMatricula;
@@ -326,6 +353,7 @@ export class MatriculasListComponent implements OnInit {
         tagId: valores.tagId || undefined,
         contratoAssinado: valores.contratoAssinado ?? undefined,
         tcdAssinado: valores.tcdAssinado ?? undefined,
+        situacaoDocumentacao: valores.situacaoDocumentacao || undefined,
         dataMatriculaInicio: valores.dataMatriculaInicio || undefined,
         dataMatriculaFim: valores.dataMatriculaFim || undefined,
         page: this.page,
@@ -412,17 +440,28 @@ export class MatriculasListComponent implements OnInit {
 
   /** Lista de documentos da matrícula, com visualizar e baixar. */
   abrirDocumentos(m: Matricula): void {
-    this.dialog.open(DocumentosMatriculaDialogComponent, {
-      width: "980px",
-      maxWidth: "95vw",
-      maxHeight: "90vh",
-      data: {
-        matriculaId: m.id,
-        aluno: m.aluno?.nome ?? "aluno",
-        numeroMatricula: m.numeroMatricula ?? null,
-        curso: m.curso?.nome ?? null,
-      },
-    });
+    this.dialog
+      .open(DocumentosMatriculaDialogComponent, {
+        width: "980px",
+        maxWidth: "95vw",
+        maxHeight: "90vh",
+        data: {
+          matriculaId: m.id,
+          aluno: m.aluno?.nome ?? "aluno",
+          numeroMatricula: m.numeroMatricula ?? null,
+          curso: m.curso?.nome ?? null,
+        },
+      })
+      // Conferir/baixar documentos ali dentro muda a situação da documentação desta linha.
+      .afterClosed()
+      .subscribe(() => this.carregar());
+  }
+
+  situacaoDocumentacao(m: Matricula) {
+    return (
+      SITUACOES_DOCUMENTACAO.find((s) => s.valor === m.situacaoDocumentacao) ??
+      SITUACOES_DOCUMENTACAO[0]
+    );
   }
 
   /** Contrato de prestação de serviços: gerar, visualizar e enviar para assinatura. */

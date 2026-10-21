@@ -99,6 +99,9 @@ export const listarMatriculasSchema = z.object({
   tagId: z.string().uuid().optional(),
   contratoAssinado: z.coerce.boolean().optional(),
   tcdAssinado: z.coerce.boolean().optional(),
+  situacaoDocumentacao: z
+    .enum(["SEM_DOCUMENTOS", "DOCUMENTOS_PENDENTES", "DOCUMENTACAO_COMPLETA"])
+    .optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
 });

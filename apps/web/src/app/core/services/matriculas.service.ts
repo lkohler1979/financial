@@ -31,6 +31,7 @@ export class MatriculasService {
       tagId?: string;
       contratoAssinado?: boolean;
       tcdAssinado?: boolean;
+      situacaoDocumentacao?: string;
       page?: number;
       pageSize?: number;
     } = {},
@@ -53,6 +54,9 @@ export class MatriculasService {
       params = params.set("contratoAssinado", opcoes.contratoAssinado);
     }
     if (opcoes.tcdAssinado !== undefined) params = params.set("tcdAssinado", opcoes.tcdAssinado);
+    if (opcoes.situacaoDocumentacao) {
+      params = params.set("situacaoDocumentacao", opcoes.situacaoDocumentacao);
+    }
     if (opcoes.page) params = params.set("page", opcoes.page);
     if (opcoes.pageSize) params = params.set("pageSize", opcoes.pageSize);
     return this.http.get<Paginado<Matricula>>(this.baseUrl, { params });

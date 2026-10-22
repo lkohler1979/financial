@@ -69,6 +69,8 @@ export interface LegadoTituloResumo {
   multaCalc: number;
   jurosCalc: number;
   totalCalc: number;
+  /** Só o detalhe do título traz o desconto (`somaDescontos`); a busca em lote não. */
+  descontoCalc?: number;
   /** Mesmos campos de `LegadoTituloDetalhe.tipoTituloId`/`tipoTituloNome`/
    * `tituloObservacoes` (ver lá), só que lidos das colunas em snake_case
    * deste endpoint em lote (`tipotitulo_id`/`tipotitulo_nome`/
@@ -112,6 +114,8 @@ export interface LegadoTituloDetalhe {
   multaCalc: number;
   jurosCalc: number;
   totalCalc: number;
+  /** `somaDescontos` do detalhe do título (0 quando não há desconto). */
+  descontoCalc: number;
   /** `tipotituloId`/`tipotituloNome` — campo estruturado de tipo de título do
    * legado (ex.: `tipotituloId: 2`, `tipotituloNome: "Mensalidade"`;
    * `tipotituloId: 33` = "Renegociação"), confirmado ao vivo em 2026-09-17
@@ -520,6 +524,7 @@ export class LegadoClient {
       multaCalc: Number(d.tituloMultaCalc ?? 0),
       jurosCalc: Number(d.tituloJurosCalc ?? 0),
       totalCalc: Number(d.tituloValorFinal ?? d.tituloValor ?? 0),
+      descontoCalc: Number(d.somaDescontos ?? 0),
       tipoTituloId: d.tipotituloId != null ? Number(d.tipotituloId) : null,
       tipoTituloNome: d.tipotituloNome != null ? String(d.tipotituloNome) : null,
       tituloObservacoes: d.tituloObservacoes != null ? String(d.tituloObservacoes) : null,

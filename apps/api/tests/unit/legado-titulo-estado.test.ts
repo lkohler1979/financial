@@ -117,6 +117,7 @@ function detalhe(extra: Partial<LegadoTituloDetalhe> = {}): LegadoTituloDetalhe 
     multaCalc: 0,
     jurosCalc: 0,
     totalCalc: 0,
+    descontoCalc: 0,
     tipoTituloId: 2,
     tipoTituloNome: "Mensalidade",
     tituloObservacoes: "Pago com o Cupom 3149-2033-5390.",
@@ -134,6 +135,7 @@ const parcelaVazia = {
   multaLegado: 0,
   jurosLegado: 0,
   totalLegado: 0,
+  descontoLegado: 0,
 };
 
 describe("aplicarDetalheNaParcela — Estado, boleto e remessa", () => {

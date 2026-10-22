@@ -334,6 +334,8 @@ model Parcela {
   multaLegado               Decimal?                  @map("multa_legado") @db.Decimal(12, 2)
   jurosLegado               Decimal?                  @map("juros_legado") @db.Decimal(12, 2)
   totalLegado               Decimal?                  @map("total_legado") @db.Decimal(12, 2)
+  /// Soma dos descontos do título no legado (`somaDescontos` de `titulo-informacoes/{id}`).
+  descontoLegado            Decimal?                  @map("desconto_legado") @db.Decimal(12, 2)
   /// Código numérico literal do campo `tipoTituloId` trazido pelo endpoint
   /// `titulo-informacoes/{id}` do legado (33 = Renegociação, 2 = Mensalidade
   /// — decisão do usuário, 2026-09-17) — guardado só para exibição/

@@ -12,6 +12,7 @@ import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatInputModule } from "@angular/material/input";
 import { MatMenuModule } from "@angular/material/menu";
 import { MatProgressBarModule } from "@angular/material/progress-bar";
+import { MatDialog } from "@angular/material/dialog";
 import { MatSnackBar } from "@angular/material/snack-bar";
 import { Subscription, interval, switchMap, takeWhile } from "rxjs";
 import { CobrancaService } from "../../core/services/cobranca.service";
@@ -26,6 +27,7 @@ import { AsaasBillingType, AsaasService } from "../../core/services/asaas.servic
 import { FichaCobranca, SituacaoCobranca, Tag } from "../../core/models/cobranca.model";
 import { Parcela } from "../../core/models/parcela.model";
 import { TipoTituloProtesto } from "../../core/models/relatorio.model";
+import { ParcelaDetalhesDialogComponent } from "./parcela-detalhes-dialog.component";
 import { formatarCpf } from "../../shared/utils/cpf.util";
 import { arredondarAbnt } from "../../shared/utils/arredondamento.util";
 import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/download.util";
@@ -128,52 +130,6 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
         <mat-progress-bar mode="indeterminate" class="mb-4"></mat-progress-bar>
       }
 
-      <div class="bg-white rounded-xl border p-3 mb-2">
-        <div class="flex flex-wrap gap-4 items-center">
-          <div class="w-full sm:w-52 flex-shrink-0 flex items-center gap-2">
-            <p class="text-xs font-medium text-gray-600 mb-0 whitespace-nowrap">Situação</p>
-            <mat-form-field appearance="outline" class="w-full !text-sm" subscriptSizing="dynamic">
-              <mat-select
-                [formControl]="situacaoControl"
-                (selectionChange)="mudarSituacao($event.value)"
-              >
-                @for (situacao of situacoes; track situacao.id) {
-                  <mat-option [value]="situacao.id">{{ situacao.nome }}</mat-option>
-                }
-              </mat-select>
-            </mat-form-field>
-          </div>
-
-          <div class="flex-1 min-w-[260px] flex items-center gap-2">
-            <p class="text-xs font-medium text-gray-600 mb-0 whitespace-nowrap">Tags</p>
-            <div class="flex gap-2 flex-wrap items-center">
-              <mat-chip-set>
-                @for (tag of ficha.tags; track tag.id) {
-                  <mat-chip [removable]="true" (removed)="removerTag(tag)">
-                    {{ tag.nome }}
-                    <mat-icon matChipRemove aria-label="Remover tag">cancel</mat-icon>
-                  </mat-chip>
-                }
-              </mat-chip-set>
-              <mat-form-field appearance="outline" class="!w-48 !text-xs" subscriptSizing="dynamic">
-                <input
-                  matInput
-                  [formControl]="novaTagControl"
-                  [matAutocomplete]="autoTag"
-                  placeholder="Digite e Enter"
-                  (keydown.enter)="$event.preventDefault(); confirmarNovaTag()"
-                />
-                <mat-autocomplete #autoTag="matAutocomplete" (optionSelected)="confirmarNovaTag()">
-                  @for (tag of tagsFiltradas(); track tag.id) {
-                    <mat-option [value]="tag.nome">{{ tag.nome }}</mat-option>
-                  }
-                </mat-autocomplete>
-              </mat-form-field>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div class="bg-white rounded-xl border p-3 mb-3">
         <p class="text-xs font-medium text-gray-600 mb-2">Parcelas</p>
         <div class="overflow-x-auto">
@@ -184,7 +140,12 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
                 <th class="py-1 font-medium">Título</th>
                 <th class="py-1 font-medium">Vencimento</th>
                 <th class="py-1 font-medium">Tipo de título</th>
-                <th class="py-1 font-medium">Situação</th>
+                <th class="py-1 font-medium" title="Em aberto, paga, cancelada, vencida…">
+                  Estado da parcela
+                </th>
+                <th class="py-1 font-medium" title="Situação de cobrança desta parcela">
+                  Situação
+                </th>
                 <th class="py-1 font-medium" title="Já foi conferida contra o sistema legado?">
                   Legado
                 </th>
@@ -210,6 +171,7 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
                   Valor c/ juros (origem)
                 </th>
                 <th class="py-1 font-medium">Cobrança</th>
+                <th class="py-1 font-medium">Detalhes</th>
               </tr>
             </thead>
             @for (parcela of parcelas; track parcela.id) {
@@ -234,6 +196,32 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
                     [ngClass]="situacaoParcela(parcela).classe"
                     >{{ situacaoParcela(parcela).rotulo }}</span
                   >
+                </td>
+                <td class="py-1">
+                  <mat-form-field
+                    appearance="outline"
+                    class="!w-44 !text-xs"
+                    subscriptSizing="dynamic"
+                  >
+                    <mat-select
+                      aria-label="Situação de cobrança da parcela"
+                      [value]="parcela.situacaoCobrancaId ?? ''"
+                      (selectionChange)="mudarSituacaoParcela(parcela, $event.value)"
+                    >
+                      <mat-option value="">—</mat-option>
+                      @for (situacao of situacoes; track situacao.id) {
+                        <mat-option [value]="situacao.id">{{ situacao.nome }}</mat-option>
+                      }
+                      @if (
+                        parcela.situacaoCobranca &&
+                        !situacaoEstaNaLista(parcela.situacaoCobranca.id)
+                      ) {
+                        <mat-option [value]="parcela.situacaoCobranca.id">
+                          {{ parcela.situacaoCobranca.nome }}
+                        </mat-option>
+                      }
+                    </mat-select>
+                  </mat-form-field>
                 </td>
                 <td class="py-1">
                   @if (parcela.statusSincronizacaoLegado === "SINCRONIZADO") {
@@ -463,6 +451,17 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
                     <span class="text-gray-400 text-xs">—</span>
                   }
                 </td>
+                <td class="py-1 text-center">
+                  <button
+                    mat-icon-button
+                    type="button"
+                    aria-label="Detalhes da parcela"
+                    title="Detalhes da parcela (todos os campos)"
+                    (click)="abrirDetalhes(parcela)"
+                  >
+                    <mat-icon>info</mat-icon>
+                  </button>
+                </td>
               </tr>
             }
             @if (parcelas.length === 0) {
@@ -472,13 +471,14 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
             }
             @if (parcelas.length > 0) {
               <tr class="border-t font-medium">
-                <td class="py-1" colspan="6">Total devedor</td>
+                <td class="py-1" colspan="8">Total devedor</td>
                 <td class="py-1 text-right">{{ totalDevedor() | currency: "BRL" }}</td>
                 <td class="py-1 text-right">{{ totalMultaDevedor() | currency: "BRL" }}</td>
                 <td class="py-1 text-right">{{ totalJurosDevedor() | currency: "BRL" }}</td>
                 <td class="py-1 text-right">
                   {{ totalComMultaEJurosDevedor() | currency: "BRL" }}
                 </td>
+                <td class="py-1"></td>
                 <td class="py-1"></td>
                 <td class="py-1"></td>
               </tr>
@@ -500,6 +500,36 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
             />
           </mat-form-field>
           <button mat-stroked-button (click)="adicionarObservacao()">Adicionar</button>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl border p-5 mb-5">
+        <p class="text-xs font-medium text-gray-600 mb-3">Tags</p>
+        <div class="flex items-center gap-2">
+          <div class="flex gap-2 flex-wrap items-center">
+            <mat-chip-set>
+              @for (tag of ficha.tags; track tag.id) {
+                <mat-chip [removable]="true" (removed)="removerTag(tag)">
+                  {{ tag.nome }}
+                  <mat-icon matChipRemove aria-label="Remover tag">cancel</mat-icon>
+                </mat-chip>
+              }
+            </mat-chip-set>
+            <mat-form-field appearance="outline" class="!w-48 !text-xs" subscriptSizing="dynamic">
+              <input
+                matInput
+                [formControl]="novaTagControl"
+                [matAutocomplete]="autoTag"
+                placeholder="Digite e Enter"
+                (keydown.enter)="$event.preventDefault(); confirmarNovaTag()"
+              />
+              <mat-autocomplete #autoTag="matAutocomplete" (optionSelected)="confirmarNovaTag()">
+                @for (tag of tagsFiltradas(); track tag.id) {
+                  <mat-option [value]="tag.nome">{{ tag.nome }}</mat-option>
+                }
+              </mat-autocomplete>
+            </mat-form-field>
+          </div>
         </div>
       </div>
 
@@ -538,6 +568,7 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
   private readonly nfseService = inject(NfseService);
   readonly authService = inject(AuthService);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly dialog = inject(MatDialog);
   protected readonly formatarCpf = formatarCpf;
 
   matriculaId = "";
@@ -568,7 +599,6 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
 
   private pollingSub?: Subscription;
 
-  readonly situacaoControl = new FormControl<string | undefined>(undefined);
   readonly novaObservacao = new FormControl("", { nonNullable: true });
   readonly novaTagControl = new FormControl("", { nonNullable: true });
   readonly tipoTituloProtestoControl = new FormControl<TipoTituloProtesto>("AMBOS", {
@@ -609,9 +639,6 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
     this.service.obterFicha(this.matriculaId).subscribe({
       next: (ficha) => {
         this.ficha = ficha;
-        this.situacaoControl.setValue(ficha.matricula.situacaoCobrancaId ?? undefined, {
-          emitEvent: false,
-        });
         this.carregando = false;
       },
       error: () => (this.carregando = false),
@@ -790,10 +817,29 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
     return new Date(data.getFullYear(), data.getMonth(), data.getDate());
   }
 
-  mudarSituacao(situacaoCobrancaId: string): void {
-    this.service.mudarSituacao(this.matriculaId, situacaoCobrancaId).subscribe(() => {
-      this.snackBar.open("Situação atualizada", "Fechar", { duration: 3000 });
-      this.carregar();
+  /** A situação de cobrança é de cada parcela; "—" (vazio) a limpa. */
+  mudarSituacaoParcela(parcela: Parcela, situacaoCobrancaId: string): void {
+    this.service
+      .mudarSituacaoParcela(this.matriculaId, parcela.id, situacaoCobrancaId || null)
+      .subscribe({
+        next: () => {
+          this.snackBar.open("Situação da parcela atualizada", "Fechar", { duration: 3000 });
+          this.carregar();
+        },
+        // Volta o campo ao valor que está gravado.
+        error: () => this.carregar(),
+      });
+  }
+
+  situacaoEstaNaLista(id: string): boolean {
+    return this.situacoes.some((s) => s.id === id);
+  }
+
+  abrirDetalhes(parcela: Parcela): void {
+    this.dialog.open(ParcelaDetalhesDialogComponent, {
+      width: "860px",
+      maxWidth: "95vw",
+      data: { parcela, estado: this.situacaoParcela(parcela).rotulo },
     });
   }
 

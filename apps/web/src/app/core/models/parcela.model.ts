@@ -15,6 +15,10 @@ export interface Parcela {
   dataPagamento?: string | null;
   valorPago?: number | null;
   observacoes?: string | null;
+  /** Situação de cobrança desta parcela (catálogo de Cobrança). Diferente de `status` (o estado da
+   * parcela: em aberto, paga…), que o sistema define pelo pagamento/legado. */
+  situacaoCobrancaId?: string | null;
+  situacaoCobranca?: { id: string; nome: string; cor: string } | null;
   /** Ver StatusSincronizacaoLegado — marcado SINCRONIZADO quando esta
    * Parcela já foi conferida com sucesso contra o sistema legado. */
   statusSincronizacaoLegado?: StatusSincronizacaoLegado;

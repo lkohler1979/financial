@@ -18,6 +18,8 @@ const incluiMatricula = {
       curso: { select: { id: true, codigo: true, nome: true } },
     },
   },
+  // Situação de cobrança da parcela (nome e cor para a Ficha de Cobrança).
+  situacaoCobranca: { select: { id: true, nome: true, cor: true } },
 } satisfies Prisma.ParcelaInclude;
 
 export const financeiroRepository = {

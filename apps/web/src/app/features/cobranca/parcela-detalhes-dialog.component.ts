@@ -28,7 +28,7 @@ const moeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL
 const texto = (v: unknown): string => (v == null || v === "" ? VAZIO : String(v));
 const dinheiro = (v: number | null | undefined): string => (v == null ? VAZIO : moeda.format(v));
 const data = (v: string | null | undefined): string =>
-  v ? formatDate(v, "dd/MM/yyyy", "en-US") : VAZIO;
+  v ? formatDate(v, "dd/MM/yyyy", "en-US", "UTC") : VAZIO;
 const simNao = (v: boolean): string => (v ? "Sim" : "Não");
 
 const ROTULO_STATUS: Record<string, string> = {
@@ -121,6 +121,7 @@ export class ParcelaDetalhesDialogComponent {
           { rotulo: "Multa (legado)", valor: dinheiro(p.multaLegado) },
           { rotulo: "Juros (legado)", valor: dinheiro(p.jurosLegado) },
           { rotulo: "Total (legado)", valor: dinheiro(p.totalLegado) },
+          { rotulo: "Desconto (legado)", valor: dinheiro(p.descontoLegado) },
           { rotulo: "Multa (protesto)", valor: dinheiro(p.multaProtesto) },
           { rotulo: "Juros (protesto)", valor: dinheiro(p.jurosProtesto) },
           { rotulo: "Total (protesto)", valor: dinheiro(p.totalProtesto) },

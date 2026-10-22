@@ -27,6 +27,7 @@ import { AsaasBillingType, AsaasService } from "../../core/services/asaas.servic
 import { FichaCobranca, SituacaoCobranca, Tag } from "../../core/models/cobranca.model";
 import { Parcela } from "../../core/models/parcela.model";
 import { TipoTituloProtesto } from "../../core/models/relatorio.model";
+import { situacaoAutomatica, totaisDaFicha } from "./ficha-totais";
 import { ParcelaDetalhesDialogComponent } from "./parcela-detalhes-dialog.component";
 import { formatarCpf } from "../../shared/utils/cpf.util";
 import { arredondarAbnt } from "../../shared/utils/arredondamento.util";
@@ -146,16 +147,8 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
                 <th class="py-1 font-medium" title="Situação de cobrança desta parcela">
                   Situação
                 </th>
-                <th class="py-1 font-medium" title="Já foi conferida contra o sistema legado?">
-                  Legado
-                </th>
-                <th
-                  class="py-1 font-medium"
-                  title="Estado, boleto, remessa e observações como estão no sistema legado"
-                >
-                  Dados do legado
-                </th>
                 <th class="py-1 font-medium text-right">Valor</th>
+                <th class="py-1 font-medium text-right">Valor pago</th>
                 <th class="py-1 font-medium text-right">Multa</th>
                 <th class="py-1 font-medium text-right">Juros</th>
                 <th
@@ -163,12 +156,6 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
                   title="Valor + multa + juros calculados pelo sistema (Configurações), na data de hoje"
                 >
                   Total
-                </th>
-                <th
-                  class="py-1 font-medium text-right"
-                  title="Valor com juros e multa já calculado pelo sistema de origem da planilha — só para conferência, não é usado no cálculo do sistema"
-                >
-                  Valor c/ juros (origem)
                 </th>
                 <th class="py-1 font-medium">Cobrança</th>
                 <th class="py-1 font-medium">Detalhes</th>
@@ -178,7 +165,7 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
               <tr class="text-gray-600">
                 <td class="py-1">{{ parcela.parcela }}</td>
                 <td class="py-1">{{ parcela.codTitulo }}</td>
-                <td class="py-1">{{ parcela.vencimento | date: "dd/MM/yyyy" }}</td>
+                <td class="py-1">{{ parcela.vencimento | date: "dd/MM/yyyy" : "UTC" }}</td>
                 <td class="py-1">
                   @if (parcela.tipoTituloIdLegado != null) {
                     <div
@@ -198,84 +185,42 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
                   >
                 </td>
                 <td class="py-1">
-                  <mat-form-field
-                    appearance="outline"
-                    class="!w-44 !text-xs"
-                    subscriptSizing="dynamic"
-                  >
-                    <mat-select
-                      aria-label="Situação de cobrança da parcela"
-                      [value]="parcela.situacaoCobrancaId ?? ''"
-                      (selectionChange)="mudarSituacaoParcela(parcela, $event.value)"
-                    >
-                      <mat-option value="">—</mat-option>
-                      @for (situacao of situacoes; track situacao.id) {
-                        <mat-option [value]="situacao.id">{{ situacao.nome }}</mat-option>
-                      }
-                      @if (
-                        parcela.situacaoCobranca &&
-                        !situacaoEstaNaLista(parcela.situacaoCobranca.id)
-                      ) {
-                        <mat-option [value]="parcela.situacaoCobranca.id">
-                          {{ parcela.situacaoCobranca.nome }}
-                        </mat-option>
-                      }
-                    </mat-select>
-                  </mat-form-field>
-                </td>
-                <td class="py-1">
-                  @if (parcela.statusSincronizacaoLegado === "SINCRONIZADO") {
-                    <mat-icon class="!text-base !w-4 !h-4 text-green-600" title="Sincronizado"
-                      >check_circle</mat-icon
+                  @if (situacaoAuto(parcela); as auto) {
+                    <span
+                      class="px-2 py-0.5 rounded text-xs whitespace-nowrap"
+                      [ngClass]="classeSituacaoAuto(auto)"
+                      title="Situação definida automaticamente pelo estado da parcela"
+                      >{{ auto }}</span
                     >
                   } @else {
-                    <mat-icon
-                      class="!text-base !w-4 !h-4 text-gray-400"
-                      title="Pendente de sincronização"
-                      >radio_button_unchecked</mat-icon
+                    <mat-form-field
+                      appearance="outline"
+                      class="!w-44 !text-xs"
+                      subscriptSizing="dynamic"
                     >
-                  }
-                </td>
-                <td class="py-1 text-xs text-gray-600 align-top min-w-[11rem]">
-                  @if (parcela.estadoLegado) {
-                    <div>
-                      Estado: <strong>{{ parcela.estadoLegado }}</strong>
-                    </div>
-                  }
-                  @if (parcela.boletoLegadoId) {
-                    <div [title]="'Hash do boleto: ' + (parcela.boletoLegadoHash || '—')">
-                      Boleto {{ parcela.boletoLegadoId }}
-                    </div>
-                  }
-                  @if (parcela.remessaLegadoId) {
-                    <div>Remessa {{ parcela.remessaLegadoId }}</div>
-                  }
-                  @if (parcela.dataPagamentoLegado) {
-                    <div>Data Pagto {{ parcela.dataPagamentoLegado | date: "dd/MM/yyyy" }}</div>
-                  }
-                  @if (parcela.dataBaixaLegado) {
-                    <div>Data Baixa {{ parcela.dataBaixaLegado | date: "dd/MM/yyyy" }}</div>
-                  }
-                  @if (parcela.tituloObservacoesLegado) {
-                    <div
-                      class="text-gray-400 max-w-[16rem] truncate"
-                      [title]="parcela.tituloObservacoesLegado"
-                    >
-                      {{ parcela.tituloObservacoesLegado }}
-                    </div>
-                  }
-                  @if (
-                    !parcela.estadoLegado &&
-                    !parcela.boletoLegadoId &&
-                    !parcela.remessaLegadoId &&
-                    !parcela.dataPagamentoLegado &&
-                    !parcela.dataBaixaLegado &&
-                    !parcela.tituloObservacoesLegado
-                  ) {
-                    <span class="text-gray-300">—</span>
+                      <mat-select
+                        aria-label="Situação de cobrança da parcela"
+                        [value]="parcela.situacaoCobrancaId ?? ''"
+                        (selectionChange)="mudarSituacaoParcela(parcela, $event.value)"
+                      >
+                        <mat-option value="">—</mat-option>
+                        @for (situacao of situacoes; track situacao.id) {
+                          <mat-option [value]="situacao.id">{{ situacao.nome }}</mat-option>
+                        }
+                        @if (
+                          parcela.situacaoCobranca &&
+                          !situacaoEstaNaLista(parcela.situacaoCobranca.id)
+                        ) {
+                          <mat-option [value]="parcela.situacaoCobranca.id">
+                            {{ parcela.situacaoCobranca.nome }}
+                          </mat-option>
+                        }
+                      </mat-select>
+                    </mat-form-field>
                   }
                 </td>
                 <td class="py-1 text-right">{{ parcela.valor | currency: "BRL" }}</td>
+                <td class="py-1 text-right">{{ parcela.valorPago | currency: "BRL" }}</td>
                 <td class="py-1 text-right">
                   {{ calculoParcela(parcela).multa | currency: "BRL" }}
                 </td>
@@ -284,14 +229,6 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
                 </td>
                 <td class="py-1 text-right">
                   {{ calculoParcela(parcela).total | currency: "BRL" }}
-                </td>
-                <td class="py-1 text-right text-gray-400">
-                  {{
-                    parcela.valorOrigemComJurosEMulta !== undefined &&
-                    parcela.valorOrigemComJurosEMulta !== null
-                      ? (parcela.valorOrigemComJurosEMulta | currency: "BRL")
-                      : "—"
-                  }}
                 </td>
                 <td class="py-1 whitespace-nowrap">
                   @if (
@@ -471,8 +408,9 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
             }
             @if (parcelas.length > 0) {
               <tr class="border-t font-medium">
-                <td class="py-1" colspan="8">Total devedor</td>
+                <td class="py-1" colspan="6">Total devedor</td>
                 <td class="py-1 text-right">{{ totalDevedor() | currency: "BRL" }}</td>
+                <td class="py-1"></td>
                 <td class="py-1 text-right">{{ totalMultaDevedor() | currency: "BRL" }}</td>
                 <td class="py-1 text-right">{{ totalJurosDevedor() | currency: "BRL" }}</td>
                 <td class="py-1 text-right">
@@ -480,12 +418,31 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
                 </td>
                 <td class="py-1"></td>
                 <td class="py-1"></td>
-                <td class="py-1"></td>
               </tr>
             }
           </table>
         </div>
       </div>
+
+      @if (parcelas.length > 0) {
+        <div class="bg-white rounded-xl border p-3 mb-3" data-testid="totalizador">
+          <p class="text-xs font-medium text-gray-600 mb-2">Totalizador</p>
+          <dl class="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-2 text-sm m-0">
+            @for (item of itensTotalizador(); track item.rotulo) {
+              <div [class.font-semibold]="item.destaque">
+                <dt class="text-xs text-gray-500">{{ item.rotulo }}</dt>
+                <dd class="m-0">
+                  {{ item.moeda ? (item.valor | currency: "BRL") : item.valor }}
+                </dd>
+              </div>
+            }
+          </dl>
+          <p class="text-[11px] text-gray-400 mt-2">
+            Considera as parcelas devedoras (em aberto e protestadas). Vencidos: vencimento anterior
+            a hoje. Pagos: pagas e renegociadas.
+          </p>
+        </div>
+      }
 
       <div class="bg-white rounded-xl border p-5 mb-5">
         <p class="text-xs font-medium text-gray-600 mb-3">Nova observação</p>
@@ -730,6 +687,47 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
     }
 
     return { rotulo: "Vencida", classe: "bg-orange-100 text-orange-700" };
+  }
+
+  situacaoAuto(parcela: Parcela): string | null {
+    return situacaoAutomatica(parcela, new Date());
+  }
+
+  classeSituacaoAuto(situacao: string): string {
+    switch (situacao) {
+      case "QUITADO":
+        return "bg-green-100 text-green-700";
+      case "QUITADO POR RENEGOCIAÇÃO":
+        return "bg-blue-100 text-blue-700";
+      case "PENDENTE DE PAGAMENTO":
+        return "bg-orange-100 text-orange-700";
+      default:
+        return "bg-gray-100 text-gray-600";
+    }
+  }
+
+  itensTotalizador(): { rotulo: string; valor: number; moeda: boolean; destaque?: boolean }[] {
+    const t = totaisDaFicha(this.parcelas, (p) => this.calculoParcela(p as Parcela), new Date());
+    return [
+      { rotulo: "Total de juros", valor: t.totalJuros, moeda: true },
+      { rotulo: "Total de multas", valor: t.totalMultas, moeda: true },
+      { rotulo: "Total de descontos", valor: t.totalDescontos, moeda: true },
+      { rotulo: "Qtd. vencidos", valor: t.qtdVencidos, moeda: false },
+      { rotulo: "Total vencidos", valor: t.totalVencidos, moeda: true },
+      { rotulo: "Qtd. pagos (pagos e renegociados)", valor: t.qtdPagos, moeda: false },
+      {
+        rotulo: "Total final sem juros e multas",
+        valor: t.totalFinalSemEncargos,
+        moeda: true,
+        destaque: true,
+      },
+      {
+        rotulo: "Total final com juros e multas",
+        valor: t.totalFinalComEncargos,
+        moeda: true,
+        destaque: true,
+      },
+    ];
   }
 
   totalDevedor(): number {

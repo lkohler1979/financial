@@ -24,6 +24,7 @@ function detalhe(dados: Partial<LegadoTituloDetalhe> = {}): LegadoTituloDetalhe 
     multaCalc: 0,
     jurosCalc: 0,
     totalCalc: 150,
+    descontoCalc: 0,
     tipoTituloId: null,
     tipoTituloNome: null,
     tituloObservacoes: null,
@@ -45,6 +46,7 @@ function parcela(
     multaLegado: unknown;
     jurosLegado: unknown;
     totalLegado: unknown;
+    descontoLegado: unknown;
   }> = {},
 ) {
   return {
@@ -66,6 +68,7 @@ function parcela(
     multaLegado: 0,
     jurosLegado: 0,
     totalLegado: 150,
+    descontoLegado: 0,
     ...dados,
   };
 }
@@ -102,6 +105,7 @@ describe("reconciliarMatricula", () => {
       multaLegado: 0,
       jurosLegado: 0,
       totalLegado: 150,
+      descontoLegado: 0,
       statusSincronizacaoLegado: "SINCRONIZADO",
     });
   });
@@ -155,6 +159,7 @@ describe("reconciliarMatricula", () => {
       multaLegado: 0,
       jurosLegado: 0,
       totalLegado: 150,
+      descontoLegado: 0,
       statusSincronizacaoLegado: "SINCRONIZADO",
     });
   });
@@ -182,6 +187,7 @@ describe("reconciliarMatricula", () => {
       multaLegado: 0,
       jurosLegado: 0,
       totalLegado: 150,
+      descontoLegado: 0,
       statusSincronizacaoLegado: "SINCRONIZADO",
     });
   });
@@ -216,6 +222,7 @@ describe("reconciliarMatricula", () => {
       multaLegado: 0,
       jurosLegado: 0,
       totalLegado: 150,
+      descontoLegado: 0,
       statusSincronizacaoLegado: "SINCRONIZADO",
     });
   });
@@ -241,6 +248,7 @@ describe("reconciliarMatricula", () => {
       multaLegado: 0,
       jurosLegado: 0,
       totalLegado: 150,
+      descontoLegado: 0,
       statusSincronizacaoLegado: "SINCRONIZADO",
     });
   });
@@ -270,8 +278,22 @@ describe("reconciliarMatricula", () => {
       multaLegado: 3,
       jurosLegado: 12.5,
       totalLegado: 165.5,
+      descontoLegado: 0,
       statusSincronizacaoLegado: "SINCRONIZADO",
     });
+  });
+
+  it("grava o desconto do legado (tituloDesconto) e atualiza quando ele muda", async () => {
+    financeiro.listarTodasPorMatricula.mockResolvedValue([parcela({ descontoLegado: 0 })] as never);
+    const buscarInformacoesTitulo = vi.fn().mockResolvedValue(detalhe({ descontoCalc: 12.34 }));
+
+    const resultado = await reconciliarMatricula("matricula-1", buscarInformacoesTitulo);
+
+    expect(resultado.parcelasAtualizadas).toBe(1);
+    expect(financeiro.update).toHaveBeenCalledWith(
+      "parcela-1",
+      expect.objectContaining({ descontoLegado: 12.34 }),
+    );
   });
 
   it("conta como não encontrado no legado quando buscarInformacoesTitulo devolve null", async () => {

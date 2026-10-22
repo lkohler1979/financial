@@ -90,7 +90,9 @@ export function tipoTituloDaDescricao(descricao: string): string | undefined {
  * `titulo-informacoes/{id}`) é a fonte preferida — só cai para a heurística
  * sobre `tituloDescricao` quando o legado não traz `tipotituloNome`.
  */
-export function tipoTituloDoDetalhe(detalhe: LegadoTituloDetalhe): string | undefined {
+export function tipoTituloDoDetalhe(
+  detalhe: Pick<LegadoTituloDetalhe, "tipoTituloNome" | "tituloDescricao">,
+): string | undefined {
   return detalhe.tipoTituloNome ?? tipoTituloDaDescricao(detalhe.tituloDescricao);
 }
 
@@ -125,8 +127,10 @@ export function aplicarDetalheNaParcela(
     multaLegado: unknown;
     jurosLegado: unknown;
     totalLegado: unknown;
+    descontoLegado?: unknown;
   },
-  detalhe: LegadoTituloDetalhe,
+  // `descontoCalc` ausente = o título veio da busca em lote (sem desconto): não mexe no que há.
+  detalhe: Omit<LegadoTituloDetalhe, "descontoCalc"> & { descontoCalc?: number },
 ): {
   status?: StatusParcela;
   valorPago: number;
@@ -143,6 +147,7 @@ export function aplicarDetalheNaParcela(
   multaLegado: number;
   jurosLegado: number;
   totalLegado: number;
+  descontoLegado?: number;
 } | null {
   const novoStatus = statusLegadoParaEthos(detalhe);
   const valorPagoLegado = detalhe.tituloValorPago;
@@ -180,7 +185,9 @@ export function aplicarDetalheNaParcela(
   const mudouMultaJuros =
     Number(parcela.multaLegado ?? NaN) !== detalhe.multaCalc ||
     Number(parcela.jurosLegado ?? NaN) !== detalhe.jurosCalc ||
-    Number(parcela.totalLegado ?? NaN) !== detalhe.totalCalc;
+    Number(parcela.totalLegado ?? NaN) !== detalhe.totalCalc ||
+    (detalhe.descontoCalc !== undefined &&
+      Number(parcela.descontoLegado ?? NaN) !== detalhe.descontoCalc);
 
   if (
     !mudouStatus &&
@@ -223,6 +230,7 @@ export function aplicarDetalheNaParcela(
     multaLegado: detalhe.multaCalc,
     jurosLegado: detalhe.jurosCalc,
     totalLegado: detalhe.totalCalc,
+    ...(detalhe.descontoCalc !== undefined ? { descontoLegado: detalhe.descontoCalc } : {}),
   };
 }
 

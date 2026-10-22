@@ -149,6 +149,7 @@ export async function mesclarDetalhes(
             ...titulo,
             tituloEstado: d.tituloEstado || titulo.tituloEstado,
             tituloObservacoes: d.tituloObservacoes ?? titulo.tituloObservacoes,
+            descontoCalc: d.descontoCalc,
             boletoId: d.boletoId ?? null,
             boletoHash: d.boletoHash ?? null,
             remessaId: d.remessaId ?? null,
@@ -256,6 +257,7 @@ export async function gravarTitulosNaMatricula(
       multaLegado: titulo.multaCalc,
       jurosLegado: titulo.jurosCalc,
       totalLegado: titulo.totalCalc,
+      descontoLegado: titulo.descontoCalc ?? null,
       // Campo estruturado de tipo de título do legado, confirmado ao vivo
       // em 2026-09-17 — guardado para exibição/conferência na Ficha de
       // Cobrança (ver Parcela.tipoTituloIdLegado no schema).

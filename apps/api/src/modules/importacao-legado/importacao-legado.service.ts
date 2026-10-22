@@ -9,7 +9,12 @@ import { financeiroRepository } from "../financeiro/financeiro.repository";
 import { historicoRepository } from "../cobranca/historico.repository";
 import { situacoesRepository } from "../cobranca/situacoes.repository";
 import { montarClient } from "../sincronizacao-legado/sincronizacao-legado.service";
-import { parseDataLegadoIso, type LegadoTituloResumo } from "../sincronizacao-legado/legado-client";
+import {
+  parseDataLegadoIso,
+  parseDataLegadoQualquer,
+  type LegadoTituloDetalhe,
+  type LegadoTituloResumo,
+} from "../sincronizacao-legado/legado-client";
 import {
   aplicarDetalheNaParcela,
   statusLegadoParaEthos,
@@ -115,17 +120,70 @@ export async function garantirSituacaoPendente(
  * com/sem zeros à esquerda). `auditar: false` (importação em lote) pula a auditoria parcela a
  * parcela — o lote registra um resumo.
  */
+/** Quantos títulos têm o detalhe consultado ao mesmo tempo (não sobrecarrega o legado). */
+const DETALHES_EM_PARALELO = 6;
+
+/**
+ * Completa cada título da busca em lote com o que só o detalhe traz (boleto, hash do boleto e
+ * remessa) e confirma Estado e Observações pela mesma fonte. Título cujo detalhe não pôde ser
+ * lido segue com o que a busca em lote trouxe; o aviso conta quantos foram.
+ */
+export async function mesclarDetalhes(
+  titulos: LegadoTituloResumo[],
+  detalhar: (tituloId: string) => Promise<LegadoTituloDetalhe | null>,
+  avisos: string[],
+): Promise<LegadoTituloResumo[]> {
+  const resultado = [...titulos];
+  let semDetalhe = 0;
+  for (let i = 0; i < titulos.length; i += DETALHES_EM_PARALELO) {
+    await Promise.all(
+      titulos.slice(i, i + DETALHES_EM_PARALELO).map(async (titulo, j) => {
+        try {
+          const d = await detalhar(titulo.tituloId);
+          if (!d) {
+            semDetalhe++;
+            return;
+          }
+          resultado[i + j] = {
+            ...titulo,
+            tituloEstado: d.tituloEstado || titulo.tituloEstado,
+            tituloObservacoes: d.tituloObservacoes ?? titulo.tituloObservacoes,
+            boletoId: d.boletoId ?? null,
+            boletoHash: d.boletoHash ?? null,
+            remessaId: d.remessaId ?? null,
+          };
+        } catch {
+          semDetalhe++;
+        }
+      }),
+    );
+  }
+  if (semDetalhe > 0) {
+    avisos.push(
+      `${semDetalhe} título(s) sem o detalhe do legado — boleto e remessa não foram lidos para eles`,
+    );
+  }
+  return resultado;
+}
+
 export async function gravarTitulosNaMatricula(
   matricula: { id: string },
-  titulos: LegadoTituloResumo[],
+  titulosLidos: LegadoTituloResumo[],
   usuarioId: string,
   avisos: string[],
   opcoes: {
     auditar?: boolean;
     /** Chamado para cada título que não pôde ser importado (ex.: sem vencimento válido). */
     aoIgnorar?: (titulo: LegadoTituloResumo, motivo: string) => void;
+    /**
+     * Lê o detalhe de um título (`titulo-informacoes/{id}`): a busca em lote não traz boleto nem
+     * remessa. Sem isto, boleto/remessa ficam como estão. Falha de um título não impede os demais.
+     */
+    detalhar?: (tituloId: string) => Promise<LegadoTituloDetalhe | null>;
   } = {},
 ): Promise<{ novas: number; atualizadas: number }> {
+  let titulos = titulosLidos;
+  if (opcoes.detalhar) titulos = await mesclarDetalhes(titulos, opcoes.detalhar, avisos);
   const auditar = opcoes.auditar ?? true;
   let novas = 0;
   let atualizadas = 0;
@@ -176,7 +234,12 @@ export async function gravarTitulosNaMatricula(
     }
 
     const status = statusLegadoParaEthos(titulo) ?? StatusParcela.EM_ABERTO;
-    const dataPagamento = parseDataLegadoIso(titulo.tituloDataPagamento ?? titulo.tituloDataBaixa);
+    const dataPagto = parseDataLegadoQualquer(titulo.tituloDataPagamento);
+    const dataBaixa = parseDataLegadoQualquer(titulo.tituloDataBaixa);
+    // A baixa de um título cancelado/renegociado não é um pagamento.
+    const baixaNaoEPagamento =
+      status === StatusParcela.CANCELADO || status === StatusParcela.RENEGOCIADO;
+    const dataPagamento = dataPagto ?? (baixaNaoEPagamento ? null : dataBaixa);
 
     const parcela = await financeiroRepository.create({
       matricula: { connect: { id: matricula.id } },
@@ -199,6 +262,12 @@ export async function gravarTitulosNaMatricula(
       // Cobrança (ver Parcela.tipoTituloIdLegado no schema).
       tipoTituloIdLegado: titulo.tipoTituloId,
       tituloObservacoesLegado: titulo.tituloObservacoes,
+      estadoLegado: titulo.tituloEstado.trim() || null,
+      boletoLegadoId: titulo.boletoId ?? null,
+      boletoLegadoHash: titulo.boletoHash ?? null,
+      remessaLegadoId: titulo.remessaId ?? null,
+      dataPagamentoLegado: dataPagto,
+      dataBaixaLegado: dataBaixa,
     });
     novas++;
     if (auditar) {
@@ -394,7 +463,9 @@ export const importacaoLegadoService = {
         titulosSelecionadosSet.has(t.tituloId),
       );
 
-      const gravadas = await gravarTitulosNaMatricula(matricula, titulos, usuarioId, avisos);
+      const gravadas = await gravarTitulosNaMatricula(matricula, titulos, usuarioId, avisos, {
+        detalhar: (id) => client.buscarInformacoesTitulo(id),
+      });
       parcelasNovas += gravadas.novas;
       parcelasAtualizadas += gravadas.atualizadas;
     }

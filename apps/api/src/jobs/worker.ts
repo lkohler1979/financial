@@ -9,9 +9,11 @@ import "./workers/sincronizacao-legado.worker";
 import "./workers/importacao-legado-lote.worker";
 import "./workers/documentos-legado-lote.worker";
 import "./workers/emissao-cobranca.worker";
+import "./workers/contratos-monitoramento.worker";
 import { configuracoesRepository } from "../modules/configuracoes/configuracoes.repository";
 import { reprogramarSincronizacaoAgendada } from "./queues/sincronizacao-legado.queue";
 import { programarEmissaoDiaria } from "./queues/emissao-cobranca.queue";
+import { programarMonitoramentoContratos } from "./queues/contratos-monitoramento.queue";
 
 // Garante que o agendamento reflita a Configuração salva mesmo se o worker
 // tiver sido reiniciado sem passar por configuracoes.service.ts (ex.: deploy).
@@ -24,6 +26,10 @@ configuracoesRepository
 
 programarEmissaoDiaria().catch((err) =>
   console.error("[worker] falha ao programar emissão diária de cobranças", err),
+);
+
+programarMonitoramentoContratos().catch((err) =>
+  console.error("[worker] falha ao programar o monitoramento de contratos", err),
 );
 
 console.log("[EthosFinancial Worker] aguardando jobs...");

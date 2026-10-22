@@ -53,9 +53,28 @@ export const contratosRepository = {
     return prisma.contratoMatricula.update({ where: { id }, data });
   },
 
+  /**
+   * Contratos que o monitoramento precisa conferir: os aguardando assinatura (há até 90 dias) e os
+   * já assinados cujo PDF ainda não foi baixado (há até 7 dias). Do mais antigo para o mais novo.
+   */
+  paraMonitorar(limite: number, agora: Date = new Date()) {
+    const dias = (n: number) => new Date(agora.getTime() - n * 24 * 60 * 60_000);
+    return prisma.contratoMatricula.findMany({
+      where: {
+        documentoExternoId: { not: null },
+        OR: [
+          { status: "ENVIADO", enviadoEm: { gte: dias(90) } },
+          { status: "ASSINADO", arquivoAssinadoChave: null, assinadoEm: { gte: dias(7) } },
+        ],
+      },
+      orderBy: { enviadoEm: "asc" },
+      take: limite,
+    });
+  },
+
   /** Marca o contrato como assinado e reflete na matrícula (mesma transação). */
   marcarAssinado(
-    contrato: { id: string; matriculaId: string },
+    contrato: { id: string; matriculaId: string; assinadoEm?: Date | null },
     arquivoAssinadoChave: string | null,
   ) {
     return prisma.$transaction([
@@ -63,7 +82,8 @@ export const contratosRepository = {
         where: { id: contrato.id },
         data: {
           status: "ASSINADO",
-          assinadoEm: new Date(),
+          // Reconferência de um contrato já assinado (para baixar o PDF) não muda a data.
+          assinadoEm: contrato.assinadoEm ?? new Date(),
           ...(arquivoAssinadoChave ? { arquivoAssinadoChave } : {}),
         },
       }),

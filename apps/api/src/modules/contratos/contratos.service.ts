@@ -17,6 +17,8 @@ import { obterProvedor, REGRAS_WEBHOOK, segredoWebhook } from "./provedores";
 const MIME_DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 const PASTA_MODELO = "contratos/modelo";
 const PASTA_CONTRATOS = "contratos";
+/** Máximo de contratos conferidos por rodada do monitoramento. */
+const MAX_MONITORAR_POR_RODADA = 500;
 
 const MESES = [
   "janeiro",
@@ -364,6 +366,31 @@ export const contratosService = {
     if (!pdf) console.warn(`[${provedor.nome}] arquivo assinado ainda indisponível`, contratoId);
     await contratosRepository.marcarAssinado(contrato, chave);
     return contratosRepository.porId(contratoId);
+  },
+
+  /**
+   * Monitoramento (job agendado): pergunta à plataforma sobre cada contrato aguardando assinatura
+   * e, quando já foi assinado, baixa o PDF e marca `Matricula.contratoAssinado`. Funciona mesmo
+   * sem o webhook. Um contrato com problema não impede a conferência dos demais.
+   */
+  async monitorarPendentes() {
+    const contratos = await contratosRepository.paraMonitorar(MAX_MONITORAR_POR_RODADA);
+    let assinados = 0;
+    let recusados = 0;
+    let falhas = 0;
+    for (const c of contratos) {
+      try {
+        const depois = await this.sincronizarAssinado(c.id);
+        if (depois?.status === "ASSINADO" && c.status !== "ASSINADO") assinados++;
+        if (depois?.status === "RECUSADO") recusados++;
+      } catch (erro) {
+        falhas++;
+        console.warn(
+          `[contratos] não foi possível conferir o contrato ${c.id}: ${erro instanceof Error ? erro.message : erro}`,
+        );
+      }
+    }
+    return { conferidos: contratos.length, assinados, recusados, falhas };
   },
 
   async sincronizarDaMatricula(matriculaId: string) {

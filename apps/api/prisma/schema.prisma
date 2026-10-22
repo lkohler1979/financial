@@ -424,7 +424,14 @@ model Parcela {
 
   matricula Matricula @relation(fields: [matriculaId], references: [id])
 
+  /// Situação de cobrança desta parcela (mesmo catálogo das situações da matrícula: PENDENTE,
+  /// Negociando…). Diferente do `status` (estado da parcela: em aberto, paga, cancelada…), que o
+  /// sistema define pelo pagamento/legado. Nula = sem situação definida.
+  situacaoCobrancaId String?           @map("situacao_cobranca_id")
+  situacaoCobranca   SituacaoCobranca? @relation(fields: [situacaoCobrancaId], references: [id])
+
   @@unique([matriculaId, codTitulo])
+  @@index([situacaoCobrancaId])
   @@map("parcelas")
 }
 
@@ -689,6 +696,7 @@ model SituacaoCobranca {
   participaNovosRelatorios Boolean @default(true) @map("participa_novos_relatorios")
 
   matriculas Matricula[]
+  parcelas   Parcela[]
 
   @@map("situacoes_cobranca")
 }

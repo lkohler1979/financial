@@ -4,6 +4,11 @@ export const mudarSituacaoSchema = z.object({
   situacaoCobrancaId: z.string().uuid("situacaoCobrancaId inválido"),
 });
 
+/** `null` limpa a situação da parcela. */
+export const mudarSituacaoParcelaSchema = z.object({
+  situacaoCobrancaId: z.string().uuid("situacaoCobrancaId inválido").nullable(),
+});
+
 export const adicionarTagSchema = z.object({
   tagId: z.string().uuid("tagId inválido"),
 });
@@ -22,6 +27,7 @@ export const aplicarLoteSchema = z.object({
 });
 
 export type MudarSituacaoInput = z.infer<typeof mudarSituacaoSchema>;
+export type MudarSituacaoParcelaInput = z.infer<typeof mudarSituacaoParcelaSchema>;
 export type AdicionarTagInput = z.infer<typeof adicionarTagSchema>;
 export type CriarObservacaoInput = z.infer<typeof criarObservacaoSchema>;
 export type AplicarLoteInput = z.infer<typeof aplicarLoteSchema>;

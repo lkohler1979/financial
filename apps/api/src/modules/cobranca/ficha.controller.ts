@@ -5,6 +5,7 @@ import {
   adicionarTagSchema,
   aplicarLoteSchema,
   criarObservacaoSchema,
+  mudarSituacaoParcelaSchema,
   mudarSituacaoSchema,
 } from "./ficha.schema";
 import { fichaService } from "./ficha.service";
@@ -23,6 +24,17 @@ export const fichaController = {
       usuarioAtual(req),
     );
     res.json(matricula);
+  }),
+
+  mudarSituacaoParcela: asyncHandler(async (req: Request, res: Response) => {
+    const input = mudarSituacaoParcelaSchema.parse(req.body);
+    const parcela = await fichaService.mudarSituacaoParcela(
+      paramString(req, "matriculaId"),
+      paramString(req, "parcelaId"),
+      input.situacaoCobrancaId,
+      usuarioAtual(req),
+    );
+    res.json(parcela);
   }),
 
   adicionarTag: asyncHandler(async (req: Request, res: Response) => {

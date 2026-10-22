@@ -1,4 +1,5 @@
 import { ConflictError, NotFoundError } from "../../shared/errors/app-error";
+import { financeiroRepository } from "../financeiro/financeiro.repository";
 import { matriculasRepository } from "../matriculas/matriculas.repository";
 import type { AplicarLoteInput } from "./ficha.schema";
 import { historicoRepository } from "./historico.repository";
@@ -43,6 +44,47 @@ export const fichaService = {
       matriculaId,
       usuarioId,
       `Situação alterada para "${situacao.nome}"`,
+    );
+
+    return atualizada;
+  },
+
+  /**
+   * Situação de cobrança de UMA parcela (a matrícula tem a sua própria). `null` limpa. Fica no
+   * histórico da matrícula, dizendo qual parcela mudou.
+   */
+  async mudarSituacaoParcela(
+    matriculaId: string,
+    parcelaId: string,
+    situacaoCobrancaId: string | null,
+    usuarioId: string,
+  ) {
+    await garantirMatriculaExiste(matriculaId);
+    const parcela = await financeiroRepository.findById(parcelaId);
+    if (!parcela || parcela.matriculaId !== matriculaId) {
+      throw new NotFoundError("Parcela não encontrada nesta matrícula");
+    }
+
+    let nomeSituacao: string | null = null;
+    if (situacaoCobrancaId) {
+      const situacao = await situacoesRepository.findById(situacaoCobrancaId);
+      if (!situacao) throw new NotFoundError("Situação de cobrança não encontrada");
+      nomeSituacao = situacao.nome;
+    }
+
+    const atualizada = await financeiroRepository.update(parcelaId, {
+      situacaoCobranca: situacaoCobrancaId
+        ? { connect: { id: situacaoCobrancaId } }
+        : { disconnect: true },
+    });
+
+    const parcelaDescricao = `Parcela ${parcela.parcela} (título ${parcela.codTitulo})`;
+    await historicoRepository.registrar(
+      matriculaId,
+      usuarioId,
+      nomeSituacao
+        ? `${parcelaDescricao}: situação alterada para "${nomeSituacao}"`
+        : `${parcelaDescricao}: situação removida`,
     );
 
     return atualizada;

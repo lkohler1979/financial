@@ -54,6 +54,18 @@ export class CobrancaService {
     });
   }
 
+  /** Situação de cobrança de uma parcela; `null` limpa. */
+  mudarSituacaoParcela(
+    matriculaId: string,
+    parcelaId: string,
+    situacaoCobrancaId: string | null,
+  ): Observable<unknown> {
+    return this.http.put(
+      `${this.baseUrl}/matriculas/${matriculaId}/parcelas/${parcelaId}/situacao`,
+      { situacaoCobrancaId },
+    );
+  }
+
   adicionarTag(matriculaId: string, tagId: string): Observable<void> {
     return this.http.post<void>(`${this.baseUrl}/matriculas/${matriculaId}/tags`, { tagId });
   }

@@ -44,9 +44,9 @@ function normalizarEstado(estado: string): string {
 /**
  * Estado do legado → situação da parcela. `null` = não altera o que o Ethos já controla:
  *  - "Aberto" não rebaixa um status avançado (ex.: PROTESTADO);
- *  - "Estorno" (4 em 2.646 títulos, sem boleto) ainda não tem regra definida — o estado fica
- *    gravado em `Parcela.estadoLegado` para análise, mas o status não muda.
- * "Pagamento Múltiplo" (título quitado junto com outros) conta como PAGO.
+ * "Pagamento Múltiplo" (título quitado junto com outros) conta como PAGO e "Estorno" (pagamento
+ * devolvido) volta a parcela para EM_ABERTO — decisões do usuário, 2026-10-22. Parcela em
+ * protesto não é reaberta por um Estorno (ver `aplicarDetalheNaParcela`).
  */
 const ESTADO_PARA_STATUS: Record<string, StatusParcela | null> = {
   pago: "PAGO",
@@ -54,7 +54,7 @@ const ESTADO_PARA_STATUS: Record<string, StatusParcela | null> = {
   cancelado: "CANCELADO",
   alteracao: "RENEGOCIADO",
   aberto: null,
-  estorno: null,
+  estorno: "EM_ABERTO",
 };
 
 /**
@@ -92,6 +92,20 @@ export function tipoTituloDaDescricao(descricao: string): string | undefined {
  */
 export function tipoTituloDoDetalhe(detalhe: LegadoTituloDetalhe): string | undefined {
   return detalhe.tipoTituloNome ?? tipoTituloDaDescricao(detalhe.tituloDescricao);
+}
+
+/**
+ * Data de pagamento que o Ethos usa: Data Pagto, ou a Data Baixa quando só ela existe. Só vale
+ * para parcela paga (ou de estado ainda sem regra): em título cancelado, renegociado ou estornado
+ * a baixa não é um pagamento, então não há data de pagamento.
+ */
+export function dataPagamentoEfetiva(
+  status: StatusParcela | null,
+  dataPagto: Date | null,
+  dataBaixa: Date | null,
+): Date | null {
+  if (status !== null && status !== "PAGO") return null;
+  return dataPagto ?? dataBaixa;
 }
 
 export function aplicarDetalheNaParcela(
@@ -136,13 +150,13 @@ export function aplicarDetalheNaParcela(
   // o legado traz, também são guardadas (aceita "DD/MM/AAAA" e "AAAA-MM-DD").
   const dataPagto = parseDataLegadoQualquer(detalhe.tituloDataPagamento);
   const dataBaixa = parseDataLegadoQualquer(detalhe.tituloDataBaixa);
-  // A baixa só vale como data de pagamento se a parcela não foi cancelada nem renegociada (a baixa
-  // de um título cancelado não é um pagamento).
-  const baixaNaoEPagamento = novoStatus === "CANCELADO" || novoStatus === "RENEGOCIADO";
-  const dataPagamentoLegado = dataPagto ?? (baixaNaoEPagamento ? null : dataBaixa);
+  const dataPagamentoLegado = dataPagamentoEfetiva(novoStatus, dataPagto, dataBaixa);
   const tipoTituloLegado = tipoTituloDoDetalhe(detalhe);
 
-  const mudouStatus = novoStatus !== null && novoStatus !== parcela.status;
+  // Um Estorno reabre a parcela, mas não tira do protesto uma parcela que já foi para lá.
+  const emProtesto = parcela.status === "PROTESTO_ENVIADO" || parcela.status === "PROTESTADO";
+  const statusAplicavel = novoStatus === "EM_ABERTO" && emProtesto ? null : novoStatus;
+  const mudouStatus = statusAplicavel !== null && statusAplicavel !== parcela.status;
   const mudouValor = Number(parcela.valorPago ?? 0) !== valorPagoLegado;
   const mudouData =
     (dataPagamentoLegado?.getTime() ?? null) !== (parcela.dataPagamento?.getTime() ?? null);
@@ -184,7 +198,7 @@ export function aplicarDetalheNaParcela(
   }
 
   return {
-    ...(novoStatus ? { status: novoStatus } : {}),
+    ...(statusAplicavel ? { status: statusAplicavel } : {}),
     // O legado é sempre a fonte de verdade para valor pago/data de pagamento
     // (decisão do usuário, 2026-09-14) — inclusive voltando a 0/null se o
     // legado deixar de mostrar o pagamento que antes mostrava.

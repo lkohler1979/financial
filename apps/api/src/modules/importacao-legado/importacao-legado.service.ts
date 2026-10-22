@@ -17,6 +17,7 @@ import {
 } from "../sincronizacao-legado/legado-client";
 import {
   aplicarDetalheNaParcela,
+  dataPagamentoEfetiva,
   statusLegadoParaEthos,
   tipoTituloDaDescricao,
 } from "../sincronizacao-legado/sincronizacao-legado.reconciliador";
@@ -236,10 +237,8 @@ export async function gravarTitulosNaMatricula(
     const status = statusLegadoParaEthos(titulo) ?? StatusParcela.EM_ABERTO;
     const dataPagto = parseDataLegadoQualquer(titulo.tituloDataPagamento);
     const dataBaixa = parseDataLegadoQualquer(titulo.tituloDataBaixa);
-    // A baixa de um título cancelado/renegociado não é um pagamento.
-    const baixaNaoEPagamento =
-      status === StatusParcela.CANCELADO || status === StatusParcela.RENEGOCIADO;
-    const dataPagamento = dataPagto ?? (baixaNaoEPagamento ? null : dataBaixa);
+    // A baixa de um título cancelado, renegociado ou estornado não é um pagamento.
+    const dataPagamento = dataPagamentoEfetiva(statusLegadoParaEthos(titulo), dataPagto, dataBaixa);
 
     const parcela = await financeiroRepository.create({
       matricula: { connect: { id: matricula.id } },

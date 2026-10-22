@@ -117,7 +117,13 @@ export const documentosLegadoLoteService = {
 
     let legado: ClienteLegado;
     try {
-      legado = cliente ?? (await montarClient());
+      // Legado falhando: espera 1 minuto e repete a mesma requisição, seguindo do aluno em que
+      // parou. Cada pausa marca o lote como vivo para não ser dado como interrompido.
+      legado =
+        cliente ??
+        (await montarClient({
+          aoEsperar: () => repo.atualizar(loteId, { atualizadoEm: new Date() }),
+        }));
     } catch (erro) {
       await repo.atualizar(loteId, {
         status: StatusLoteDocumentos.FALHOU,

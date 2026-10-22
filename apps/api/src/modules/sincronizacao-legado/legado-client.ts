@@ -21,6 +21,35 @@ export interface LegadoConfig {
 }
 
 /**
+ * Para varreduras longas (lote): quando o legado começa a falhar (rede, timeout, HTTP 5xx, 429,
+ * 408), o cliente espera e repete A MESMA requisição, então o processo segue de onde parou em vez
+ * de perder o que falta. Sem isto (telas, consulta por CPF) a falha sobe na hora para o usuário.
+ */
+export interface ResilienciaLegado {
+  /** Pausa entre a falha e a nova tentativa. Padrão: 1 minuto. */
+  esperaMs?: number;
+  /** Quantas pausas seguidas (da mesma requisição) antes de desistir. Padrão: 30. */
+  maxEsperas?: number;
+  /** Tempo máximo de cada requisição; estourar conta como falha. Padrão: 2 minutos. */
+  timeoutMs?: number;
+  /** Avisado antes de cada pausa (ex.: para manter o lote "vivo" e registrar o motivo). */
+  aoEsperar?: (info: { tentativa: number; esperaMs: number; motivo: string }) => unknown;
+  /** Só para teste. */
+  dormir?: (ms: number) => Promise<void>;
+}
+
+const ESPERA_PADRAO_MS = 60_000;
+const MAX_ESPERAS_PADRAO = 30;
+const TIMEOUT_PADRAO_MS = 120_000;
+
+/** Falha que costuma passar sozinha (legado fora do ar, lento ou sobrecarregado). */
+class FalhaTransitoriaError extends Error {}
+
+function statusTransitorio(status: number): boolean {
+  return status >= 500 || status === 429 || status === 408;
+}
+
+/**
  * Uma linha de `GET /pessoa/pessoa/search-for-json?query={cpf}&queryTipo=cpf` —
  * 1 linha por curso do aluno (parâmetro `agruparAluno=true`). Endpoint e
  * formato confirmados ao vivo em 2026-09-15 (ver PENDENCIAS.md, seção
@@ -186,8 +215,29 @@ function extrairCookie(setCookieHeaders: string[]): string | null {
 
 export class LegadoClient {
   private cookie: string | null = null;
+  private resiliencia: ResilienciaLegado | null = null;
 
   constructor(private readonly config: LegadoConfig) {}
+
+  /** Liga a pausa e nova tentativa em falhas transitórias (ver `ResilienciaLegado`). */
+  comResiliencia(resiliencia: ResilienciaLegado = {}): this {
+    this.resiliencia = resiliencia;
+    return this;
+  }
+
+  /** `fetch` que, com resiliência ligada, tem timeout; erro de rede/timeout vira falha transitória. */
+  private async buscar(url: string, init: RequestInit): Promise<Response> {
+    const timeoutMs = this.resiliencia ? (this.resiliencia.timeoutMs ?? TIMEOUT_PADRAO_MS) : null;
+    try {
+      return await fetch(url, {
+        ...init,
+        ...(timeoutMs ? { signal: AbortSignal.timeout(timeoutMs) } : {}),
+      });
+    } catch (erro) {
+      const detalhe = erro instanceof Error ? erro.message : String(erro);
+      throw new FalhaTransitoriaError(`Falha de comunicação com o sistema legado (${detalhe})`);
+    }
+  }
 
   /**
    * Autentica no sistema legado e guarda o cookie de sessão para as próximas
@@ -206,12 +256,15 @@ export class LegadoClient {
    * que aconteceu na primeira tentativa de validação contra o sistema real).
    */
   async login(): Promise<void> {
-    const resposta = await fetch(`${this.config.baseUrl}/acesso/autenticacao/login`, {
+    const resposta = await this.buscar(`${this.config.baseUrl}/acesso/autenticacao/login`, {
       method: "POST",
       headers: { "content-type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({ username: this.config.usuario, password: this.config.senha }),
       redirect: "manual",
     });
+    if (statusTransitorio(resposta.status)) {
+      throw new FalhaTransitoriaError(`Sistema legado respondeu ${resposta.status} no login`);
+    }
 
     const setCookie = resposta.headers.getSetCookie?.() ?? [];
     const cookie = extrairCookie(setCookie);
@@ -223,14 +276,40 @@ export class LegadoClient {
     this.cookie = cookie;
   }
 
-  private async requisitar(
+  /**
+   * Uma requisição ao legado. Com resiliência ligada, falha transitória faz uma pausa e repete a
+   * mesma requisição (sem perder o ponto em que o processo estava); desiste só depois de
+   * `maxEsperas` pausas seguidas. Erro que não passa sozinho (senha recusada, 404…) sobe direto.
+   */
+  private async requisitar(caminho: string, init: RequestInit = {}): Promise<Response> {
+    const config = this.resiliencia;
+    if (!config) return this.requisitarUmaVez(caminho, init);
+
+    const esperaMs = config.esperaMs ?? ESPERA_PADRAO_MS;
+    const maxEsperas = config.maxEsperas ?? MAX_ESPERAS_PADRAO;
+    const dormir = config.dormir ?? ((ms: number) => new Promise<void>((ok) => setTimeout(ok, ms)));
+    for (let esperas = 0; ;) {
+      try {
+        return await this.requisitarUmaVez(caminho, init);
+      } catch (erro) {
+        if (!(erro instanceof FalhaTransitoriaError) || esperas >= maxEsperas) throw erro;
+        esperas += 1;
+        await config.aoEsperar?.({ tentativa: esperas, esperaMs, motivo: erro.message });
+        await dormir(esperaMs);
+        // A sessão pode ter caído junto com o servidor: a nova tentativa reautentica se precisar.
+        this.cookie = null;
+      }
+    }
+  }
+
+  private async requisitarUmaVez(
     caminho: string,
     init: RequestInit = {},
     tentouRelogar = false,
   ): Promise<Response> {
     if (!this.cookie) await this.login();
 
-    const resposta = await fetch(`${this.config.baseUrl}${caminho}`, {
+    const resposta = await this.buscar(`${this.config.baseUrl}${caminho}`, {
       ...init,
       headers: {
         ...init.headers,
@@ -246,11 +325,14 @@ export class LegadoClient {
       if (tentouRelogar) throw new SessaoExpiradaError();
       this.cookie = null;
       await this.login();
-      return this.requisitar(caminho, init, true);
+      return this.requisitarUmaVez(caminho, init, true);
     }
 
     if (!resposta.ok) {
-      throw new Error(`Sistema legado respondeu ${resposta.status} para ${caminho}`);
+      const mensagem = `Sistema legado respondeu ${resposta.status} para ${caminho}`;
+      throw statusTransitorio(resposta.status)
+        ? new FalhaTransitoriaError(mensagem)
+        : new Error(mensagem);
     }
 
     return resposta;

@@ -154,10 +154,18 @@ export const importacaoLegadoLoteService = {
     try {
       const lote = await repo.findById(loteId);
       if (!lote) return;
-      const legado = cliente ?? (await montarClient());
+      let consultas = 0;
+      // Legado falhando: o cliente espera 1 minuto e repete a mesma requisição, então a varredura
+      // e a importação seguem de onde pararam. Cada pausa marca o lote como vivo (ele não é dado
+      // como interrompido) e guarda o andamento.
+      const legado =
+        cliente ??
+        (await montarClient({
+          aoEsperar: () =>
+            repo.atualizar(loteId, { ...totais, consultas, atualizadoEm: new Date() }),
+        }));
 
       // 1) Varredura: lista todas as pessoas pelo prefixo do nome.
-      let consultas = 0;
       const varredura = await varrerPessoasDoLegado(
         (prefixo) => legado.buscarPessoasPorPrefixoNome(prefixo),
         {

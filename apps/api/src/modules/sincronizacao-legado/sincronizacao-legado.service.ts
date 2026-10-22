@@ -4,13 +4,14 @@ import { decifrar } from "../../shared/utils/criptografia";
 import { registrarAuditoria } from "../auditoria/auditoria.service";
 import { configuracoesRepository } from "../configuracoes/configuracoes.repository";
 import { matriculasRepository } from "../matriculas/matriculas.repository";
-import { LegadoClient } from "./legado-client";
+import { LegadoClient, type ResilienciaLegado } from "./legado-client";
 import { reconciliarMatricula } from "./sincronizacao-legado.reconciliador";
 import { sincronizacaoLegadoRepository } from "./sincronizacao-legado.repository";
 
 /** Reutilizado por `importacao-legado` (busca por CPF na tela de Aluno) —
  * mesma configuração/credenciais de `Configuracao`. */
-export async function montarClient(): Promise<LegadoClient> {
+/** `resiliencia`: varreduras em lote passam aqui para esperar e repetir quando o legado falha. */
+export async function montarClient(resiliencia?: ResilienciaLegado): Promise<LegadoClient> {
   const config = await configuracoesRepository.obterOuCriar();
   if (!config.legadoUrl || !config.legadoUsuario || !config.legadoSenhaCriptografada) {
     throw new ValidationError(
@@ -18,11 +19,12 @@ export async function montarClient(): Promise<LegadoClient> {
     );
   }
 
-  return new LegadoClient({
+  const client = new LegadoClient({
     baseUrl: config.legadoUrl,
     usuario: config.legadoUsuario,
     senha: decifrar(config.legadoSenhaCriptografada),
   });
+  return resiliencia ? client.comResiliencia(resiliencia) : client;
 }
 
 export const sincronizacaoLegadoService = {

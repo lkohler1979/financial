@@ -1,6 +1,6 @@
 import { StatusParcela, StatusSincronizacaoLegado } from "@prisma/client";
 import { financeiroRepository } from "../financeiro/financeiro.repository";
-import { parseDataLegado, type LegadoTituloDetalhe } from "./legado-client";
+import { parseDataLegadoQualquer, type LegadoTituloDetalhe } from "./legado-client";
 
 export interface ResultadoReconciliacaoMatricula {
   tituloConsultados: number;
@@ -16,12 +16,46 @@ export interface ResultadoReconciliacaoMatricula {
  * título específico não é mais cobrável), então sempre se aplica, como
  * PAGO/CANCELADO. PENDÊNCIA: valores exatos de `tituloEstado` para
  * pago/cancelado ainda não confirmados (ver PENDENCIAS.md). */
-export function statusLegadoParaEthos(detalhe: LegadoTituloDetalhe): StatusParcela | null {
+export function statusLegadoParaEthos(
+  detalhe: Pick<LegadoTituloDetalhe, "tituloEstado" | "tituloDataPagamento" | "tituloDataBaixa">,
+): StatusParcela | null {
+  // O "Estado" do título é quem diz a situação (um título pago com cupom, por exemplo, vem
+  // "Pago" sem data de pagamento). Valores vistos ao vivo em 2026-10-22, em 2.646 títulos: Pago,
+  // Aberto, Cancelado, Alteracao, Pagamento Múltiplo e Estorno.
+  const estado = normalizarEstado(detalhe.tituloEstado);
+  if (estado in ESTADO_PARA_STATUS) return ESTADO_PARA_STATUS[estado];
+  // Estado desconhecido ou vazio: cai nas regras antigas (data de pagamento, texto do estado).
   if (detalhe.tituloDataPagamento || detalhe.tituloDataBaixa) return "PAGO";
-  if (detalhe.tituloEstado.toLowerCase().includes("cancel")) return "CANCELADO";
-  if (detalhe.tituloEstado.toLowerCase().includes("alteracao")) return "RENEGOCIADO";
-  return null; // "Aberto" ou equivalente: não altera um status já controlado pelo Ethos (protesto).
+  if (estado.includes("cancel")) return "CANCELADO";
+  if (estado.includes("alteracao")) return "RENEGOCIADO";
+  return null;
 }
+
+/** Sem acento, caixa ou espaços repetidos — "Pagamento Múltiplo" e "pagamento multiplo" casam. */
+function normalizarEstado(estado: string): string {
+  return estado
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+/**
+ * Estado do legado → situação da parcela. `null` = não altera o que o Ethos já controla:
+ *  - "Aberto" não rebaixa um status avançado (ex.: PROTESTADO);
+ *  - "Estorno" (4 em 2.646 títulos, sem boleto) ainda não tem regra definida — o estado fica
+ *    gravado em `Parcela.estadoLegado` para análise, mas o status não muda.
+ * "Pagamento Múltiplo" (título quitado junto com outros) conta como PAGO.
+ */
+const ESTADO_PARA_STATUS: Record<string, StatusParcela | null> = {
+  pago: "PAGO",
+  "pagamento multiplo": "PAGO",
+  cancelado: "CANCELADO",
+  alteracao: "RENEGOCIADO",
+  aberto: null,
+  estorno: null,
+};
 
 /**
  * Classifica o tipo do título a partir de `tituloDescricao` (ex.:
@@ -68,6 +102,12 @@ export function aplicarDetalheNaParcela(
     tipoTitulo: string | null;
     tipoTituloIdLegado: unknown;
     tituloObservacoesLegado: string | null;
+    estadoLegado?: string | null;
+    boletoLegadoId?: string | null;
+    boletoLegadoHash?: string | null;
+    remessaLegadoId?: string | null;
+    dataPagamentoLegado?: Date | null;
+    dataBaixaLegado?: Date | null;
     multaLegado: unknown;
     jurosLegado: unknown;
     totalLegado: unknown;
@@ -80,15 +120,26 @@ export function aplicarDetalheNaParcela(
   tipoTitulo?: string;
   tipoTituloIdLegado: number | null;
   tituloObservacoesLegado: string | null;
+  estadoLegado: string | null;
+  boletoLegadoId?: string | null;
+  boletoLegadoHash?: string | null;
+  remessaLegadoId?: string | null;
+  dataPagamentoLegado: Date | null;
+  dataBaixaLegado: Date | null;
   multaLegado: number;
   jurosLegado: number;
   totalLegado: number;
 } | null {
   const novoStatus = statusLegadoParaEthos(detalhe);
   const valorPagoLegado = detalhe.tituloValorPago;
-  const dataPagamentoLegado = parseDataLegado(
-    detalhe.tituloDataPagamento ?? detalhe.tituloDataBaixa,
-  );
+  // Data efetiva do Ethos: Data Pagto, ou a Data Baixa quando só ela existe. As duas datas, como
+  // o legado traz, também são guardadas (aceita "DD/MM/AAAA" e "AAAA-MM-DD").
+  const dataPagto = parseDataLegadoQualquer(detalhe.tituloDataPagamento);
+  const dataBaixa = parseDataLegadoQualquer(detalhe.tituloDataBaixa);
+  // A baixa só vale como data de pagamento se a parcela não foi cancelada nem renegociada (a baixa
+  // de um título cancelado não é um pagamento).
+  const baixaNaoEPagamento = novoStatus === "CANCELADO" || novoStatus === "RENEGOCIADO";
+  const dataPagamentoLegado = dataPagto ?? (baixaNaoEPagamento ? null : dataBaixa);
   const tipoTituloLegado = tipoTituloDoDetalhe(detalhe);
 
   const mudouStatus = novoStatus !== null && novoStatus !== parcela.status;
@@ -98,6 +149,18 @@ export function aplicarDetalheNaParcela(
   const mudouTipo = tipoTituloLegado !== undefined && parcela.tipoTitulo !== tipoTituloLegado;
   const mudouTipoId = (parcela.tipoTituloIdLegado as number | null) !== detalhe.tipoTituloId;
   const mudouObservacoesLegado = parcela.tituloObservacoesLegado !== detalhe.tituloObservacoes;
+  const mudouDatasLegado =
+    (parcela.dataPagamentoLegado?.getTime() ?? null) !== (dataPagto?.getTime() ?? null) ||
+    (parcela.dataBaixaLegado?.getTime() ?? null) !== (dataBaixa?.getTime() ?? null);
+  const estadoLegado = detalhe.tituloEstado.trim() || null;
+  const mudouEstado = (parcela.estadoLegado ?? null) !== estadoLegado;
+  // Boleto/remessa só vêm do detalhe do título: `undefined` = não consultado, não apaga o que há.
+  const trouxeBoleto = detalhe.boletoId !== undefined;
+  const mudouBoleto =
+    trouxeBoleto &&
+    ((parcela.boletoLegadoId ?? null) !== (detalhe.boletoId ?? null) ||
+      (parcela.boletoLegadoHash ?? null) !== (detalhe.boletoHash ?? null) ||
+      (parcela.remessaLegadoId ?? null) !== (detalhe.remessaId ?? null));
   // NaN quando a Parcela ainda não tem valor gravado (null) — força "mudou"
   // na primeira sincronização, já que qualquer número é diferente de NaN.
   const mudouMultaJuros =
@@ -112,6 +175,9 @@ export function aplicarDetalheNaParcela(
     !mudouTipo &&
     !mudouTipoId &&
     !mudouObservacoesLegado &&
+    !mudouDatasLegado &&
+    !mudouEstado &&
+    !mudouBoleto &&
     !mudouMultaJuros
   ) {
     return null;
@@ -127,6 +193,16 @@ export function aplicarDetalheNaParcela(
     ...(mudouTipo ? { tipoTitulo: tipoTituloLegado } : {}),
     tipoTituloIdLegado: detalhe.tipoTituloId,
     tituloObservacoesLegado: detalhe.tituloObservacoes,
+    estadoLegado,
+    dataPagamentoLegado: dataPagto,
+    dataBaixaLegado: dataBaixa,
+    ...(trouxeBoleto
+      ? {
+          boletoLegadoId: detalhe.boletoId ?? null,
+          boletoLegadoHash: detalhe.boletoHash ?? null,
+          remessaLegadoId: detalhe.remessaId ?? null,
+        }
+      : {}),
     // Idem para multa/juros/total — decisão do usuário, 2026-09-15: Parcela
     // sincronizada com o legado nunca tem multa/juros calculados pelo Ethos,
     // sempre reflete o valor que o próprio legado calculou.

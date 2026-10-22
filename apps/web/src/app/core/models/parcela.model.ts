@@ -47,6 +47,16 @@ export interface Parcela {
   /** `tituloObservacoes` do legado (texto livre do sistema de origem) —
    * nunca confundir com `observacoes` (gestão interna do Ethos). */
   tituloObservacoesLegado?: string | null;
+  /** "Estado" do título no legado (Pago, Aberto, Cancelado, Alteracao, Pagamento Múltiplo,
+   * Estorno) — é ele que define a situação da parcela ao importar/sincronizar. */
+  estadoLegado?: string | null;
+  /** Boleto do título no legado (`bol_id`), o hash dele (`bol_id_hash`) e a remessa (`remessaId`). */
+  boletoLegadoId?: string | null;
+  boletoLegadoHash?: string | null;
+  remessaLegadoId?: string | null;
+  /** "Data Pagto" e "Data Baixa" do título no legado (ISO), quando preenchidas lá. */
+  dataPagamentoLegado?: string | null;
+  dataBaixaLegado?: string | null;
   /** Campos da integração com o Asaas (Boleto/Pix/Cartão) — presentes só
    * depois de "Gerar cobrança" ser clicado para esta parcela. Só
    * leitura/exibição. */

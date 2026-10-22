@@ -41,6 +41,7 @@ function parcela(
     tipoTitulo: string | null;
     tipoTituloIdLegado: unknown;
     tituloObservacoesLegado: string | null;
+    estadoLegado: string | null;
     multaLegado: unknown;
     jurosLegado: unknown;
     totalLegado: unknown;
@@ -59,6 +60,9 @@ function parcela(
     // novos.
     tipoTituloIdLegado: null,
     tituloObservacoesLegado: null,
+    estadoLegado: "Aberto",
+    dataPagamentoLegado: null,
+    dataBaixaLegado: null,
     multaLegado: 0,
     jurosLegado: 0,
     totalLegado: 150,
@@ -75,7 +79,9 @@ describe("reconciliarMatricula", () => {
     financeiro.listarTodasPorMatricula.mockResolvedValue([parcela()] as never);
     const buscarInformacoesTitulo = vi
       .fn()
-      .mockResolvedValue(detalhe({ tituloDataPagamento: "05/06/2026", tituloValorPago: 150 }));
+      .mockResolvedValue(
+        detalhe({ tituloEstado: "Pago", tituloDataPagamento: "05/06/2026", tituloValorPago: 150 }),
+      );
 
     const resultado = await reconciliarMatricula("matricula-1", buscarInformacoesTitulo);
 
@@ -90,6 +96,9 @@ describe("reconciliarMatricula", () => {
       dataPagamento: new Date(2026, 5, 5),
       tipoTituloIdLegado: null,
       tituloObservacoesLegado: null,
+      estadoLegado: "Pago",
+      dataPagamentoLegado: new Date(2026, 5, 5),
+      dataBaixaLegado: null,
       multaLegado: 0,
       jurosLegado: 0,
       totalLegado: 150,
@@ -140,6 +149,9 @@ describe("reconciliarMatricula", () => {
       dataPagamento: null,
       tipoTituloIdLegado: null,
       tituloObservacoesLegado: null,
+      estadoLegado: "Alteracao",
+      dataPagamentoLegado: null,
+      dataBaixaLegado: null,
       multaLegado: 0,
       jurosLegado: 0,
       totalLegado: 150,
@@ -164,6 +176,9 @@ describe("reconciliarMatricula", () => {
       tipoTitulo: "Renegociação",
       tipoTituloIdLegado: null,
       tituloObservacoesLegado: null,
+      estadoLegado: "Aberto",
+      dataPagamentoLegado: null,
+      dataBaixaLegado: null,
       multaLegado: 0,
       jurosLegado: 0,
       totalLegado: 150,
@@ -195,6 +210,9 @@ describe("reconciliarMatricula", () => {
       tipoTitulo: "Renegociação",
       tipoTituloIdLegado: 33,
       tituloObservacoesLegado: "Renegociado via acordo",
+      estadoLegado: "Aberto",
+      dataPagamentoLegado: null,
+      dataBaixaLegado: null,
       multaLegado: 0,
       jurosLegado: 0,
       totalLegado: 150,
@@ -217,6 +235,9 @@ describe("reconciliarMatricula", () => {
       dataPagamento: null,
       tipoTituloIdLegado: null,
       tituloObservacoesLegado: null,
+      estadoLegado: "Aberto",
+      dataPagamentoLegado: null,
+      dataBaixaLegado: null,
       multaLegado: 0,
       jurosLegado: 0,
       totalLegado: 150,
@@ -243,6 +264,9 @@ describe("reconciliarMatricula", () => {
       dataPagamento: null,
       tipoTituloIdLegado: null,
       tituloObservacoesLegado: null,
+      estadoLegado: "Aberto",
+      dataPagamentoLegado: null,
+      dataBaixaLegado: null,
       multaLegado: 3,
       jurosLegado: 12.5,
       totalLegado: 165.5,

@@ -10,6 +10,7 @@ import { matriculasRepository } from "../matriculas/matriculas.repository";
 import type {
   LegadoClient,
   LegadoPessoaCurso,
+  LegadoTituloDetalhe,
   LegadoTituloResumo,
 } from "../sincronizacao-legado/legado-client";
 import { varrerPessoasDoLegado } from "../sincronizacao-legado/legado-varredura";
@@ -21,7 +22,10 @@ import {
 import { garantirSituacaoPendente, gravarTitulosNaMatricula } from "./importacao-legado.service";
 import { montarRelatorioLote } from "./importacao-legado-lote.relatorio";
 
-type ClienteLegado = Pick<LegadoClient, "buscarPessoasPorPrefixoNome" | "buscarTitulosPorPessoa">;
+type ClienteLegado = Pick<
+  LegadoClient,
+  "buscarPessoasPorPrefixoNome" | "buscarTitulosPorPessoa" | "buscarInformacoesTitulo"
+>;
 type Curso = NonNullable<Awaited<ReturnType<typeof cursosRepository.findByNome>>>;
 
 /** Lote sem atividade há mais que isto é considerado interrompido (worker caiu) e não bloqueia um novo. */
@@ -50,6 +54,8 @@ interface Contexto {
   cursosPorCampus: Map<string, { cursoId: string; cursoNome: string; cursoSigla: string }>;
   totais: Totais;
   ocorrencias: NovaOcorrencia[];
+  /** Detalhe de um título no legado (boleto, hash e remessa). */
+  detalharTitulo: (tituloId: string) => Promise<LegadoTituloDetalhe | null>;
 }
 
 const SITUACAO_PENDENTE = {
@@ -205,6 +211,7 @@ export const importacaoLegadoLoteService = {
         cursosPorCampus,
         totais,
         ocorrencias,
+        detalharTitulo: (id) => legado.buscarInformacoesTitulo(id),
       };
 
       for (const [pesId, linhas] of pessoas) {
@@ -422,6 +429,7 @@ export const importacaoLegadoLoteService = {
         [],
         {
           auditar: false,
+          detalhar: ctx.detalharTitulo,
           aoIgnorar: (titulo, motivo) =>
             ctx.ocorrencias.push({
               tipo: TipoOcorrenciaLote.PARCELA_NAO_IMPORTADA,

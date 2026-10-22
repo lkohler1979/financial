@@ -349,6 +349,20 @@ model Parcela {
   /// Ethos (decisão do usuário, 2026-09-17: nunca sobrescrever um pelo
   /// outro).
   tituloObservacoesLegado   String?                   @map("titulo_observacoes_legado")
+  /// "Estado" do título no legado, como ele escreve (Pago, Aberto, Cancelado, Alteracao,
+  /// Pagamento Múltiplo, Estorno) — é ele que define a situação da parcela ao importar/sincronizar.
+  estadoLegado              String?                   @map("estado_legado")
+  /// Boleto do título no legado (`bolId`/`boletos[].bol_id`) e o hash dele (`bol_id_hash`), lidos
+  /// de `titulo-informacoes/{id}`. Vazios quando o título não tem boleto (ex.: Estorno).
+  boletoLegadoId            String?                   @map("boleto_legado_id")
+  boletoLegadoHash          String?                   @map("boleto_legado_hash")
+  /// Remessa do título no legado (`remessaId`); nula quando ele ainda não entrou em remessa.
+  remessaLegadoId           String?                   @map("remessa_legado_id")
+  /// "Data Pagto" e "Data Baixa" do título no legado, cada uma como ele traz (quando preenchida).
+  /// `dataPagamento` (acima) continua sendo a data efetiva usada pelo Ethos: Data Pagto, ou a Data
+  /// Baixa quando só ela existe.
+  dataPagamentoLegado       DateTime?                 @map("data_pagamento_legado")
+  dataBaixaLegado           DateTime?                 @map("data_baixa_legado")
 
   /// Qual provedor processou a cobrança desta parcela (Asaas ou Rede) — null
   /// até "Gerar cobrança" ser clicado. Os campos `asaas*` abaixo guardam o

@@ -188,6 +188,12 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
                 <th class="py-1 font-medium" title="Já foi conferida contra o sistema legado?">
                   Legado
                 </th>
+                <th
+                  class="py-1 font-medium"
+                  title="Estado, boleto, remessa e observações como estão no sistema legado"
+                >
+                  Dados do legado
+                </th>
                 <th class="py-1 font-medium text-right">Valor</th>
                 <th class="py-1 font-medium text-right">Multa</th>
                 <th class="py-1 font-medium text-right">Juros</th>
@@ -240,6 +246,45 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
                       title="Pendente de sincronização"
                       >radio_button_unchecked</mat-icon
                     >
+                  }
+                </td>
+                <td class="py-1 text-xs text-gray-600 align-top min-w-[11rem]">
+                  @if (parcela.estadoLegado) {
+                    <div>
+                      Estado: <strong>{{ parcela.estadoLegado }}</strong>
+                    </div>
+                  }
+                  @if (parcela.boletoLegadoId) {
+                    <div [title]="'Hash do boleto: ' + (parcela.boletoLegadoHash || '—')">
+                      Boleto {{ parcela.boletoLegadoId }}
+                    </div>
+                  }
+                  @if (parcela.remessaLegadoId) {
+                    <div>Remessa {{ parcela.remessaLegadoId }}</div>
+                  }
+                  @if (parcela.dataPagamentoLegado) {
+                    <div>Data Pagto {{ parcela.dataPagamentoLegado | date: "dd/MM/yyyy" }}</div>
+                  }
+                  @if (parcela.dataBaixaLegado) {
+                    <div>Data Baixa {{ parcela.dataBaixaLegado | date: "dd/MM/yyyy" }}</div>
+                  }
+                  @if (parcela.tituloObservacoesLegado) {
+                    <div
+                      class="text-gray-400 max-w-[16rem] truncate"
+                      [title]="parcela.tituloObservacoesLegado"
+                    >
+                      {{ parcela.tituloObservacoesLegado }}
+                    </div>
+                  }
+                  @if (
+                    !parcela.estadoLegado &&
+                    !parcela.boletoLegadoId &&
+                    !parcela.remessaLegadoId &&
+                    !parcela.dataPagamentoLegado &&
+                    !parcela.dataBaixaLegado &&
+                    !parcela.tituloObservacoesLegado
+                  ) {
+                    <span class="text-gray-300">—</span>
                   }
                 </td>
                 <td class="py-1 text-right">{{ parcela.valor | currency: "BRL" }}</td>

@@ -83,6 +83,12 @@ export interface LegadoTituloResumo {
    * demais só aparecem aqui. */
   cursocampusId: string;
   cursoSigla: string;
+  /** Boleto (`bol_id`), hash do boleto (`bol_id_hash`) e remessa (`remessaId`) do título, lidos de
+   * `titulo-informacoes/{id}`. `undefined` = ainda não consultado (a busca em lote não traz isso);
+   * `null` = consultado e o título não tem. */
+  boletoId?: string | null;
+  boletoHash?: string | null;
+  remessaId?: string | null;
 }
 
 export interface LegadoTituloDetalhe {
@@ -119,6 +125,12 @@ export interface LegadoTituloDetalhe {
    * Nunca confundir com `Parcela.observacoes` (campo de gestão interna do
    * Ethos). */
   tituloObservacoes: string | null;
+  /** Boleto (`bol_id`), hash do boleto (`bol_id_hash`) e remessa (`remessaId`) do título, lidos de
+   * `titulo-informacoes/{id}`. `undefined` = ainda não consultado (a busca em lote não traz isso);
+   * `null` = consultado e o título não tem. */
+  boletoId?: string | null;
+  boletoHash?: string | null;
+  remessaId?: string | null;
 }
 
 /** Tipo de documento exigido de uma pessoa (`busca-tipo-documento-por-grupo`). */
@@ -511,8 +523,35 @@ export class LegadoClient {
       tipoTituloId: d.tipotituloId != null ? Number(d.tipotituloId) : null,
       tipoTituloNome: d.tipotituloNome != null ? String(d.tipotituloNome) : null,
       tituloObservacoes: d.tituloObservacoes != null ? String(d.tituloObservacoes) : null,
+      ...lerBoletoERemessa(d),
     };
   }
+}
+
+function textoOuNull(valor: unknown): string | null {
+  if (valor == null) return null;
+  const texto = String(valor).trim();
+  return texto === "" ? null : texto;
+}
+
+/**
+ * Boleto e remessa de um título em `titulo-informacoes/{id}`: `bolId` (ou o `bol_id` do boleto
+ * correspondente em `boletos[]`), `bol_id_hash` do mesmo boleto e `remessaId`. Título sem boleto
+ * (ex.: Estorno) devolve `bolId` vazio e `boletos: []` — tudo vira null.
+ */
+export function lerBoletoERemessa(d: Record<string, unknown>): {
+  boletoId: string | null;
+  boletoHash: string | null;
+  remessaId: string | null;
+} {
+  const boletos = Array.isArray(d.boletos) ? (d.boletos as Record<string, unknown>[]) : [];
+  const bolId = textoOuNull(d.bolId);
+  const boleto = boletos.find((b) => textoOuNull(b.bol_id) === bolId) ?? boletos[0];
+  return {
+    boletoId: bolId ?? textoOuNull(boleto?.bol_id),
+    boletoHash: textoOuNull(boleto?.bol_id_hash) ?? textoOuNull(boleto?.bolHash),
+    remessaId: textoOuNull(d.remessaId),
+  };
 }
 
 /** Ids do legado vêm preenchidos com zeros ("0000000007"); as telas dele enviam "7". */
@@ -539,6 +578,15 @@ export function parseDataLegadoIso(valor: string | null): Date | null {
   if (!match) return null;
   const [, ano, mes, dia] = match;
   return new Date(Number(ano), Number(mes) - 1, Number(dia));
+}
+
+/**
+ * Data do legado em qualquer dos dois formatos que ele usa: "DD/MM/AAAA" (`titulo-informacoes`) ou
+ * "AAAA-MM-DD HH:mm:ss" (busca em lote). Vazio ou fora desses formatos devolve null.
+ */
+export function parseDataLegadoQualquer(valor: string | null | undefined): Date | null {
+  if (!valor) return null;
+  return parseDataLegadoIso(valor) ?? parseDataLegado(valor);
 }
 
 /**

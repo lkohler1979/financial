@@ -6,6 +6,7 @@ import {
 import { mesclarDetalhes } from "../../src/modules/importacao-legado/importacao-legado.service";
 import {
   aplicarDetalheNaParcela,
+  dataPagamentoEfetiva,
   statusLegadoParaEthos,
 } from "../../src/modules/sincronizacao-legado/sincronizacao-legado.reconciliador";
 import type {
@@ -22,13 +23,13 @@ describe("statusLegadoParaEthos — o Estado do legado define a situação", () 
     ["pagamento multiplo", "PAGO"],
     ["Cancelado", "CANCELADO"],
     ["Alteracao", "RENEGOCIADO"],
+    ["Estorno", "EM_ABERTO"],
   ])("%s -> %s, mesmo sem data de pagamento", (estado, esperado) => {
     expect(statusLegadoParaEthos({ tituloEstado: estado, ...semData })).toBe(esperado);
   });
 
-  it("Aberto e Estorno não alteram a situação que o Ethos já controla", () => {
+  it("Aberto não altera a situação que o Ethos já controla", () => {
     expect(statusLegadoParaEthos({ tituloEstado: "Aberto", ...semData })).toBeNull();
-    expect(statusLegadoParaEthos({ tituloEstado: "Estorno", ...semData })).toBeNull();
   });
 
   it("o Estado vale mais que a data: cancelado com data de baixa continua cancelado", () => {
@@ -331,5 +332,54 @@ describe("aplicarDetalheNaParcela — Data Pagto e Data Baixa", () => {
     expect(
       aplicarDetalheNaParcela(igual, { ...base, tituloDataBaixa: "09/06/2026" }),
     ).toMatchObject({ dataBaixaLegado: new Date(2026, 5, 9) });
+  });
+});
+
+describe("Estorno — a parcela volta para em aberto", () => {
+  it("uma parcela paga estornada reabre, sem data de pagamento", () => {
+    const r = aplicarDetalheNaParcela(
+      {
+        ...parcelaVazia,
+        status: "PAGO" as const,
+        valorPago: 100,
+        dataPagamento: new Date(2026, 5, 5),
+      },
+      detalhe({
+        tituloEstado: "Estorno",
+        tituloValorPago: 0,
+        tituloDataPagamento: "05/06/2026",
+        tituloDataBaixa: "06/06/2026",
+      }),
+    );
+    expect(r).toMatchObject({
+      status: "EM_ABERTO",
+      estadoLegado: "Estorno",
+      dataPagamento: null,
+      valorPago: 0,
+      // As datas do legado continuam guardadas como vieram.
+      dataPagamentoLegado: new Date(2026, 5, 5),
+      dataBaixaLegado: new Date(2026, 5, 6),
+    });
+  });
+
+  it("não tira do protesto uma parcela que já foi para lá", () => {
+    for (const status of ["PROTESTO_ENVIADO", "PROTESTADO"] as const) {
+      const r = aplicarDetalheNaParcela(
+        { ...parcelaVazia, status },
+        detalhe({ tituloEstado: "Estorno" }),
+      );
+      expect(r).not.toHaveProperty("status");
+    }
+  });
+
+  it("dataPagamentoEfetiva: só parcela paga (ou estado sem regra) tem data de pagamento", () => {
+    const pagto = new Date(2026, 5, 5);
+    const baixa = new Date(2026, 5, 8);
+    expect(dataPagamentoEfetiva("PAGO", pagto, baixa)).toEqual(pagto);
+    expect(dataPagamentoEfetiva("PAGO", null, baixa)).toEqual(baixa);
+    expect(dataPagamentoEfetiva(null, null, baixa)).toEqual(baixa);
+    for (const status of ["CANCELADO", "RENEGOCIADO", "EM_ABERTO"] as const) {
+      expect(dataPagamentoEfetiva(status, pagto, baixa)).toBeNull();
+    }
   });
 });

@@ -69,7 +69,7 @@ export interface LegadoTituloResumo {
   multaCalc: number;
   jurosCalc: number;
   totalCalc: number;
-  /** Só o detalhe do título traz o desconto (`somaDescontos`); a busca em lote não. */
+  /** Só o detalhe do título traz o desconto (`tituloDesconto`); a busca em lote não. */
   descontoCalc?: number;
   /** Mesmos campos de `LegadoTituloDetalhe.tipoTituloId`/`tipoTituloNome`/
    * `tituloObservacoes` (ver lá), só que lidos das colunas em snake_case
@@ -114,7 +114,7 @@ export interface LegadoTituloDetalhe {
   multaCalc: number;
   jurosCalc: number;
   totalCalc: number;
-  /** `somaDescontos` do detalhe do título (0 quando não há desconto). */
+  /** `tituloDesconto` do detalhe do título (0 quando não há desconto). */
   descontoCalc: number;
   /** `tipotituloId`/`tipotituloNome` — campo estruturado de tipo de título do
    * legado (ex.: `tipotituloId: 2`, `tipotituloNome: "Mensalidade"`;
@@ -524,7 +524,7 @@ export class LegadoClient {
       multaCalc: Number(d.tituloMultaCalc ?? 0),
       jurosCalc: Number(d.tituloJurosCalc ?? 0),
       totalCalc: Number(d.tituloValorFinal ?? d.tituloValor ?? 0),
-      descontoCalc: Number(d.somaDescontos ?? 0),
+      descontoCalc: numeroOuZero(d.tituloDesconto),
       tipoTituloId: d.tipotituloId != null ? Number(d.tipotituloId) : null,
       tipoTituloNome: d.tipotituloNome != null ? String(d.tipotituloNome) : null,
       tituloObservacoes: d.tituloObservacoes != null ? String(d.tituloObservacoes) : null,
@@ -653,4 +653,10 @@ function montarPayloadBuscaTitulos(pesId: string, start: number, length: number)
   params.set("filter[totalizador]", "true");
 
   return params;
+}
+
+/** Campo numérico do legado que pode vir vazio, null ou "-" quando não se aplica: vira 0. */
+function numeroOuZero(valor: unknown): number {
+  const n = Number(valor);
+  return Number.isFinite(n) ? n : 0;
 }

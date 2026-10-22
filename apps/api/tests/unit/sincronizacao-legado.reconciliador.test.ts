@@ -283,7 +283,7 @@ describe("reconciliarMatricula", () => {
     });
   });
 
-  it("grava o desconto do legado (somaDescontos) e atualiza quando ele muda", async () => {
+  it("grava o desconto do legado (tituloDesconto) e atualiza quando ele muda", async () => {
     financeiro.listarTodasPorMatricula.mockResolvedValue([parcela({ descontoLegado: 0 })] as never);
     const buscarInformacoesTitulo = vi.fn().mockResolvedValue(detalhe({ descontoCalc: 12.34 }));
 

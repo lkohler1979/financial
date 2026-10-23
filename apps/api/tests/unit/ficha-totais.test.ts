@@ -49,8 +49,18 @@ describe("situacaoAutomatica", () => {
     );
   });
 
-  it("cancelada e protestos ficam sem situação automática", () => {
-    for (const status of ["CANCELADO", "PROTESTO_ENVIADO", "PROTESTADO"] as const) {
+  it("cancelada → CANCELADO", () => {
+    expect(situacaoAutomatica({ status: "CANCELADO", ...venc("2023-12-21") }, hoje)).toBe(
+      "CANCELADO",
+    );
+    // vale também para cancelada a vencer
+    expect(situacaoAutomatica({ status: "CANCELADO", ...venc("2030-01-01") }, hoje)).toBe(
+      "CANCELADO",
+    );
+  });
+
+  it("protestos ficam sem situação automática", () => {
+    for (const status of ["PROTESTO_ENVIADO", "PROTESTADO"] as const) {
       expect(situacaoAutomatica({ status, ...venc("2023-12-21") }, hoje)).toBeNull();
     }
   });

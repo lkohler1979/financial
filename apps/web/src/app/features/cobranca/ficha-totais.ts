@@ -37,6 +37,7 @@ export const SITUACAO_QUITADO = "QUITADO";
 export const SITUACAO_QUITADO_RENEGOCIACAO = "QUITADO POR RENEGOCIAÇÃO";
 export const SITUACAO_PENDENTE = "PENDENTE DE PAGAMENTO";
 export const SITUACAO_ABERTO = "ABERTO";
+export const SITUACAO_CANCELADO = "CANCELADO";
 
 const centavos = (v: number): number => Math.round(v * 100) / 100;
 
@@ -74,6 +75,8 @@ export function situacaoAutomatica(
       return SITUACAO_QUITADO;
     case "RENEGOCIADO":
       return SITUACAO_QUITADO_RENEGOCIACAO;
+    case "CANCELADO":
+      return SITUACAO_CANCELADO;
     case "EM_ABERTO":
       return estaVencida(parcela, hoje) ? SITUACAO_PENDENTE : SITUACAO_ABERTO;
     default:

@@ -29,6 +29,11 @@ import { Parcela } from "../../core/models/parcela.model";
 import { TipoTituloProtesto } from "../../core/models/relatorio.model";
 import { situacaoAutomatica, totaisDaFicha } from "./ficha-totais";
 import { ParcelaDetalhesDialogComponent } from "./parcela-detalhes-dialog.component";
+import {
+  DadosRenegociacao,
+  LinhaRenegociacao,
+  RenegociarDividaDialogComponent,
+} from "./renegociar-divida-dialog.component";
 import { formatarCpf } from "../../shared/utils/cpf.util";
 import { arredondarAbnt } from "../../shared/utils/arredondamento.util";
 import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/download.util";
@@ -121,6 +126,15 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
               <button mat-menu-item (click)="baixarUltimoDocumento('pdf')">PDF</button>
             </mat-menu>
           }
+          <button
+            mat-stroked-button
+            type="button"
+            [disabled]="!temParcelaRenegociavel()"
+            (click)="abrirRenegociacao()"
+            title="Troca parcelas ainda não pagas por novas parcelas negociadas"
+          >
+            <mat-icon>handshake</mat-icon> Renegociar dívida
+          </button>
           <a mat-stroked-button [routerLink]="['/matriculas', ficha.matricula.id]">
             <mat-icon>edit</mat-icon> Editar matrícula
           </a>
@@ -183,6 +197,26 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
                     [ngClass]="situacaoParcela(parcela).classe"
                     >{{ situacaoParcela(parcela).rotulo }}</span
                   >
+                  @if (parcela.renegociadaEm; as r) {
+                    <div
+                      class="text-[10px] text-gray-500 mt-0.5 whitespace-nowrap"
+                      [title]="'Parcelas geradas: ' + titulosLigados(r.parcelasGeradas)"
+                      data-testid="vinculo-renegociada"
+                    >
+                      Renegociação R{{ r.numero }} → {{ titulosLigados(r.parcelasGeradas) }}
+                    </div>
+                  }
+                  @if (parcela.origemRenegociacao; as o) {
+                    <div
+                      class="text-[10px] text-gray-500 mt-0.5 whitespace-nowrap"
+                      [title]="'Parcelas quitadas: ' + titulosLigados(o.parcelasOriginais)"
+                      data-testid="vinculo-origem"
+                    >
+                      Origem: renegociação R{{ o.numero }} ({{
+                        titulosLigados(o.parcelasOriginais)
+                      }})
+                    </div>
+                  }
                 </td>
                 <td class="py-1">
                   @if (situacaoAuto(parcela); as auto) {
@@ -670,8 +704,8 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
     if (parcela.status === "RENEGOCIADO") {
       return { rotulo: "Renegociada", classe: "bg-blue-100 text-blue-700" };
     }
-    const hoje = new Date();
-    const vencimento = new Date(parcela.vencimento);
+    const hoje = this.inicioDoDia(new Date());
+    const vencimento = this.vencimentoLocal(parcela);
     if (vencimento >= hoje) {
       return { rotulo: "A vencer", classe: "bg-gray-100 text-gray-600" };
     }
@@ -772,8 +806,8 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
     }
 
     const valor = Number(parcela.valor);
-    const hoje = new Date();
-    const vencimento = new Date(parcela.vencimento);
+    const hoje = this.inicioDoDia(new Date());
+    const vencimento = this.vencimentoLocal(parcela);
 
     if (vencimento >= hoje) {
       return { multa: 0, juros: 0, total: arredondarAbnt(valor) };
@@ -811,6 +845,15 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
     );
   }
 
+  /**
+   * Dia do vencimento como data local. O vencimento é só uma data, guardada à meia-noite UTC: lido
+   * como `new Date(...)` cai no dia anterior em fusos a oeste (Brasil) e contava um dia a mais de atraso.
+   */
+  private vencimentoLocal(parcela: Pick<Parcela, "vencimento">): Date {
+    const [ano, mes, dia] = parcela.vencimento.slice(0, 10).split("-").map(Number);
+    return new Date(ano, mes - 1, dia);
+  }
+
   private inicioDoDia(data: Date): Date {
     return new Date(data.getFullYear(), data.getMonth(), data.getDate());
   }
@@ -831,6 +874,51 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
 
   situacaoEstaNaLista(id: string): boolean {
     return this.situacoes.some((s) => s.id === id);
+  }
+
+  /** Parcelas que ainda podem ser renegociadas: as não pagas (nem renegociadas, nem canceladas). */
+  private parcelasRenegociaveis(): Parcela[] {
+    return this.parcelas
+      .filter(
+        (p) =>
+          p.status === "EM_ABERTO" || p.status === "PROTESTO_ENVIADO" || p.status === "PROTESTADO",
+      )
+      .sort((a, b) => a.vencimento.localeCompare(b.vencimento));
+  }
+
+  temParcelaRenegociavel(): boolean {
+    return this.parcelasRenegociaveis().length > 0;
+  }
+
+  titulosLigados(parcelas: { codTitulo: string }[]): string {
+    return parcelas.map((p) => p.codTitulo).join(", ");
+  }
+
+  abrirRenegociacao(): void {
+    const linhas: LinhaRenegociacao[] = this.parcelasRenegociaveis().map((p) => {
+      const calculo = this.calculoParcela(p);
+      return {
+        id: p.id,
+        parcela: p.parcela,
+        codTitulo: p.codTitulo,
+        vencimento: p.vencimento,
+        estado: this.situacaoParcela(p).rotulo,
+        valor: Number(p.valor),
+        ...calculo,
+      };
+    });
+    this.dialog
+      .open(RenegociarDividaDialogComponent, {
+        width: "980px",
+        maxWidth: "95vw",
+        data: { matriculaId: this.matriculaId, linhas } satisfies DadosRenegociacao,
+      })
+      .afterClosed()
+      .subscribe((renegociou) => {
+        if (!renegociou) return;
+        this.snackBar.open("Dívida renegociada", "Fechar", { duration: 4000 });
+        this.carregar();
+      });
   }
 
   abrirDetalhes(parcela: Parcela): void {

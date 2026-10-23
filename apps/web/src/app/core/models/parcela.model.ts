@@ -1,3 +1,4 @@
+import type { OrigemRenegociacao, RenegociadaEm } from "./renegociacao.model";
 export type StatusParcela =
   "EM_ABERTO" | "PAGO" | "CANCELADO" | "PROTESTO_ENVIADO" | "PROTESTADO" | "RENEGOCIADO";
 
@@ -44,6 +45,10 @@ export interface Parcela {
   totalLegado?: number | null;
   /** Soma dos descontos do título no legado. */
   descontoLegado?: number | null;
+  /** Renegociação que quitou esta parcela (estado Renegociada) e as parcelas que ela gerou. */
+  renegociadaEm?: RenegociadaEm | null;
+  /** Renegociação que gerou esta parcela e as parcelas que ela quitou. */
+  origemRenegociacao?: OrigemRenegociacao | null;
   /** Código `tipotituloId` do legado (33 = Renegociação, 2 = Mensalidade) —
    * confirmado ao vivo em 2026-09-17 contra `titulo-informacoes/{id}`.
    * Presente só em Parcelas importadas/sincronizadas do legado; usado só

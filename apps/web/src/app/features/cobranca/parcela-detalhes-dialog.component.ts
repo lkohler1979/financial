@@ -30,6 +30,8 @@ const dinheiro = (v: number | null | undefined): string => (v == null ? VAZIO : 
 const data = (v: string | null | undefined): string =>
   v ? formatDate(v, "dd/MM/yyyy", "en-US", "UTC") : VAZIO;
 const simNao = (v: boolean): string => (v ? "Sim" : "Não");
+const ligadas = (parcelas: { codTitulo: string; parcela: string }[]): string =>
+  parcelas.map((p) => `${p.codTitulo} (${p.parcela})`).join(", ");
 
 const ROTULO_STATUS: Record<string, string> = {
   EM_ABERTO: "Em aberto",
@@ -168,6 +170,27 @@ export class ParcelaDetalhesDialogComponent {
           { rotulo: "Número", valor: texto(p.nfseNumero) },
           { rotulo: "Chave de acesso", valor: texto(p.nfseChaveAcesso), longo: true },
           { rotulo: "Erro", valor: texto(p.nfseErro) },
+        ],
+      },
+      {
+        titulo: "Renegociação",
+        campos: [
+          {
+            rotulo: "Quitada pela renegociação",
+            valor: p.renegociadaEm ? `R${p.renegociadaEm.numero}` : VAZIO,
+          },
+          {
+            rotulo: "Parcelas geradas",
+            valor: p.renegociadaEm ? ligadas(p.renegociadaEm.parcelasGeradas) : VAZIO,
+          },
+          {
+            rotulo: "Gerada pela renegociação",
+            valor: p.origemRenegociacao ? `R${p.origemRenegociacao.numero}` : VAZIO,
+          },
+          {
+            rotulo: "Parcelas de origem",
+            valor: p.origemRenegociacao ? ligadas(p.origemRenegociacao.parcelasOriginais) : VAZIO,
+          },
         ],
       },
       {

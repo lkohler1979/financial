@@ -162,6 +162,7 @@ model Usuario {
   importacoes               Importacao[]
   importacoesLegadoLote     ImportacaoLegadoLote[]
   importacoesDocumentosLote ImportacaoDocumentosLote[]
+  importacoesTitulosLote    ImportacaoTitulosLote[]
   auditorias                Auditoria[]
   historicosCobranca        HistoricoCobranca[]
   renegociacoes             Renegociacao[]
@@ -211,9 +212,10 @@ model Aluno {
   agenteEducacionalId          String?   @map("agente_educacional_id")
   agenteEducacional            Usuario?  @relation("AlunoAgenteEducacional", fields: [agenteEducacionalId], references: [id])
 
-  matriculas   Matricula[]
-  documentos   Documento[]
-  solicitacoes SolicitacaoDocumento[]
+  matriculas    Matricula[]
+  documentos    Documento[]
+  titulosLegado TituloLegado[]
+  solicitacoes  SolicitacaoDocumento[]
 
   @@map("alunos")
 }
@@ -1222,4 +1224,83 @@ model ContratoMatricula {
   @@index([matriculaId])
   @@index([envelopeId])
   @@map("contratos_matricula")
+}
+
+/// Título do legado que não pertence a nenhuma matrícula do Ethos (curso que o aluno não tem aqui,
+/// taxa avulsa…). Fica guardado só para consulta por aluno/CPF: nunca aparece na ficha de cobrança
+/// de uma matrícula nem entra nos relatórios de cobrança. Se a matrícula passar a existir, a
+/// importação cria a parcela e apaga este registro. Mesmos campos da Parcela vindos do legado.
+model TituloLegado {
+  id                      String        @id @default(uuid())
+  alunoId                 String        @map("aluno_id")
+  codTitulo               String        @map("cod_titulo")
+  parcela                 String
+  vencimento              DateTime
+  valor                   Decimal       @db.Decimal(12, 2)
+  valorPago               Decimal?      @map("valor_pago") @db.Decimal(12, 2)
+  tipoTitulo              String?       @map("tipo_titulo")
+  tipoTituloIdLegado      Int?          @map("tipo_titulo_id_legado")
+  status                  StatusParcela @default(EM_ABERTO)
+  dataPagamento           DateTime?     @map("data_pagamento")
+  /// Descrição do título no legado (ex.: "TAXA DE EXTENSÃO DE PRAZO 3 MESES - 1 / 2").
+  descricaoLegado         String?       @map("descricao_legado")
+  /// Curso a que o título pertence no legado, quando o aluno não tem matrícula nele aqui.
+  cursoLegadoNome         String?       @map("curso_legado_nome")
+  alunocursoIdLegado      String?       @map("alunocurso_id_legado")
+  estadoLegado            String?       @map("estado_legado")
+  multaLegado             Decimal?      @map("multa_legado") @db.Decimal(12, 2)
+  jurosLegado             Decimal?      @map("juros_legado") @db.Decimal(12, 2)
+  totalLegado             Decimal?      @map("total_legado") @db.Decimal(12, 2)
+  descontoLegado          Decimal?      @map("desconto_legado") @db.Decimal(12, 2)
+  boletoLegadoId          String?       @map("boleto_legado_id")
+  boletoLegadoHash        String?       @map("boleto_legado_hash")
+  remessaLegadoId         String?       @map("remessa_legado_id")
+  dataPagamentoLegado     DateTime?     @map("data_pagamento_legado")
+  dataBaixaLegado         DateTime?     @map("data_baixa_legado")
+  tituloObservacoesLegado String?       @map("titulo_observacoes_legado")
+  criadoEm                DateTime      @default(now()) @map("criado_em")
+  atualizadoEm            DateTime      @updatedAt @map("atualizado_em")
+
+  aluno Aluno @relation(fields: [alunoId], references: [id])
+
+  @@unique([alunoId, codTitulo])
+  @@index([alunoId])
+  @@map("titulos_legado")
+}
+
+/// Busca em lote dos títulos que faltam no Ethos: para cada aluno, consulta o legado e grava o que
+/// ainda não foi importado (título de curso que o aluno tem vira parcela da matrícula; o resto vira
+/// TituloLegado). Não cria aluno nem matrícula. Roda no worker.
+model ImportacaoTitulosLote {
+  id                   String            @id @default(uuid())
+  usuarioId            String            @map("usuario_id")
+  status               StatusLoteTitulos @default(EM_ANDAMENTO)
+  total                Int
+  processados          Int               @default(0)
+  /// Parcelas criadas em matrículas que o aluno já tinha.
+  parcelasNovas        Int               @default(0) @map("parcelas_novas")
+  /// Títulos guardados sem matrícula (TituloLegado).
+  titulosSemMatricula  Int               @default(0) @map("titulos_sem_matricula")
+  /// Títulos do legado que já estavam no Ethos.
+  jaImportados         Int               @default(0) @map("ja_importados")
+  /// Títulos ignorados (sem data de vencimento válida).
+  ignorados            Int               @default(0)
+  alunosNaoEncontrados Int               @default(0) @map("alunos_nao_encontrados")
+  alunosComErro        Int               @default(0) @map("alunos_com_erro")
+  /// Até 50 primeiros problemas: [{ alunoNome, cpf, motivo }].
+  problemas            Json?
+  mensagemFalha        String?           @map("mensagem_falha")
+  criadoEm             DateTime          @default(now()) @map("criado_em")
+  atualizadoEm         DateTime          @updatedAt @map("atualizado_em")
+  finalizadoEm         DateTime?         @map("finalizado_em")
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id])
+
+  @@map("importacoes_titulos_lote")
+}
+
+enum StatusLoteTitulos {
+  EM_ANDAMENTO
+  CONCLUIDO
+  FALHOU
 }

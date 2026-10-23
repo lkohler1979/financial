@@ -37,6 +37,7 @@ export const SITUACAO_QUITADO = "QUITADO";
 export const SITUACAO_QUITADO_RENEGOCIACAO = "QUITADO POR RENEGOCIAÇÃO";
 export const SITUACAO_PENDENTE = "PENDENTE DE PAGAMENTO";
 export const SITUACAO_ABERTO = "ABERTO";
+export const SITUACAO_CANCELADO = "CANCELADO";
 
 const centavos = (v: number): number => Math.round(v * 100) / 100;
 
@@ -74,6 +75,8 @@ export function situacaoAutomatica(
       return SITUACAO_QUITADO;
     case "RENEGOCIADO":
       return SITUACAO_QUITADO_RENEGOCIACAO;
+    case "CANCELADO":
+      return SITUACAO_CANCELADO;
     case "EM_ABERTO":
       return estaVencida(parcela, hoje) ? SITUACAO_PENDENTE : SITUACAO_ABERTO;
     default:
@@ -106,4 +109,52 @@ export function totaisDaFicha(
     totalFinalSemEncargos,
     totalFinalComEncargos: centavos(totalFinalSemEncargos + totalMultas + totalJuros),
   };
+}
+
+export interface ItemDoTotalizador {
+  rotulo: string;
+  valor: number;
+  /** Mostrar como dinheiro (senão é uma quantidade). */
+  moeda: boolean;
+  destaque?: boolean;
+}
+
+/** As linhas do card "Totalizador", na ordem em que aparecem. */
+export function itensDoTotalizador(t: TotaisDaFicha): ItemDoTotalizador[] {
+  return [
+    { rotulo: "Total de juros", valor: t.totalJuros, moeda: true },
+    { rotulo: "Total de multas", valor: t.totalMultas, moeda: true },
+    { rotulo: "Total de descontos", valor: t.totalDescontos, moeda: true },
+    { rotulo: "Qtd. vencidos", valor: t.qtdVencidos, moeda: false },
+    { rotulo: "Total vencidos", valor: t.totalVencidos, moeda: true },
+    { rotulo: "Qtd. pagos (pagos e renegociados)", valor: t.qtdPagos, moeda: false },
+    {
+      rotulo: "Total final sem juros e multas",
+      valor: t.totalFinalSemEncargos,
+      moeda: true,
+      destaque: true,
+    },
+    {
+      rotulo: "Total final com juros e multas",
+      valor: t.totalFinalComEncargos,
+      moeda: true,
+      destaque: true,
+    },
+  ];
+}
+
+/** Cor do chip de cada situação automática. */
+export function classeDaSituacao(situacao: string): string {
+  switch (situacao) {
+    case SITUACAO_QUITADO:
+      return "bg-green-100 text-green-700";
+    case SITUACAO_QUITADO_RENEGOCIACAO:
+      return "bg-blue-100 text-blue-700";
+    case SITUACAO_PENDENTE:
+      return "bg-orange-100 text-orange-700";
+    case SITUACAO_CANCELADO:
+      return "bg-gray-200 text-gray-600 line-through";
+    default:
+      return "bg-gray-100 text-gray-600";
+  }
 }

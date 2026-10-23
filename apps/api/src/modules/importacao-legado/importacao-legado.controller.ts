@@ -5,6 +5,11 @@ import { paramString, usuarioAtual } from "../../shared/utils/http";
 import { importacaoLegadoService } from "./importacao-legado.service";
 import { documentosLegadoService } from "./documentos-legado.service";
 import { importacaoLegadoLoteService } from "./importacao-legado-lote.service";
+import { titulosLegadoLoteService } from "./titulos-legado-lote.service";
+import { sincronizarTitulosDoAluno } from "./titulos-legado.service";
+import { alunosRepository } from "../alunos/alunos.repository";
+import { NotFoundError } from "../../shared/errors/app-error";
+import { montarClient } from "../sincronizacao-legado/sincronizacao-legado.service";
 import {
   buscarPorCpfSchema,
   confirmarImportacaoSchema,
@@ -50,6 +55,22 @@ export const importacaoLegadoController = {
     );
     res.setHeader("Content-Disposition", `attachment; filename="${nome}"`);
     res.send(arquivo);
+  }),
+
+  /** Consulta o legado e grava os títulos que faltam de UM aluno (parcela da matrícula ou título solto). */
+  importarTitulosDoAluno: asyncHandler(async (req: Request, res: Response) => {
+    const aluno = await alunosRepository.findById(paramString(req, "alunoId"));
+    if (!aluno) throw new NotFoundError("Aluno não encontrado");
+    res.json(await sincronizarTitulosDoAluno(aluno, await montarClient(), usuarioAtual(req)));
+  }),
+
+  /** Busca em lote dos títulos que faltam, de todos os alunos (roda em segundo plano). */
+  iniciarTitulosLote: asyncHandler(async (req: Request, res: Response) => {
+    res.status(202).json(await titulosLegadoLoteService.iniciar(usuarioAtual(req)));
+  }),
+
+  ultimoTitulosLote: asyncHandler(async (_req: Request, res: Response) => {
+    res.json((await titulosLegadoLoteService.ultimo()) ?? null);
   }),
 
   /** Busca de documentos no legado para várias matrículas (roda em segundo plano). */

@@ -4,6 +4,7 @@ import { Observable } from "rxjs";
 import { environment } from "../../../environments/environment";
 import { Paginado } from "../models/paginado.model";
 import { Parcela, StatusParcela } from "../models/parcela.model";
+import { TitulosDoAluno } from "../models/titulo-aluno.model";
 
 @Injectable({ providedIn: "root" })
 export class FinanceiroService {
@@ -22,5 +23,10 @@ export class FinanceiroService {
     if (opcoes.page) params = params.set("page", opcoes.page);
     if (opcoes.pageSize) params = params.set("pageSize", opcoes.pageSize);
     return this.http.get<Paginado<Parcela>>(this.baseUrl, { params });
+  }
+
+  /** Todos os títulos de um aluno: parcelas de todas as matrículas e títulos sem matrícula. */
+  titulosDoAluno(alunoId: string): Observable<TitulosDoAluno> {
+    return this.http.get<TitulosDoAluno>(`${this.baseUrl}/alunos/${alunoId}/titulos`);
   }
 }

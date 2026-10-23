@@ -8,6 +8,7 @@ import "./workers/geracao-word.worker";
 import "./workers/sincronizacao-legado.worker";
 import "./workers/importacao-legado-lote.worker";
 import "./workers/documentos-legado-lote.worker";
+import "./workers/titulos-legado-lote.worker";
 import "./workers/emissao-cobranca.worker";
 import "./workers/contratos-monitoramento.worker";
 import { configuracoesRepository } from "../modules/configuracoes/configuracoes.repository";

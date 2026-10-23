@@ -21,6 +21,7 @@ import { formatarCpf } from "../../shared/utils/cpf.util";
 import { ImportarLegadoDialogComponent } from "./importar-legado-dialog.component";
 import { ImportarLegadoLoteDialogComponent } from "./importar-legado-lote-dialog.component";
 import { DocumentosLegadoDialogComponent } from "./documentos-legado-dialog.component";
+import { ImportarTitulosLoteDialogComponent } from "./importar-titulos-lote-dialog.component";
 import { AuthService } from "../../core/auth/auth.service";
 
 @Component({
@@ -47,6 +48,13 @@ import { AuthService } from "../../core/auth/auth.service";
         </button>
         <button mat-stroked-button (click)="buscarTodosLegado()">
           <mat-icon>cloud_download</mat-icon> Buscar todos do legado
+        </button>
+        <button
+          mat-stroked-button
+          (click)="buscarTitulosNaoImportados()"
+          title="Consulta o legado e grava só os títulos que ainda não foram importados"
+        >
+          <mat-icon>receipt_long</mat-icon> Buscar títulos não importados
         </button>
         <a mat-raised-button color="primary" routerLink="/alunos/novo">
           <mat-icon>add</mat-icon> Novo aluno
@@ -101,6 +109,14 @@ import { AuthService } from "../../core/auth/auth.service";
               <mat-icon>edit</mat-icon>
             </a>
             @if (authService.temPerfil("ADMINISTRADOR", "FINANCEIRO")) {
+              <a
+                mat-icon-button
+                [routerLink]="['/alunos', a.id, 'titulos']"
+                aria-label="Títulos do aluno"
+                title="Ver todos os títulos deste aluno (por CPF), com ou sem matrícula"
+              >
+                <mat-icon>receipt_long</mat-icon>
+              </a>
               <button
                 mat-icon-button
                 (click)="buscarDocumentosLegado(a)"
@@ -193,6 +209,11 @@ export class AlunosListComponent implements OnInit {
       maxHeight: "90vh",
       data: { id: aluno.id, nome: aluno.nome },
     });
+  }
+
+  /** Busca em lote dos títulos que faltam, de todos os alunos (segundo plano). */
+  buscarTitulosNaoImportados(): void {
+    this.dialog.open(ImportarTitulosLoteDialogComponent, { width: "720px", maxHeight: "90vh" });
   }
 
   /** Busca em lote: todos os alunos do legado (varredura + importação em segundo plano). */

@@ -35,6 +35,23 @@ importacaoLegadoRouter.get(
   importacaoLegadoController.relatorioLote,
 );
 
+// Títulos que faltam: um aluno (na hora) ou todos (em segundo plano). Não cria aluno nem matrícula.
+importacaoLegadoRouter.post(
+  "/alunos/:alunoId/titulos",
+  requireRole("ADMINISTRADOR", "FINANCEIRO"),
+  importacaoLegadoController.importarTitulosDoAluno,
+);
+importacaoLegadoRouter.post(
+  "/titulos/lote",
+  requireRole("ADMINISTRADOR", "FINANCEIRO"),
+  importacaoLegadoController.iniciarTitulosLote,
+);
+importacaoLegadoRouter.get(
+  "/titulos/lote/atual",
+  requireRole("ADMINISTRADOR", "FINANCEIRO"),
+  importacaoLegadoController.ultimoTitulosLote,
+);
+
 // Documentos do aluno: baixa do legado para apps/documentos e cria/atualiza o Documento.
 importacaoLegadoRouter.post(
   "/alunos/:alunoId/documentos",

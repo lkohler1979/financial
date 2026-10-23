@@ -96,6 +96,24 @@ export const financeiroRepository = {
     return prisma.parcela.findMany({ where: { matriculaId } });
   },
 
+  /** Todas as parcelas das matrículas de um aluno (com matrícula e curso), por vencimento. */
+  listarDoAluno(alunoId: string) {
+    return prisma.parcela.findMany({
+      where: { matricula: { alunoId } },
+      orderBy: { vencimento: "asc" },
+      include: incluiMatricula,
+    });
+  },
+
+  /** Códigos de título de todas as parcelas das matrículas de um aluno. */
+  async codTitulosDoAluno(alunoId: string): Promise<string[]> {
+    const parcelas = await prisma.parcela.findMany({
+      where: { matricula: { alunoId } },
+      select: { codTitulo: true },
+    });
+    return parcelas.map((p) => p.codTitulo);
+  },
+
   create(data: Prisma.ParcelaCreateInput) {
     return prisma.parcela.create({ data, include: incluiMatricula });
   },

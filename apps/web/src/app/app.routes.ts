@@ -72,6 +72,13 @@ export const routes: Routes = [
       import("./features/alunos/aluno-form.component").then((m) => m.AlunoFormComponent),
   },
   {
+    path: "alunos/:id/titulos",
+    canActivate: [authGuard, perfilGuard],
+    data: { perfis: ADMIN_E_FINANCEIRO },
+    loadComponent: () =>
+      import("./features/alunos/titulos-aluno.component").then((m) => m.TitulosAlunoComponent),
+  },
+  {
     path: "alunos/:id",
     canActivate: [authGuard, perfilGuard],
     data: { perfis: TODOS_PERFIS },

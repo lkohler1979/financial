@@ -8,6 +8,14 @@ export interface ListarParcelasParams {
   take: number;
 }
 
+const ligacaoRenegociacao = {
+  id: true,
+  parcela: true,
+  codTitulo: true,
+  vencimento: true,
+  valor: true,
+} satisfies Prisma.ParcelaSelect;
+
 const incluiMatricula = {
   matricula: {
     select: {
@@ -20,6 +28,23 @@ const incluiMatricula = {
   },
   // Situação de cobrança da parcela (nome e cor para a Ficha de Cobrança).
   situacaoCobranca: { select: { id: true, nome: true, cor: true } },
+  // Rastreabilidade da renegociação: de uma parcela quitada às novas, e de uma nova às de origem.
+  renegociadaEm: {
+    select: {
+      id: true,
+      numero: true,
+      criadoEm: true,
+      parcelasGeradas: { select: ligacaoRenegociacao, orderBy: { vencimento: "asc" } },
+    },
+  },
+  origemRenegociacao: {
+    select: {
+      id: true,
+      numero: true,
+      criadoEm: true,
+      parcelasOriginais: { select: ligacaoRenegociacao, orderBy: { vencimento: "asc" } },
+    },
+  },
 } satisfies Prisma.ParcelaInclude;
 
 export const financeiroRepository = {

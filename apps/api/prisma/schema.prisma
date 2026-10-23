@@ -164,6 +164,7 @@ model Usuario {
   importacoesDocumentosLote ImportacaoDocumentosLote[]
   auditorias                Auditoria[]
   historicosCobranca        HistoricoCobranca[]
+  renegociacoes             Renegociacao[]
   relatoriosInadimplencia   RelatorioInadimplencia[]
   sincronizacoesLegado      SincronizacaoLegado[]
 
@@ -279,6 +280,7 @@ model Matricula {
   sacado              Sacado?                      @relation(fields: [sacadoId], references: [id])
   cupom               Cupom?                       @relation(fields: [cupomId], references: [id])
   parcelas            Parcela[]
+  renegociacoes       Renegociacao[]
   contratos           ContratoMatricula[]
   tags                MatriculaTag[]
   historicoCobranca   HistoricoCobranca[]
@@ -432,9 +434,49 @@ model Parcela {
   situacaoCobrancaId String?           @map("situacao_cobranca_id")
   situacaoCobranca   SituacaoCobranca? @relation(fields: [situacaoCobrancaId], references: [id])
 
+  /// Renegociação que quitou esta parcela (ela passa a RENEGOCIADO) — leva às parcelas geradas.
+  renegociadaEmId      String?       @map("renegociada_em_id")
+  renegociadaEm        Renegociacao? @relation("ParcelaRenegociada", fields: [renegociadaEmId], references: [id])
+  /// Renegociação que gerou esta parcela — leva às parcelas de origem.
+  origemRenegociacaoId String?       @map("origem_renegociacao_id")
+  origemRenegociacao   Renegociacao? @relation("ParcelaGeradaRenegociacao", fields: [origemRenegociacaoId], references: [id])
+
   @@unique([matriculaId, codTitulo])
   @@index([situacaoCobrancaId])
+  @@index([renegociadaEmId])
+  @@index([origemRenegociacaoId])
   @@map("parcelas")
+}
+
+/// Renegociação de dívida: parcelas não pagas de uma matrícula são quitadas (status RENEGOCIADO) e
+/// trocadas por novas parcelas. Guarda os números do acordo e liga as duas pontas
+/// (`parcelasOriginais` ⇄ `parcelasGeradas`) para rastreabilidade.
+model Renegociacao {
+  id                 String   @id @default(uuid())
+  matriculaId        String   @map("matricula_id")
+  /// Sequência dentro da matrícula (1, 2, …); aparece no código das parcelas novas (R1-1, R1-2…).
+  numero             Int
+  usuarioId          String   @map("usuario_id")
+  /// Soma dos valores das parcelas originais, sem multa e juros.
+  valorOriginal      Decimal  @map("valor_original") @db.Decimal(12, 2)
+  multa              Decimal  @db.Decimal(12, 2)
+  juros              Decimal  @db.Decimal(12, 2)
+  /// Valor original + multa + juros, na data da renegociação.
+  totalDevido        Decimal  @map("total_devido") @db.Decimal(12, 2)
+  desconto           Decimal  @db.Decimal(12, 2)
+  /// Total devido − desconto: o que passa a ser cobrado nas novas parcelas.
+  valorNegociado     Decimal  @map("valor_negociado") @db.Decimal(12, 2)
+  numeroParcelas     Int      @map("numero_parcelas")
+  primeiroVencimento DateTime @map("primeiro_vencimento")
+  criadoEm           DateTime @default(now()) @map("criado_em")
+
+  matricula         Matricula @relation(fields: [matriculaId], references: [id])
+  usuario           Usuario   @relation(fields: [usuarioId], references: [id])
+  parcelasOriginais Parcela[] @relation("ParcelaRenegociada")
+  parcelasGeradas   Parcela[] @relation("ParcelaGeradaRenegociacao")
+
+  @@unique([matriculaId, numero])
+  @@map("renegociacoes")
 }
 
 model Importacao {

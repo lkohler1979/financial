@@ -10,6 +10,7 @@ import {
   Tag,
 } from "../models/cobranca.model";
 import { Matricula } from "../models/matricula.model";
+import { PlanoRenegociacao, RenegociarPayload } from "../models/renegociacao.model";
 
 export interface AplicarLotePayload {
   matriculaIds: string[];
@@ -64,6 +65,22 @@ export class CobrancaService {
       `${this.baseUrl}/matriculas/${matriculaId}/parcelas/${parcelaId}/situacao`,
       { situacaoCobrancaId },
     );
+  }
+
+  /** Mostra o que a renegociação faria (totais e novas parcelas), sem gravar. */
+  simularRenegociacao(
+    matriculaId: string,
+    payload: RenegociarPayload,
+  ): Observable<PlanoRenegociacao> {
+    return this.http.post<PlanoRenegociacao>(
+      `${this.baseUrl}/matriculas/${matriculaId}/renegociacoes/simular`,
+      payload,
+    );
+  }
+
+  /** Quita as parcelas escolhidas (Renegociada) e cria as novas, ligadas entre si. */
+  renegociar(matriculaId: string, payload: RenegociarPayload): Observable<unknown> {
+    return this.http.post(`${this.baseUrl}/matriculas/${matriculaId}/renegociacoes`, payload);
   }
 
   adicionarTag(matriculaId: string, tagId: string): Observable<void> {

@@ -9,6 +9,8 @@ import {
   mudarSituacaoSchema,
 } from "./ficha.schema";
 import { fichaService } from "./ficha.service";
+import { renegociarSchema } from "./renegociacao.schema";
+import { renegociacaoService } from "./renegociacao.service";
 
 export const fichaController = {
   obterFicha: asyncHandler(async (req: Request, res: Response) => {
@@ -35,6 +37,21 @@ export const fichaController = {
       usuarioAtual(req),
     );
     res.json(parcela);
+  }),
+
+  simularRenegociacao: asyncHandler(async (req: Request, res: Response) => {
+    const input = renegociarSchema.parse(req.body);
+    res.json(await renegociacaoService.simular(paramString(req, "matriculaId"), input));
+  }),
+
+  renegociar: asyncHandler(async (req: Request, res: Response) => {
+    const input = renegociarSchema.parse(req.body);
+    const renegociacao = await renegociacaoService.renegociar(
+      paramString(req, "matriculaId"),
+      input,
+      usuarioAtual(req),
+    );
+    res.status(201).json(renegociacao);
   }),
 
   adicionarTag: asyncHandler(async (req: Request, res: Response) => {

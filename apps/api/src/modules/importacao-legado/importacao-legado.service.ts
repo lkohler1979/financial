@@ -80,7 +80,7 @@ export interface PreviaImportacaoLegado {
  * sendo o `codTitulo` já existente, quando a Parcela já existe, ou o
  * `tituloId` do legado tal como veio, quando é criada agora).
  */
-function normalizarCodTitulo(valor: string): string {
+export function normalizarCodTitulo(valor: string): string {
   const digitos = valor.replace(/\D/g, "");
   return digitos.replace(/^0+(?=\d)/, "");
 }

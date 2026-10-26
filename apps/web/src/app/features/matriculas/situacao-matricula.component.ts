@@ -17,7 +17,7 @@ import { MatriculasService } from "../../core/services/matriculas.service";
   standalone: true,
   imports: [DatePipe, FormsModule, MatButtonModule],
   template: `
-    <section class="bg-white rounded-lg border p-4 mb-4">
+    <section class="ef-card p-4 mb-4">
       <div class="flex flex-wrap items-center gap-3">
         <p class="text-sm font-medium text-gray-700 m-0">Situação da matrícula</p>
         <span class="px-2 py-0.5 rounded text-xs" [class]="classe(situacao())">{{

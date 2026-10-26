@@ -27,7 +27,13 @@ import { AsaasBillingType, AsaasService } from "../../core/services/asaas.servic
 import { FichaCobranca, SituacaoCobranca, Tag } from "../../core/models/cobranca.model";
 import { Parcela } from "../../core/models/parcela.model";
 import { TipoTituloProtesto } from "../../core/models/relatorio.model";
-import { situacaoAutomatica, totaisDaFicha } from "./ficha-totais";
+import { calcularEncargos, estadoDaParcela } from "./estado-parcela";
+import {
+  classeDaSituacao,
+  itensDoTotalizador,
+  situacaoAutomatica,
+  totaisDaFicha,
+} from "./ficha-totais";
 import { ParcelaDetalhesDialogComponent } from "./parcela-detalhes-dialog.component";
 import {
   DadosRenegociacao,
@@ -35,7 +41,6 @@ import {
   RenegociarDividaDialogComponent,
 } from "./renegociar-divida-dialog.component";
 import { formatarCpf } from "../../shared/utils/cpf.util";
-import { arredondarAbnt } from "../../shared/utils/arredondamento.util";
 import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/download.util";
 
 @Component({
@@ -70,7 +75,7 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
 
       <div class="flex items-start justify-between mb-3">
         <div>
-          <h1 class="text-2xl font-medium m-0">{{ ficha.matricula.aluno?.nome }}</h1>
+          <h1 class="ef-title">{{ ficha.matricula.aluno?.nome }}</h1>
           <p class="text-sm text-gray-500 mt-0.5">
             CPF {{ formatarCpf(ficha.matricula.aluno?.cpf || "") }} ·
             {{ ficha.matricula.curso?.nome }}
@@ -145,7 +150,7 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
         <mat-progress-bar mode="indeterminate" class="mb-4"></mat-progress-bar>
       }
 
-      <div class="bg-white rounded-xl border p-3 mb-3">
+      <div class="ef-card p-3 mb-3">
         <p class="text-xs font-medium text-gray-600 mb-2">Parcelas</p>
         <div class="overflow-x-auto">
           <table class="w-full text-sm">
@@ -459,7 +464,7 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
       </div>
 
       @if (parcelas.length > 0) {
-        <div class="bg-white rounded-xl border p-3 mb-3" data-testid="totalizador">
+        <div class="ef-card p-3 mb-3" data-testid="totalizador">
           <p class="text-xs font-medium text-gray-600 mb-2">Totalizador</p>
           <dl class="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-2 text-sm m-0">
             @for (item of itensTotalizador(); track item.rotulo) {
@@ -478,7 +483,7 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
         </div>
       }
 
-      <div class="bg-white rounded-xl border p-5 mb-5">
+      <div class="ef-card p-5 mb-5">
         <p class="text-xs font-medium text-gray-600 mb-3">Nova observação</p>
 
         <div class="flex gap-2">
@@ -494,7 +499,7 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
         </div>
       </div>
 
-      <div class="bg-white rounded-xl border p-5 mb-5">
+      <div class="ef-card p-5 mb-5">
         <p class="text-xs font-medium text-gray-600 mb-3">Tags</p>
         <div class="flex items-center gap-2">
           <div class="flex gap-2 flex-wrap items-center">
@@ -689,38 +694,7 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
    * "vencida" não é um StatusParcela — é calculada a partir da data.
    */
   situacaoParcela(parcela: Parcela): { rotulo: string; classe: string } {
-    if (parcela.status === "PROTESTO_ENVIADO") {
-      return { rotulo: "Vencida e enviada para protesto", classe: "bg-red-100 text-red-800" };
-    }
-    if (parcela.status === "PROTESTADO") {
-      return { rotulo: "Protestada", classe: "bg-red-100 text-red-800" };
-    }
-    if (parcela.status === "PAGO") {
-      return { rotulo: "Paga", classe: "bg-green-100 text-green-700" };
-    }
-    if (parcela.status === "CANCELADO") {
-      return { rotulo: "Cancelada", classe: "bg-gray-100 text-gray-500" };
-    }
-    if (parcela.status === "RENEGOCIADO") {
-      return { rotulo: "Renegociada", classe: "bg-blue-100 text-blue-700" };
-    }
-    const hoje = this.inicioDoDia(new Date());
-    const vencimento = this.vencimentoLocal(parcela);
-    if (vencimento >= hoje) {
-      return { rotulo: "A vencer", classe: "bg-gray-100 text-gray-600" };
-    }
-
-    if (this.diasAtrasoMinimo > 0) {
-      const diasAtraso = Math.floor((hoje.getTime() - vencimento.getTime()) / 86_400_000);
-      if (diasAtraso > this.diasAtrasoMinimo) {
-        return {
-          rotulo: `Vencida há mais de ${this.diasAtrasoMinimo} dias`,
-          classe: "bg-red-100 text-red-700",
-        };
-      }
-    }
-
-    return { rotulo: "Vencida", classe: "bg-orange-100 text-orange-700" };
+    return estadoDaParcela(parcela, this.diasAtrasoMinimo, new Date());
   }
 
   situacaoAuto(parcela: Parcela): string | null {
@@ -728,40 +702,13 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
   }
 
   classeSituacaoAuto(situacao: string): string {
-    switch (situacao) {
-      case "QUITADO":
-        return "bg-green-100 text-green-700";
-      case "QUITADO POR RENEGOCIAÇÃO":
-        return "bg-blue-100 text-blue-700";
-      case "PENDENTE DE PAGAMENTO":
-        return "bg-orange-100 text-orange-700";
-      default:
-        return "bg-gray-100 text-gray-600";
-    }
+    return classeDaSituacao(situacao);
   }
 
   itensTotalizador(): { rotulo: string; valor: number; moeda: boolean; destaque?: boolean }[] {
-    const t = totaisDaFicha(this.parcelas, (p) => this.calculoParcela(p as Parcela), new Date());
-    return [
-      { rotulo: "Total de juros", valor: t.totalJuros, moeda: true },
-      { rotulo: "Total de multas", valor: t.totalMultas, moeda: true },
-      { rotulo: "Total de descontos", valor: t.totalDescontos, moeda: true },
-      { rotulo: "Qtd. vencidos", valor: t.qtdVencidos, moeda: false },
-      { rotulo: "Total vencidos", valor: t.totalVencidos, moeda: true },
-      { rotulo: "Qtd. pagos (pagos e renegociados)", valor: t.qtdPagos, moeda: false },
-      {
-        rotulo: "Total final sem juros e multas",
-        valor: t.totalFinalSemEncargos,
-        moeda: true,
-        destaque: true,
-      },
-      {
-        rotulo: "Total final com juros e multas",
-        valor: t.totalFinalComEncargos,
-        moeda: true,
-        destaque: true,
-      },
-    ];
+    return itensDoTotalizador(
+      totaisDaFicha(this.parcelas, (p) => this.calculoParcela(p as Parcela), new Date()),
+    );
   }
 
   totalDevedor(): number {
@@ -786,44 +733,15 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
    * vencimento até hoje. Parcela ainda "a vencer" não tem multa/juros ainda.
    */
   calculoParcela(parcela: Parcela): { multa: number; juros: number; total: number } {
-    if (parcela.totalProtesto !== undefined && parcela.totalProtesto !== null) {
-      return {
-        multa: Number(parcela.multaProtesto ?? 0),
-        juros: Number(parcela.jurosProtesto ?? 0),
-        total: Number(parcela.totalProtesto),
-      };
-    }
-
-    // Parcela importada/sincronizada do sistema legado nunca é recalculada
-    // pelo Ethos — o legado é sempre a fonte de verdade para multa/juros
-    // dela (decisão do usuário, 2026-09-15).
-    if (parcela.totalLegado !== undefined && parcela.totalLegado !== null) {
-      return {
-        multa: Number(parcela.multaLegado ?? 0),
-        juros: Number(parcela.jurosLegado ?? 0),
-        total: Number(parcela.totalLegado),
-      };
-    }
-
-    const valor = Number(parcela.valor);
-    const hoje = this.inicioDoDia(new Date());
-    const vencimento = this.vencimentoLocal(parcela);
-
-    if (vencimento >= hoje) {
-      return { multa: 0, juros: 0, total: arredondarAbnt(valor) };
-    }
-
-    const ajuste = this.jurosContarDiaGeracao ? 0 : 1;
-    const diasAtraso = Math.max(
-      Math.floor(
-        (this.inicioDoDia(hoje).getTime() - this.inicioDoDia(vencimento).getTime()) / 86_400_000,
-      ) - ajuste,
-      0,
+    return calcularEncargos(
+      parcela,
+      {
+        multaPercentual: this.multaPercentual,
+        jurosDiarioPercentual: this.jurosDiarioPercentual,
+        jurosContarDiaGeracao: this.jurosContarDiaGeracao,
+      },
+      new Date(),
     );
-
-    const multa = arredondarAbnt(valor * (this.multaPercentual / 100));
-    const juros = arredondarAbnt(valor * (this.jurosDiarioPercentual / 100) * diasAtraso);
-    return { multa, juros, total: arredondarAbnt(valor + multa + juros) };
   }
 
   totalMultaDevedor(): number {
@@ -843,19 +761,6 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
       (p) =>
         p.status === "EM_ABERTO" || p.status === "PROTESTO_ENVIADO" || p.status === "PROTESTADO",
     );
-  }
-
-  /**
-   * Dia do vencimento como data local. O vencimento é só uma data, guardada à meia-noite UTC: lido
-   * como `new Date(...)` cai no dia anterior em fusos a oeste (Brasil) e contava um dia a mais de atraso.
-   */
-  private vencimentoLocal(parcela: Pick<Parcela, "vencimento">): Date {
-    const [ano, mes, dia] = parcela.vencimento.slice(0, 10).split("-").map(Number);
-    return new Date(ano, mes - 1, dia);
-  }
-
-  private inicioDoDia(data: Date): Date {
-    return new Date(data.getFullYear(), data.getMonth(), data.getDate());
   }
 
   /** A situação de cobrança é de cada parcela; "—" (vazio) a limpa. */

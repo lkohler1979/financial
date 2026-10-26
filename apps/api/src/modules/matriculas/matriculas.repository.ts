@@ -68,6 +68,15 @@ export const matriculasRepository = {
     return prisma.matricula.findFirst({ where: { alunoId, cursoId } });
   },
 
+  /** Todas as matrículas de um aluno, com o curso, em ordem estável. */
+  listarPorAluno(alunoId: string) {
+    return prisma.matricula.findMany({
+      where: { alunoId },
+      orderBy: { id: "asc" },
+      include: { curso: { select: { id: true, codigo: true, nome: true } } },
+    });
+  },
+
   /** Filtros da listagem de matrículas (a mesma regra vale para a busca em lote no legado). */
   whereDaListagem({
     alunoId,

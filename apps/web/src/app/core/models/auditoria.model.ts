@@ -17,6 +17,8 @@ export interface Auditoria {
 
 export interface FiltrosAuditoria {
   entidade?: string;
+  /** Só os registros deste item (ex.: o id de um aluno). */
+  entidadeId?: string;
   usuario?: string;
   acao?: AcaoAuditoria;
   dataInicio?: string;

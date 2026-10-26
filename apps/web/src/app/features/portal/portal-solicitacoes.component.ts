@@ -20,7 +20,7 @@ const CLASSE_STATUS = {
   standalone: true,
   imports: [DatePipe, FormsModule, MatButtonModule],
   template: `
-    <section class="bg-white rounded-lg border p-4 mb-4">
+    <section class="ef-card p-4 mb-4">
       <p class="text-sm font-medium text-gray-700 mb-2">Nova solicitação</p>
       <div class="flex flex-wrap gap-3 items-end">
         <label class="text-sm">
@@ -62,7 +62,7 @@ const CLASSE_STATUS = {
       </div>
     </section>
 
-    <div class="bg-white rounded-lg border divide-y">
+    <div class="ef-card divide-y">
       @for (s of solicitacoes(); track s.id) {
         <div class="p-3 flex flex-wrap items-center gap-3">
           <div class="flex-1 min-w-48">

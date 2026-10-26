@@ -37,7 +37,7 @@ import {
   ],
   template: `
     <div class="flex items-center justify-between mb-4">
-      <h1 class="text-2xl font-medium m-0">Cursos</h1>
+      <h1 class="ef-title">Cursos</h1>
       <a mat-raised-button color="primary" routerLink="/cursos/novo">
         <mat-icon>add</mat-icon> Novo curso
       </a>
@@ -66,7 +66,7 @@ import {
       <mat-progress-bar mode="indeterminate"></mat-progress-bar>
     }
 
-    <div class="bg-white rounded shadow-sm overflow-x-auto mt-2 w-full">
+    <div class="ef-card overflow-x-auto mt-2 w-full">
       <table mat-table [dataSource]="cursos" class="w-full table-compact">
         <ng-container matColumnDef="codigo">
           <th mat-header-cell *matHeaderCellDef>Código</th>

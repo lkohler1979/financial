@@ -1,0 +1,426 @@
+@use "@angular/material" as mat;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+// ---------------------------------------------------------------------------------------------
+// Identidade visual do Ethos Financial (referência: docs/especificacao/*.png)
+//   - cor da marca: verde-azulado (teal); fundo claro e cartões brancos com borda fina
+//   - fonte: Inter; títulos de página 28px/600, texto 14px, rótulos de tabela 13px/600 cinza
+//   - situação em pílulas (verde = em dia, vermelho = em atraso, cinza = neutro)
+// Os mesmos valores existem como variáveis CSS (--ef-*) e como cores do Tailwind (brand, ink, line).
+// ---------------------------------------------------------------------------------------------
+
+$ef-teal: (
+  50: #e6f5f4,
+  100: #c2e7e5,
+  200: #99d7d4,
+  300: #6fc6c2,
+  400: #4db9b4,
+  500: #2aaca6,
+  600: #14958f,
+  700: #0b837e,
+  800: #08706b,
+  900: #054c49,
+  contrast: (
+    50: rgba(0, 0, 0, 0.87),
+    100: rgba(0, 0, 0, 0.87),
+    200: rgba(0, 0, 0, 0.87),
+    300: rgba(0, 0, 0, 0.87),
+    400: rgba(0, 0, 0, 0.87),
+    500: #ffffff,
+    600: #ffffff,
+    700: #ffffff,
+    800: #ffffff,
+    900: #ffffff,
+  ),
+);
+
+$ef-primary: mat.define-palette($ef-teal, 700, 300, 900);
+$ef-accent: mat.define-palette($ef-teal, 600, 200, 800);
+$ef-warn: mat.define-palette(mat.$red-palette, 700);
+
+$ef-typography: mat.define-typography-config(
+  $font-family: "Inter, 'Helvetica Neue', Arial, sans-serif",
+);
+
+$ef-theme: mat.define-light-theme(
+  (
+    color: (
+      primary: $ef-primary,
+      accent: $ef-accent,
+      warn: $ef-warn,
+    ),
+    typography: $ef-typography,
+    density: 0,
+  )
+);
+
+@include mat.core();
+@include mat.all-component-themes($ef-theme);
+
+:root {
+  --ef-brand: #0b837e;
+  --ef-brand-dark: #08706b;
+  --ef-brand-soft: #e6f5f4;
+  --ef-ink: #1b2a33;
+  --ef-muted: #5b6b75;
+  --ef-line: #e4e9ec;
+  --ef-bg: #f5f7f8;
+  --ef-ok-bg: #e1f5e6;
+  --ef-ok: #1b7a3d;
+  --ef-bad-bg: #fde7e7;
+  --ef-bad: #c03221;
+  --ef-neutral-bg: #edeff1;
+  --ef-neutral: #5b6770;
+  --ef-warn-bg: #fff1dc;
+  --ef-warn: #a35a00;
+  --ef-radius: 10px;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, "Helvetica Neue", Arial, sans-serif;
+  color: var(--ef-ink);
+  background-color: var(--ef-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--ef-brand);
+}
+
+// ---- Componentes Material: cantos, bordas e botões do padrão novo ----------------------------
+:root {
+  --mdc-filled-button-container-shape: 8px;
+  --mdc-outlined-button-container-shape: 8px;
+  --mdc-protected-button-container-shape: 8px;
+  --mdc-text-button-container-shape: 8px;
+  --mdc-outlined-text-field-container-shape: 8px;
+  --mdc-outlined-text-field-outline-color: #cfd8dc;
+  --mdc-dialog-container-shape: 14px;
+  --mat-select-panel-background-color: #fff;
+  --mat-menu-container-shape: 10px;
+}
+
+.mdc-button,
+.mat-mdc-button-base {
+  letter-spacing: 0;
+  font-weight: 500;
+}
+
+.mat-mdc-outlined-button:not(:disabled) {
+  --mdc-outlined-button-outline-color: #cfd8dc;
+  --mdc-outlined-button-label-text-color: var(--ef-ink);
+}
+
+.mat-mdc-dialog-surface {
+  box-shadow: 0 18px 48px rgba(16, 42, 58, 0.18) !important;
+}
+
+.mat-mdc-tab-link,
+.mat-mdc-tab {
+  letter-spacing: 0;
+}
+
+// ---- Padrão de página -------------------------------------------------------------------------
+.ef-page {
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.ef-page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.ef-title {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.ef-subtitle {
+  margin: 4px 0 0;
+  color: var(--ef-muted);
+  font-size: 15px;
+}
+
+.ef-card {
+  background: #fff;
+  border: 1px solid var(--ef-line);
+  border-radius: var(--ef-radius);
+  box-shadow: 0 1px 2px rgba(16, 42, 58, 0.04);
+}
+
+.ef-card-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 14px;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.ef-card-title .mat-icon {
+  color: var(--ef-ink);
+}
+
+.ef-kpis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  margin-bottom: 18px;
+}
+
+.ef-kpi {
+  padding: 0 28px;
+  border-left: 1px solid var(--ef-line);
+}
+
+.ef-kpi:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.ef-kpis {
+  row-gap: 14px;
+}
+
+@media (max-width: 640px) {
+  .ef-kpi {
+    padding: 0 20px 0 0;
+    border-left: 0;
+  }
+}
+
+.ef-kpi-label {
+  font-size: 13px;
+  color: var(--ef-muted);
+}
+
+.ef-kpi-value {
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+// ---- Abas (links) -----------------------------------------------------------------------------
+.ef-tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid var(--ef-line);
+  padding: 0 16px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.ef-tab {
+  position: relative;
+  padding: 14px 14px 13px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 15px;
+  color: var(--ef-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ef-tab:hover {
+  color: var(--ef-ink);
+}
+
+.ef-tab[aria-selected="true"] {
+  color: var(--ef-brand);
+  font-weight: 600;
+}
+
+.ef-tab[aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 0;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: var(--ef-brand);
+}
+
+// ---- Pílulas de situação ----------------------------------------------------------------------
+.ef-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 12px 3px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  background: var(--ef-neutral-bg);
+  color: var(--ef-neutral);
+}
+
+.ef-pill::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.ef-pill-ok {
+  background: var(--ef-ok-bg);
+  color: var(--ef-ok);
+}
+
+.ef-pill-bad {
+  background: var(--ef-bad-bg);
+  color: var(--ef-bad);
+}
+
+.ef-pill-warn {
+  background: var(--ef-warn-bg);
+  color: var(--ef-warn);
+}
+
+// ---- Avatar com iniciais ----------------------------------------------------------------------
+.ef-avatar {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #e7ecef;
+  color: #3a4a54;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ef-avatar-lg {
+  width: 64px;
+  height: 64px;
+  font-size: 20px;
+  background: #cfeeea;
+  color: var(--ef-brand-dark);
+}
+
+// ---- Tabelas de dados (mat-table e <table> simples) -------------------------------------------
+.ef-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.ef-table th {
+  padding: 12px 14px;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ef-ink);
+  border-bottom: 1px solid var(--ef-line);
+  white-space: nowrap;
+}
+
+.ef-table td:first-child {
+  min-width: 260px;
+}
+
+.ef-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--ef-line);
+  vertical-align: middle;
+}
+
+.ef-table tbody tr:hover td,
+.ef-table tr.mat-mdc-row:hover td {
+  background: #f1f8f7;
+}
+
+/* Tabelas largas (muitas colunas): células mais justas. */
+.ef-table-compact th,
+.ef-table-compact td {
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.ef-table-compact td:first-child {
+  min-width: 200px;
+}
+
+table.mat-mdc-table.ef-table {
+  background: transparent;
+  --mat-table-row-item-container-height: 56px;
+  --mat-table-header-container-height: 48px;
+  --mat-table-row-item-label-text-size: 14px;
+  --mat-table-header-headline-size: 13px;
+  --mat-table-row-item-outline-color: var(--ef-line);
+  --mat-table-header-headline-color: var(--ef-ink);
+}
+
+.ef-table .mat-mdc-header-cell {
+  font-weight: 600;
+}
+
+// ---- Rodapé fixo de formulário (Cancelar / Salvar) --------------------------------------------
+.ef-form-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 24px -24px -24px;
+  padding: 14px 24px;
+  background: #fff;
+  border-top: 1px solid var(--ef-line);
+}
+
+// ---- Compatibilidade: tabelas de listagem compactas das telas ainda não redesenhadas ---------
+// Linhas mais baixas para caber mais registros na tela sem rolar. As variáveis --mat-table-* cobrem
+// a maior parte, mas botões de ícone (48px de área de toque) e o padding das células ainda forçavam
+// a linha a ficar alta, por isso também se fixa altura/padding nos elementos.
+.table-compact {
+  --mat-table-header-container-height: 32px;
+  --mat-table-row-item-container-height: 28px;
+  --mat-table-header-headline-size: 11px;
+  --mat-table-row-item-label-text-size: 12px;
+}
+
+.table-compact .mat-mdc-header-row,
+.table-compact .mat-mdc-row {
+  height: 28px;
+}
+
+.table-compact .mat-mdc-header-cell,
+.table-compact .mat-mdc-cell {
+  padding: 2px 8px;
+  line-height: 1.15;
+}
+
+.table-compact .mat-mdc-icon-button {
+  --mdc-icon-button-state-layer-size: 28px;
+  width: 28px;
+  height: 28px;
+  padding: 2px;
+}
+
+.table-compact .mat-mdc-icon-button .mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  line-height: 18px;
+}

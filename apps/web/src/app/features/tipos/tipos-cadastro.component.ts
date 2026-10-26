@@ -71,9 +71,9 @@ interface LinhaSolicitacao {
   standalone: true,
   imports: [FormsModule, MatButtonModule, MatCheckboxModule, MatIconModule],
   template: `
-    <h1 class="text-2xl font-medium mb-4">Tipos</h1>
+    <h1 class="ef-title mb-4">Tipos</h1>
 
-    <section class="bg-white rounded-lg border p-5 mb-5">
+    <section class="ef-card p-5 mb-5">
       <p class="text-sm font-medium text-gray-700 mb-1">Tipos de cobrança</p>
       <p class="text-xs text-gray-500 mb-3">
         Mensalidade, Taxa de matrícula e Renegociação são tipos de cobrança. "Valor do curso" usa o
@@ -180,7 +180,7 @@ interface LinhaSolicitacao {
       </button>
     </section>
 
-    <section class="bg-white rounded-lg border p-5 mb-5">
+    <section class="ef-card p-5 mb-5">
       <p class="text-sm font-medium text-gray-700 mb-1">Cupons de desconto</p>
       <p class="text-xs text-gray-500 mb-3">
         Só cupons cadastrados aqui podem ser aplicados no cadastro da matrícula, e só nos tipos de
@@ -248,7 +248,7 @@ interface LinhaSolicitacao {
       </button>
     </section>
 
-    <section class="bg-white rounded-lg border p-5 mb-5">
+    <section class="ef-card p-5 mb-5">
       <p class="text-sm font-medium text-gray-700 mb-1">Tipos de solicitação (área do aluno)</p>
       <p class="text-xs text-gray-500 mb-3">
         Documentos que o aluno pode pedir à secretaria pela área do aluno (declaração de matrícula,
@@ -302,7 +302,7 @@ interface LinhaSolicitacao {
       </button>
     </section>
 
-    <section class="bg-white rounded-lg border p-5">
+    <section class="ef-card p-5">
       <p class="text-sm font-medium text-gray-700 mb-1">Tipos de documento</p>
       <p class="text-xs text-gray-500 mb-3">
         "Aluno" vale para todas as matrículas do aluno (CPF, RG...); "Matrícula" é específico de

@@ -1,4 +1,10 @@
-import { ApplicationConfig, provideZoneChangeDetection } from "@angular/core";
+import {
+  APP_INITIALIZER,
+  ApplicationConfig,
+  inject,
+  provideZoneChangeDetection,
+} from "@angular/core";
+import { MatIconRegistry } from "@angular/material/icon";
 import { provideRouter } from "@angular/router";
 import { provideAnimations } from "@angular/platform-browser/animations";
 import { provideHttpClient, withInterceptors } from "@angular/common/http";
@@ -12,6 +18,15 @@ export const appConfig: ApplicationConfig = {
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes),
     provideAnimations(),
+    // Ícones no estilo "outlined" do padrão visual (docs/especificacao).
+    {
+      provide: APP_INITIALIZER,
+      multi: true,
+      useFactory: () => {
+        const registro = inject(MatIconRegistry);
+        return () => registro.setDefaultFontSetClass("material-icons-outlined");
+      },
+    },
     provideHttpClient(
       withInterceptors([authTokenInterceptor, authExpiradoInterceptor, erroHttpInterceptor]),
     ),

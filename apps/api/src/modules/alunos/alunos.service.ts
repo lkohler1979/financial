@@ -29,13 +29,30 @@ function montarDados<T extends { agenteEducacionalId?: string }>(input: T) {
 
 export const alunosService = {
   async listar(params: ListarAlunosInput) {
-    const { page, pageSize, busca } = params;
+    const { page, pageSize, busca, situacao, cursoId } = params;
     const { data, total } = await alunosRepository.list({
       busca,
+      situacao,
+      cursoId,
       skip: (page - 1) * pageSize,
       take: pageSize,
     });
     return { data, total, page, pageSize };
+  },
+
+  /** Contadores do topo da lista: todos, com matrícula, sem matrícula e com pendências. */
+  contadores() {
+    return alunosRepository.contadores();
+  },
+
+  /** Resumo do aluno para a tela de cadastro: matrículas, curso atual e situação financeira. */
+  async resumo(id: string) {
+    await this.buscarPorId(id);
+    const [resumos, parcelasVencidas] = await Promise.all([
+      alunosRepository.resumosDosAlunos([id]),
+      alunosRepository.contarParcelasVencidas(id),
+    ]);
+    return { ...resumos.get(id)!, parcelasVencidas };
   },
 
   async buscarPorId(id: string) {

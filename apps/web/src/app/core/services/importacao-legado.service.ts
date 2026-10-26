@@ -2,6 +2,7 @@ import { HttpClient, HttpParams } from "@angular/common/http";
 import { inject, Injectable } from "@angular/core";
 import { Observable } from "rxjs";
 import { environment } from "../../../environments/environment";
+import { LoteTitulos, ResultadoTitulosDoAluno } from "../models/titulo-aluno.model";
 
 export interface PreviaParcelaLegado {
   tituloId: string;
@@ -176,6 +177,21 @@ export class ImportacaoLegadoService {
     return this.http.get(`${this.baseUrl}/documentos/lote/${id}/relatorio`, {
       responseType: "blob",
     });
+  }
+
+  /** Consulta o legado e grava os títulos que faltam de UM aluno (na hora). */
+  importarTitulosDoAluno(alunoId: string): Observable<ResultadoTitulosDoAluno> {
+    return this.http.post<ResultadoTitulosDoAluno>(`${this.baseUrl}/alunos/${alunoId}/titulos`, {});
+  }
+
+  /** Dispara a busca dos títulos que faltam de TODOS os alunos (segundo plano). */
+  iniciarLoteTitulos(): Observable<LoteTitulos> {
+    return this.http.post<LoteTitulos>(`${this.baseUrl}/titulos/lote`, {});
+  }
+
+  /** Último lote de títulos (em andamento ou concluído); null se nunca rodou. */
+  ultimoLoteTitulos(): Observable<LoteTitulos | null> {
+    return this.http.get<LoteTitulos | null>(`${this.baseUrl}/titulos/lote/atual`);
   }
 
   /** Dispara a busca de TODOS os alunos do legado (segundo plano). */

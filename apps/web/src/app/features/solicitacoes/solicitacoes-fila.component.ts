@@ -20,7 +20,7 @@ const ROTULO_STATUS: Record<StatusSolicitacao, string> = {
   imports: [DatePipe, FormsModule, MatButtonModule],
   template: `
     <div class="flex flex-wrap items-center gap-3 mb-4">
-      <h1 class="text-2xl font-medium">Solicitações dos alunos</h1>
+      <h1 class="ef-title">Solicitações dos alunos</h1>
       <select
         class="border rounded px-2 py-1 ml-auto"
         [ngModel]="filtro()"
@@ -33,7 +33,7 @@ const ROTULO_STATUS: Record<StatusSolicitacao, string> = {
       </select>
     </div>
 
-    <div class="bg-white rounded-lg border divide-y">
+    <div class="ef-card divide-y">
       @for (s of itens(); track s.id) {
         <div class="p-3">
           <div class="flex flex-wrap items-center gap-3">

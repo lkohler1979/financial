@@ -23,7 +23,7 @@ import { ImportacaoLogDialogComponent } from "./importacao-log-dialog.component"
     MatDialogModule,
   ],
   template: `
-    <h1 class="text-2xl font-medium mb-4">Importação</h1>
+    <h1 class="ef-title mb-4">Importação</h1>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5">
       <div
@@ -51,7 +51,7 @@ import { ImportacaoLogDialogComponent } from "./importacao-log-dialog.component"
         />
       </div>
 
-      <div class="bg-white rounded-xl border p-5">
+      <div class="ef-card p-5">
         <p class="text-xs font-medium text-gray-600 mb-3">Frequência configurada</p>
         <div class="flex gap-2 mb-4">
           <span class="text-xs px-2.5 py-1 rounded bg-gray-100">Manual</span>
@@ -69,7 +69,7 @@ import { ImportacaoLogDialogComponent } from "./importacao-log-dialog.component"
     </div>
 
     @if (enviando && jobAtual) {
-      <div class="bg-white rounded-xl border p-5 mb-5">
+      <div class="ef-card p-5 mb-5">
         <div class="flex justify-between items-center mb-2">
           <p class="text-sm font-medium m-0">{{ nomeArquivoAtual }}</p>
           <span class="text-xs text-gray-500">{{ jobAtual.estado }}</span>
@@ -88,7 +88,7 @@ import { ImportacaoLogDialogComponent } from "./importacao-log-dialog.component"
         <mat-progress-bar mode="indeterminate"></mat-progress-bar>
       }
 
-      <div class="bg-white rounded shadow-sm overflow-x-auto w-full">
+      <div class="ef-card overflow-x-auto w-full">
         <table mat-table [dataSource]="historico" class="w-full table-compact">
           <ng-container matColumnDef="arquivo">
             <th mat-header-cell *matHeaderCellDef>Arquivo</th>

@@ -51,7 +51,7 @@ import { formatarCnpj, formatarCpf } from "../../shared/utils/cpf.util";
       <a mat-icon-button routerLink="/matriculas" aria-label="Voltar">
         <mat-icon>arrow_back</mat-icon>
       </a>
-      <h1 class="text-2xl font-medium m-0">
+      <h1 class="ef-title">
         {{ editando ? "Editar matrícula" : "Nova matrícula" }}
       </h1>
     </div>
@@ -60,7 +60,7 @@ import { formatarCnpj, formatarCpf } from "../../shared/utils/cpf.util";
       <mat-progress-bar mode="indeterminate"></mat-progress-bar>
     }
 
-    <form [formGroup]="form" (ngSubmit)="salvar()" class="bg-white rounded shadow-sm p-6 max-w-3xl">
+    <form [formGroup]="form" (ngSubmit)="salvar()" class="ef-card p-6 max-w-3xl">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4">
         <mat-form-field appearance="outline">
           <mat-label>Aluno</mat-label>
@@ -224,7 +224,7 @@ import { formatarCnpj, formatarCpf } from "../../shared/utils/cpf.util";
       }
 
       @if (editando && id) {
-        <section class="bg-white rounded-lg border p-4 mb-4">
+        <section class="ef-card p-4 mb-4">
           <div class="flex flex-wrap items-center gap-3">
             <p class="text-sm font-medium text-gray-700 m-0">
               Responsável financeiro e tomador da nota fiscal

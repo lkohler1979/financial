@@ -3,6 +3,7 @@ import { z } from "zod";
 export const listarAuditoriaSchema = z
   .object({
     entidade: z.string().trim().optional(),
+    entidadeId: z.string().trim().optional(),
     usuario: z.string().trim().optional(),
     acao: z.enum(["CRIACAO", "ATUALIZACAO", "EXCLUSAO"]).optional(),
     dataInicio: z.coerce.date().optional(),

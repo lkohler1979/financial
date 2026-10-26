@@ -5,6 +5,7 @@ import type { ListarAuditoriaParams } from "./auditoria.service";
 export const auditoriaRepository = {
   async list({
     entidade,
+    entidadeId,
     usuario,
     acao,
     dataInicio,
@@ -14,6 +15,7 @@ export const auditoriaRepository = {
   }: ListarAuditoriaParams) {
     const where: Prisma.AuditoriaWhereInput = {
       ...(entidade ? { entidade } : {}),
+      ...(entidadeId ? { entidadeId } : {}),
       ...(acao ? { acao } : {}),
       ...(dataInicio || dataFim
         ? {

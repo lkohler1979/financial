@@ -43,14 +43,14 @@ const PERFIS: { valor: Perfil; rotulo: string }[] = [
       <a mat-icon-button routerLink="/usuarios" aria-label="Voltar"
         ><mat-icon>arrow_back</mat-icon></a
       >
-      <h1 class="text-2xl font-medium m-0">{{ editando ? "Editar usuário" : "Novo usuário" }}</h1>
+      <h1 class="ef-title">{{ editando ? "Editar usuário" : "Novo usuário" }}</h1>
     </div>
 
     @if (carregando) {
       <mat-progress-bar mode="indeterminate"></mat-progress-bar>
     }
 
-    <form [formGroup]="form" (ngSubmit)="salvar()" class="bg-white rounded shadow-sm p-6 max-w-2xl">
+    <form [formGroup]="form" (ngSubmit)="salvar()" class="ef-card p-6 max-w-2xl">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4">
         <mat-form-field appearance="outline">
           <mat-label>Nome</mat-label>

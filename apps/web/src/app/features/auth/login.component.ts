@@ -7,6 +7,7 @@ import { MatInputModule } from "@angular/material/input";
 import { MatButtonModule } from "@angular/material/button";
 import { MatProgressBarModule } from "@angular/material/progress-bar";
 import { AuthService } from "../../core/auth/auth.service";
+import { LogoComponent } from "../../shared/layout/logo.component";
 
 // Senha: mínimo 6 caracteres, só letras e números (regra do usuário,
 // 2026-07-07) — mesma regex usada no backend (auth.schema.ts).
@@ -22,14 +23,16 @@ const SENHA_REGEX = /^[a-zA-Z0-9]{6,}$/;
     MatInputModule,
     MatButtonModule,
     MatProgressBarModule,
+    LogoComponent,
   ],
   template: `
-    <div class="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <mat-card class="w-full max-w-sm">
-        <mat-card-header>
-          <mat-card-title class="text-xl font-medium">EthosFinancial</mat-card-title>
-          <mat-card-subtitle>Entre com seu e-mail e senha</mat-card-subtitle>
-        </mat-card-header>
+    <div class="min-h-screen flex items-center justify-center px-4">
+      <mat-card class="ef-card w-full max-w-md !p-4 !shadow-lg">
+        <div class="px-4 pt-4">
+          <app-logo />
+          <h1 class="ef-title !mt-6 !text-2xl">Acesse sua conta</h1>
+          <p class="ef-subtitle !mt-1">Entre com seu e-mail e senha.</p>
+        </div>
 
         @if (entrando) {
           <mat-progress-bar mode="indeterminate"></mat-progress-bar>
@@ -69,10 +72,10 @@ const SENHA_REGEX = /^[a-zA-Z0-9]{6,}$/;
             }
 
             <button
-              mat-raised-button
+              mat-flat-button
               color="primary"
               type="submit"
-              class="w-full"
+              class="w-full !h-11"
               [disabled]="entrando"
             >
               Entrar

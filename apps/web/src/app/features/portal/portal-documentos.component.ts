@@ -46,7 +46,7 @@ import { baixarBlob } from "./baixar-arquivo";
         </p>
       }
 
-      <div class="bg-white rounded-lg border divide-y">
+      <div class="ef-card divide-y">
         @for (item of d.itens; track item.tipo.id) {
           <div class="p-3 flex flex-wrap items-center gap-3">
             <div class="flex-1 min-w-48">

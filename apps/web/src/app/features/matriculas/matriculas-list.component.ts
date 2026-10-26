@@ -59,7 +59,7 @@ import {
   ],
   template: `
     <div class="flex items-center justify-between mb-4">
-      <h1 class="text-2xl font-medium m-0">Matrículas</h1>
+      <h1 class="ef-title">Matrículas</h1>
       <div class="flex items-center gap-2 flex-wrap">
         @if (authService.temPerfil("ADMINISTRADOR", "FINANCEIRO")) {
           @if (selecionadas.size > 0) {
@@ -170,7 +170,7 @@ import {
       <mat-progress-bar mode="indeterminate"></mat-progress-bar>
     }
 
-    <div class="bg-white rounded shadow-sm overflow-x-auto mt-2 w-full">
+    <div class="ef-card overflow-x-auto mt-2 w-full">
       <table mat-table [dataSource]="matriculas" class="w-full table-compact">
         <ng-container matColumnDef="selecionar">
           <th mat-header-cell *matHeaderCellDef class="w-10">

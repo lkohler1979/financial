@@ -146,7 +146,7 @@ const SITUACOES = {
           <table class="ef-table" data-testid="tabela-alunos">
             <thead>
               <tr>
-                <th>Aluno</th>
+                <th class="ef-col-principal">Aluno</th>
                 <th>
                   CPF
                   <button
@@ -170,7 +170,7 @@ const SITUACOES = {
             <tbody>
               @for (a of alunos(); track a.id) {
                 <tr class="group">
-                  <td>
+                  <td class="ef-col-principal">
                     <div class="flex items-center gap-3">
                       <span class="ef-avatar">{{ iniciais(a.nome) }}</span>
                       <div class="leading-tight">

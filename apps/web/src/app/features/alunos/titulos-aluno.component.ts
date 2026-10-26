@@ -95,7 +95,7 @@ type FiltroOrigem = "TODOS" | "MATRICULA" | "SEM_MATRICULA";
           <table class="ef-table ef-table-compact" data-testid="titulos-do-aluno">
             <thead>
               <tr>
-                <th class="py-1 font-medium">Matrícula / curso</th>
+                <th class="ef-col-principal">Matrícula / curso</th>
                 <th class="py-1 font-medium">Parcela</th>
                 <th class="py-1 font-medium">Título</th>
                 <th class="py-1 font-medium">Vencimento</th>
@@ -112,7 +112,7 @@ type FiltroOrigem = "TODOS" | "MATRICULA" | "SEM_MATRICULA";
             </thead>
             @for (t of visiveis(); track t.id) {
               <tr>
-                <td class="py-1">
+                <td class="ef-col-principal">
                   @if (t.origem === "MATRICULA" && t.matricula) {
                     <a
                       class="text-blue-700 hover:underline"

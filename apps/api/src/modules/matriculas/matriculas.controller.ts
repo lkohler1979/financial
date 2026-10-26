@@ -18,6 +18,10 @@ export const matriculasController = {
     res.json(resultado);
   }),
 
+  contadores: asyncHandler(async (_req: Request, res: Response) => {
+    res.json(await matriculasService.contadores());
+  }),
+
   listarAgentes: asyncHandler(async (_req: Request, res: Response) => {
     res.json(await matriculasService.listarAgentes());
   }),

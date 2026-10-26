@@ -4,6 +4,7 @@ import { matriculasController } from "./matriculas.controller";
 export const matriculasRouter = Router();
 
 matriculasRouter.get("/", matriculasController.listar);
+matriculasRouter.get("/contadores", matriculasController.contadores);
 matriculasRouter.get("/agentes", matriculasController.listarAgentes);
 matriculasRouter.get("/situacoes", matriculasController.listarSituacoes);
 matriculasRouter.get("/:id", matriculasController.buscarPorId);

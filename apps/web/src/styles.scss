@@ -295,6 +295,16 @@ a {
   color: var(--ef-warn);
 }
 
+// Selo pequeno (contagem de parcelas): a cor vem das classes bg-* / text-* do Tailwind.
+.ef-chip {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
 // ---- Avatar com iniciais ----------------------------------------------------------------------
 .ef-avatar {
   display: inline-flex;
@@ -335,7 +345,7 @@ a {
   white-space: nowrap;
 }
 
-.ef-table td:first-child {
+.ef-table .ef-col-principal {
   min-width: 260px;
 }
 
@@ -357,7 +367,7 @@ a {
   font-size: 13px;
 }
 
-.ef-table-compact td:first-child {
+.ef-table-compact .ef-col-principal {
   min-width: 200px;
 }
 

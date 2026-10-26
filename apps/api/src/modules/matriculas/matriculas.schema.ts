@@ -87,6 +87,15 @@ export const atualizarMatriculaSchema = z
   .partial()
   .refine((obj) => Object.keys(obj).length > 0, "Informe ao menos um campo para atualizar");
 
+/**
+ * Booleano vindo da query string. `z.coerce.boolean()` não serve: "false" é uma string não vazia e
+ * viraria `true` (o filtro "Contrato assinado: Não" devolvia os assinados).
+ */
+const booleanoDaConsulta = z.preprocess(
+  (v) => (v === "true" ? true : v === "false" ? false : v),
+  z.boolean().optional(),
+);
+
 export const listarMatriculasSchema = z.object({
   alunoId: z.string().uuid().optional(),
   cursoId: z.string().uuid().optional(),
@@ -97,8 +106,10 @@ export const listarMatriculasSchema = z.object({
   dataMatriculaFim: z.coerce.date().optional(),
   situacaoCobrancaId: z.string().uuid().optional(),
   tagId: z.string().uuid().optional(),
-  contratoAssinado: z.coerce.boolean().optional(),
-  tcdAssinado: z.coerce.boolean().optional(),
+  contratoAssinado: booleanoDaConsulta,
+  tcdAssinado: booleanoDaConsulta,
+  /** Só matrículas com alguma parcela devendo e já vencida. */
+  comParcelaVencida: booleanoDaConsulta,
   situacaoDocumentacao: z
     .enum(["SEM_DOCUMENTOS", "DOCUMENTOS_PENDENTES", "DOCUMENTACAO_COMPLETA"])
     .optional(),

@@ -1,5 +1,9 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../database/prisma";
+import {
+  inicioDeHoje,
+  STATUS_PARCELA_DEVENDO as STATUS_DEVENDO,
+} from "../../shared/utils/parcelas-vencidas";
 import { proximoCodigoSequencial } from "../../shared/utils/sequencial";
 
 export type SituacaoFinanceiraAluno = "EM_DIA" | "EM_ATRASO" | "SEM_MATRICULA";
@@ -12,14 +16,6 @@ export interface ListarAlunosParams {
   cursoId?: string;
   skip: number;
   take: number;
-}
-
-/** Parcelas que ainda estão devendo (não pagas, renegociadas nem canceladas). */
-const STATUS_DEVENDO = ["EM_ABERTO", "PROTESTO_ENVIADO", "PROTESTADO"] as const;
-
-/** Início do dia de hoje como o vencimento é guardado: só a data, à meia-noite UTC. */
-function inicioDeHoje(agora: Date): Date {
-  return new Date(Date.UTC(agora.getFullYear(), agora.getMonth(), agora.getDate()));
 }
 
 /** Aluno com alguma parcela devendo e já vencida (vencimento antes de hoje). */

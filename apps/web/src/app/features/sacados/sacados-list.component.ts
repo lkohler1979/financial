@@ -21,7 +21,7 @@ import { formatarCnpj, formatarCpf } from "../../shared/utils/cpf.util";
   imports: [FormsModule, RouterLink, MatButtonModule, MatIconModule, MatPaginatorModule],
   template: `
     <div class="flex flex-wrap items-center gap-3 mb-3">
-      <h1 class="text-2xl font-medium m-0">Sacados</h1>
+      <h1 class="ef-title">Sacados</h1>
       <input
         class="border rounded px-3 py-1.5 ml-auto w-72"
         placeholder="Buscar por nome, CPF ou CNPJ"
@@ -34,7 +34,7 @@ import { formatarCnpj, formatarCpf } from "../../shared/utils/cpf.util";
       cadastro nasce no passo de pagamento da matrícula; CPF/CNPJ não mudam depois.
     </p>
 
-    <div class="bg-white rounded shadow-sm overflow-x-auto">
+    <div class="ef-card overflow-x-auto">
       <table class="w-full text-sm">
         <thead>
           <tr class="text-left text-xs text-gray-400">
@@ -79,7 +79,7 @@ import { formatarCnpj, formatarCpf } from "../../shared/utils/cpf.util";
     </div>
 
     @if (selecionado(); as s) {
-      <section class="bg-white rounded shadow-sm p-5 mt-4">
+      <section class="ef-card p-5 mt-4">
         <p class="text-sm font-medium text-gray-700 mb-3">
           {{ s.tipoPessoa === "FISICA" ? "Pessoa física" : "Pessoa jurídica" }} — {{ documento(s) }}
         </p>

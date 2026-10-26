@@ -1,5 +1,5 @@
 import { CurrencyPipe, DatePipe, NgClass } from "@angular/common";
-import { Component, computed, inject, OnInit, signal } from "@angular/core";
+import { Component, computed, inject, input, OnInit, signal } from "@angular/core";
 import { ActivatedRoute, RouterLink } from "@angular/router";
 import { MatButtonModule } from "@angular/material/button";
 import { MatDialog } from "@angular/material/dialog";
@@ -53,12 +53,15 @@ type FiltroOrigem = "TODOS" | "MATRICULA" | "SEM_MATRICULA";
       <mat-progress-bar mode="indeterminate" class="mb-4"></mat-progress-bar>
     }
     @if (dados(); as d) {
-      <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
-        <div>
+      <div
+        class="flex flex-wrap items-start justify-between gap-3 mb-4"
+        [class.!justify-end]="embutido()"
+      >
+        <div [class.hidden]="embutido()">
           <a mat-button routerLink="/alunos" class="!-ml-3"
             ><mat-icon>arrow_back</mat-icon> Alunos</a
           >
-          <h1 class="text-2xl font-medium m-0">Títulos de {{ d.aluno.nome }}</h1>
+          <h1 class="ef-title">Títulos de {{ d.aluno.nome }}</h1>
           <p class="text-sm text-gray-500 m-0">
             CPF {{ cpf(d.aluno.cpf) }} · {{ d.titulos.length }} título(s) no total
           </p>
@@ -87,11 +90,11 @@ type FiltroOrigem = "TODOS" | "MATRICULA" | "SEM_MATRICULA";
         <mat-progress-bar mode="indeterminate" class="mb-3"></mat-progress-bar>
       }
 
-      <div class="bg-white rounded-xl border p-3 mb-3">
+      <div class="ef-card mb-3 overflow-hidden">
         <div class="overflow-x-auto">
-          <table class="w-full text-sm" data-testid="titulos-do-aluno">
+          <table class="ef-table ef-table-compact" data-testid="titulos-do-aluno">
             <thead>
-              <tr class="text-left text-xs text-gray-400">
+              <tr>
                 <th class="py-1 font-medium">Matrícula / curso</th>
                 <th class="py-1 font-medium">Parcela</th>
                 <th class="py-1 font-medium">Título</th>
@@ -108,7 +111,7 @@ type FiltroOrigem = "TODOS" | "MATRICULA" | "SEM_MATRICULA";
               </tr>
             </thead>
             @for (t of visiveis(); track t.id) {
-              <tr class="text-gray-600 border-t">
+              <tr>
                 <td class="py-1">
                   @if (t.origem === "MATRICULA" && t.matricula) {
                     <a
@@ -174,8 +177,8 @@ type FiltroOrigem = "TODOS" | "MATRICULA" | "SEM_MATRICULA";
       </div>
 
       @if (visiveis().length > 0) {
-        <div class="bg-white rounded-xl border p-3 mb-3" data-testid="totalizador">
-          <p class="text-xs font-medium text-gray-600 mb-2">Totalizador</p>
+        <div class="ef-card mb-3 p-4" data-testid="totalizador">
+          <h2 class="ef-card-title !text-base">Totalizador</h2>
           <dl class="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-2 text-sm m-0">
             @for (item of totalizador(); track item.rotulo) {
               <div [class.font-semibold]="item.destaque">
@@ -202,6 +205,9 @@ export class TitulosAlunoComponent implements OnInit {
   private readonly configuracoes = inject(ConfiguracoesService);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
+
+  /** Dentro da aba Financeiro do cadastro do aluno: sem o título e o link de voltar. */
+  readonly embutido = input(false);
 
   readonly dados = signal<TitulosDoAluno | null>(null);
   readonly carregando = signal(true);

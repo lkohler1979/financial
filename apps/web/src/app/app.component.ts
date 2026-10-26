@@ -1,174 +1,45 @@
-import { Component, inject } from "@angular/core";
-import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from "@angular/router";
-import { MatToolbarModule } from "@angular/material/toolbar";
-import { MatIconModule } from "@angular/material/icon";
-import { MatTabsModule } from "@angular/material/tabs";
-import { MatButtonModule } from "@angular/material/button";
+import { Component, inject, signal } from "@angular/core";
+import { NavigationEnd, Router, RouterOutlet } from "@angular/router";
 import { toSignal } from "@angular/core/rxjs-interop";
 import { filter, map } from "rxjs";
 import { AuthService } from "./core/auth/auth.service";
+import { SidebarComponent } from "./shared/layout/sidebar.component";
+import { TopbarComponent } from "./shared/layout/topbar.component";
 
-// Estrutura de navegação (topo + abas horizontais) baseada nos wireframes em
-// docs/wireframes/ — identidade visual/cores ficam para uma etapa futura de UI
-// (ver docs/wireframes/README.md). Abas ficam visíveis conforme o perfil do
-// usuário logado (docs/PENDENCIAS.md tem a matriz de perfis x módulos) e
-// somem inteiramente na tela de login.
+// Estrutura de navegação segundo docs/especificacao: menu lateral (Acadêmico, Financeiro e itens de
+// sistema, conforme o perfil do usuário — docs/PENDENCIAS.md tem a matriz de perfis x módulos) e
+// barra superior com migalhas e busca. A tela de login e a área do aluno não têm esse layout.
 @Component({
   selector: "app-root",
   standalone: true,
-  imports: [
-    RouterOutlet,
-    RouterLink,
-    RouterLinkActive,
-    MatToolbarModule,
-    MatIconModule,
-    MatTabsModule,
-    MatButtonModule,
-  ],
+  imports: [RouterOutlet, SidebarComponent, TopbarComponent],
   template: `
     @if (authService.autenticado() && !naAreaDoAluno()) {
-      <mat-toolbar color="primary" class="!sticky top-0 z-10">
-        <span class="font-medium">EthosFinancial</span>
-        <span class="flex-1"></span>
-        <a mat-flat-button routerLink="/matriculas/cadastro" class="mr-3">
-          <mat-icon>add</mat-icon> Nova matrícula
-        </a>
-        <span class="text-sm mr-3">{{ authService.usuario()?.nome }}</span>
-        <button mat-icon-button aria-label="Sair" (click)="sair()">
-          <mat-icon>logout</mat-icon>
-        </button>
-      </mat-toolbar>
+      <div class="flex min-h-screen">
+        <!-- Menu fixo no computador; gaveta no celular -->
+        <aside
+          class="fixed inset-y-0 left-0 z-40 w-[264px] border-r border-line transition-transform lg:translate-x-0"
+          [class.-translate-x-full]="!menuAberto()"
+          [class.shadow-2xl]="menuAberto()"
+        >
+          <app-sidebar (navegou)="menuAberto.set(false)" />
+        </aside>
+        @if (menuAberto()) {
+          <button
+            type="button"
+            class="fixed inset-0 z-30 border-0 bg-black/30 lg:hidden"
+            aria-label="Fechar menu"
+            (click)="menuAberto.set(false)"
+          ></button>
+        }
 
-      <nav mat-tab-nav-bar [tabPanel]="painel" class="bg-white border-b !sticky top-16 z-10">
-        @if (authService.temPerfil("ADMINISTRADOR")) {
-          <a
-            mat-tab-link
-            routerLink="/dashboard"
-            routerLinkActive
-            #dashboard="routerLinkActive"
-            [active]="dashboard.isActive"
-            >Dashboard</a
-          >
-        }
-        <a
-          mat-tab-link
-          routerLink="/alunos"
-          routerLinkActive
-          #alunos="routerLinkActive"
-          [active]="alunos.isActive"
-          >Alunos</a
-        >
-        @if (authService.temPerfil("ADMINISTRADOR", "FINANCEIRO")) {
-          <a
-            mat-tab-link
-            routerLink="/cursos"
-            routerLinkActive
-            #cursos="routerLinkActive"
-            [active]="cursos.isActive"
-            >Cursos</a
-          >
-        }
-        <a
-          mat-tab-link
-          routerLink="/matriculas"
-          routerLinkActive
-          #matriculas="routerLinkActive"
-          [active]="matriculas.isActive"
-          >Matrículas</a
-        >
-        @if (authService.temPerfil("ADMINISTRADOR", "FINANCEIRO")) {
-          <a
-            mat-tab-link
-            routerLink="/importacao"
-            routerLinkActive
-            #importacao="routerLinkActive"
-            [active]="importacao.isActive"
-            >Importação</a
-          >
-        }
-        <a
-          mat-tab-link
-          routerLink="/documentos"
-          routerLinkActive
-          #documentos="routerLinkActive"
-          [active]="documentos.isActive"
-          >Documentos</a
-        >
-        @if (authService.temPerfil("ADMINISTRADOR", "FINANCEIRO")) {
-          <a
-            mat-tab-link
-            routerLink="/notas-fiscais"
-            routerLinkActive
-            #notasFiscais="routerLinkActive"
-            [active]="notasFiscais.isActive"
-            >Notas fiscais</a
-          >
-        }
-        <a
-          mat-tab-link
-          routerLink="/sacados"
-          routerLinkActive
-          #sacados="routerLinkActive"
-          [active]="sacados.isActive"
-          >Sacados</a
-        >
-        <a
-          mat-tab-link
-          routerLink="/solicitacoes"
-          routerLinkActive
-          #solicitacoes="routerLinkActive"
-          [active]="solicitacoes.isActive"
-          >Solicitações</a
-        >
-        <a
-          mat-tab-link
-          routerLink="/relatorios"
-          routerLinkActive
-          #relatorios="routerLinkActive"
-          [active]="relatorios.isActive"
-          >Relatórios</a
-        >
-        @if (authService.temPerfil("ADMINISTRADOR")) {
-          <a
-            mat-tab-link
-            routerLink="/tipos"
-            routerLinkActive
-            #tipos="routerLinkActive"
-            [active]="tipos.isActive"
-            >Tipos</a
-          >
-          <a
-            mat-tab-link
-            routerLink="/configuracoes"
-            routerLinkActive
-            #configuracoes="routerLinkActive"
-            [active]="configuracoes.isActive"
-            >Configurações</a
-          >
-          <a
-            mat-tab-link
-            routerLink="/auditoria"
-            routerLinkActive
-            #auditoria="routerLinkActive"
-            [active]="auditoria.isActive"
-            >Auditoria</a
-          >
-          <a
-            mat-tab-link
-            routerLink="/usuarios"
-            routerLinkActive
-            #usuarios="routerLinkActive"
-            [active]="usuarios.isActive"
-            >Usuários</a
-          >
-        }
-      </nav>
-
-      <mat-tab-nav-panel #painel>
-        <div class="p-3 sm:p-6 w-full box-border">
-          <router-outlet></router-outlet>
+        <div class="flex min-w-0 flex-1 flex-col lg:pl-[264px]">
+          <app-topbar (abrirMenu)="menuAberto.set(true)" />
+          <main class="w-full box-border flex-1 p-4 sm:p-6">
+            <router-outlet></router-outlet>
+          </main>
         </div>
-      </mat-tab-nav-panel>
+      </div>
     } @else {
       <router-outlet></router-outlet>
     }
@@ -178,7 +49,9 @@ export class AppComponent {
   readonly authService = inject(AuthService);
   private readonly router = inject(Router);
 
-  /** A área do aluno tem layout próprio: esconde a barra da equipe. */
+  readonly menuAberto = signal(false);
+
+  /** A área do aluno tem layout próprio: esconde o menu da equipe. */
   private readonly url = toSignal(
     this.router.events.pipe(
       filter((e) => e instanceof NavigationEnd),
@@ -188,9 +61,4 @@ export class AppComponent {
   );
   // Só "/aluno" e "/aluno/..." — "/alunos" (cadastro da equipe) mantém o menu.
   readonly naAreaDoAluno = () => /^\/aluno(\/|\?|$)/.test(this.url());
-
-  sair(): void {
-    this.authService.logout();
-    this.router.navigate(["/login"]);
-  }
 }

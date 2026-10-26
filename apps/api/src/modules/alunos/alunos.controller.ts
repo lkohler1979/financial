@@ -11,6 +11,14 @@ export const alunosController = {
     res.json(resultado);
   }),
 
+  contadores: asyncHandler(async (_req: Request, res: Response) => {
+    res.json(await alunosService.contadores());
+  }),
+
+  resumo: asyncHandler(async (req: Request, res: Response) => {
+    res.json(await alunosService.resumo(paramString(req, "id")));
+  }),
+
   buscarPorId: asyncHandler(async (req: Request, res: Response) => {
     const aluno = await alunosService.buscarPorId(paramString(req, "id"));
     res.json(aluno);

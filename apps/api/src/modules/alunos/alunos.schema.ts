@@ -48,6 +48,9 @@ export const atualizarAlunoSchema = z
 
 export const listarAlunosSchema = z.object({
   busca: z.string().trim().optional(),
+  /** Situação financeira: EM_DIA, EM_ATRASO (parcela vencida e não paga) ou SEM_MATRICULA. */
+  situacao: z.enum(["EM_DIA", "EM_ATRASO", "SEM_MATRICULA"]).optional(),
+  cursoId: z.string().uuid().optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
 });

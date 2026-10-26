@@ -32,18 +32,18 @@ const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "o
       <div class="pt-4">
         <!-- Carteira -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
-          <div class="bg-white rounded-lg border p-4">
+          <div class="ef-card p-4">
             <p class="text-xs text-gray-500 mb-1">Em aberto</p>
-            <p class="text-2xl font-medium m-0">
+            <p class="text-2xl font-semibold m-0">
               {{ v.indicadores.valorEmAberto | currency: "BRL" }}
             </p>
             <p class="text-xs text-gray-500 m-0">
               {{ v.indicadores.parcelasEmAberto | number }} parcelas
             </p>
           </div>
-          <div class="bg-white rounded-lg border p-4">
+          <div class="ef-card p-4">
             <p class="text-xs text-gray-500 mb-1">Vencido</p>
-            <p class="text-2xl font-medium text-red-700 m-0">
+            <p class="text-2xl font-semibold text-red-700 m-0">
               {{ v.indicadores.valorVencido | currency: "BRL" }}
             </p>
             <p class="text-xs text-gray-500 m-0">
@@ -51,9 +51,9 @@ const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "o
               {{ v.indicadores.alunosInadimplentes | number }} alunos
             </p>
           </div>
-          <div class="bg-white rounded-lg border p-4">
+          <div class="ef-card p-4">
             <p class="text-xs text-gray-500 mb-1">A vencer</p>
-            <p class="text-2xl font-medium text-blue-700 m-0">
+            <p class="text-2xl font-semibold text-blue-700 m-0">
               {{ v.indicadores.valorAVencer | currency: "BRL" }}
             </p>
             <p class="text-xs text-gray-500 m-0">
@@ -61,9 +61,9 @@ const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "o
               {{ v.indicadores.valorAVencer30Dias | currency: "BRL" }}
             </p>
           </div>
-          <div class="bg-white rounded-lg border p-4">
+          <div class="ef-card p-4">
             <p class="text-xs text-gray-500 mb-1">Recebido no mês</p>
-            <p class="text-2xl font-medium text-emerald-700 m-0">
+            <p class="text-2xl font-semibold text-emerald-700 m-0">
               {{ v.indicadores.recebidoMes | currency: "BRL" }}
             </p>
             <p class="text-xs text-gray-500 m-0">
@@ -73,28 +73,28 @@ const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "o
         </div>
 
         <div class="grid grid-cols-2 lg:grid-cols-6 gap-3 mb-5">
-          <div class="bg-white rounded-lg border p-3">
+          <div class="ef-card p-3">
             <p class="text-xs text-gray-500 mb-1">Alunos</p>
             <p class="text-xl font-medium m-0">{{ v.indicadores.totalAlunos | number }}</p>
             <p class="text-xs text-gray-500 m-0">
               {{ v.indicadores.alunosComMatricula | number }} com matrícula
             </p>
           </div>
-          <div class="bg-white rounded-lg border p-3">
+          <div class="ef-card p-3">
             <p class="text-xs text-gray-500 mb-1">Matrículas</p>
             <p class="text-xl font-medium m-0">{{ v.indicadores.totalMatriculas | number }}</p>
             <p class="text-xs text-gray-500 m-0">
               {{ v.indicadores.matriculasInadimplentes | number }} em atraso
             </p>
           </div>
-          <div class="bg-white rounded-lg border p-3">
+          <div class="ef-card p-3">
             <p class="text-xs text-gray-500 mb-1">Cursos</p>
             <p class="text-xl font-medium m-0">{{ v.indicadores.totalCursos | number }}</p>
             <p class="text-xs text-gray-500 m-0">
               {{ v.indicadores.cursosComMatricula | number }} com matrículas
             </p>
           </div>
-          <div class="bg-white rounded-lg border p-3">
+          <div class="ef-card p-3">
             <p class="text-xs text-gray-500 mb-1">Atraso médio</p>
             <p class="text-xl font-medium m-0">
               {{ v.indicadores.diasMedioAtraso | number: "1.0-0" }} dias
@@ -103,14 +103,14 @@ const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "o
               maior: {{ v.indicadores.maiorAtrasoDias | number }} dias
             </p>
           </div>
-          <div class="bg-white rounded-lg border p-3">
+          <div class="ef-card p-3">
             <p class="text-xs text-gray-500 mb-1">Inadimplência</p>
             <p class="text-xl font-medium m-0">
               {{ v.indicadores.percentualInadimplencia / 100 | percent: "1.1-1" }}
             </p>
             <p class="text-xs text-gray-500 m-0">vencido ÷ (vencido + recebido)</p>
           </div>
-          <div class="bg-white rounded-lg border p-3">
+          <div class="ef-card p-3">
             <p class="text-xs text-gray-500 mb-1">Ticket médio</p>
             <p class="text-xl font-medium m-0">{{ v.indicadores.ticketMedio | currency: "BRL" }}</p>
             <p class="text-xs text-gray-500 m-0">
@@ -121,7 +121,7 @@ const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "o
 
         <!-- Séries mensais -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5">
-          <section class="bg-white rounded-lg border p-4">
+          <section class="ef-card p-4">
             <p class="text-sm font-medium text-gray-700 mb-1">Matrículas por mês</p>
             <p class="text-xs text-gray-500 mt-0 mb-3">
               pela data da matrícula ou, quando não há, pelo 1º vencimento
@@ -131,7 +131,7 @@ const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "o
                 <div class="flex-1 h-full flex flex-col justify-end items-center gap-1">
                   <span class="text-[10px] text-gray-500">{{ item.matriculas || "" }}</span>
                   <div
-                    class="w-full max-w-9 rounded-t bg-indigo-600"
+                    class="w-full max-w-9 rounded-t bg-brand-700"
                     [style.height.%]="pct(item.matriculas, maxMatriculas(v))"
                     [title]="item.matriculas + ' matrículas'"
                   ></div>
@@ -141,7 +141,7 @@ const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "o
             </div>
           </section>
 
-          <section class="bg-white rounded-lg border p-4">
+          <section class="ef-card p-4">
             <p class="text-sm font-medium text-gray-700 mb-1">Alunos novos por mês</p>
             <p class="text-xs text-gray-500 mt-0 mb-3">mês da primeira matrícula de cada aluno</p>
             <div class="h-40 flex items-end gap-1.5">
@@ -159,7 +159,7 @@ const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "o
             </div>
           </section>
 
-          <section class="bg-white rounded-lg border p-4">
+          <section class="ef-card p-4">
             <p class="text-sm font-medium text-gray-700 mb-3">Recebido por mês</p>
             <div class="h-40 flex items-end gap-1.5">
               @for (item of v.recebidoPorMes; track item.mes) {
@@ -178,13 +178,13 @@ const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "o
             }
           </section>
 
-          <section class="bg-white rounded-lg border p-4">
+          <section class="ef-card p-4">
             <p class="text-sm font-medium text-gray-700 mb-3">A vencer nos próximos meses</p>
             <div class="h-40 flex items-end gap-3">
               @for (item of v.aVencerPorMes; track item.mes) {
                 <div class="flex-1 h-full flex flex-col justify-end items-center gap-1">
                   <div
-                    class="w-full max-w-12 rounded-t bg-blue-600"
+                    class="w-full max-w-12 rounded-t bg-brand-600"
                     [style.height.%]="pct(item.valor, maxAVencer(v))"
                     [title]="(item.valor | currency: 'BRL') + ' · ' + item.qtd + ' parcelas'"
                   ></div>
@@ -197,7 +197,7 @@ const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "o
 
         <!-- Atraso e tipo de título -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5">
-          <section class="bg-white rounded-lg border p-4">
+          <section class="ef-card p-4">
             <p class="text-sm font-medium text-gray-700 mb-3">Vencido por faixa de atraso</p>
             <div class="space-y-3">
               @for (f of v.faixasAtraso; track f.faixa) {
@@ -221,7 +221,7 @@ const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "o
             </div>
           </section>
 
-          <section class="bg-white rounded-lg border p-4">
+          <section class="ef-card p-4">
             <p class="text-sm font-medium text-gray-700 mb-3">Em aberto por tipo de título</p>
             <table class="w-full text-sm">
               <thead>
@@ -256,7 +256,7 @@ const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "o
         </div>
 
         <!-- Cursos -->
-        <section class="bg-white rounded-lg border p-4 mb-5">
+        <section class="ef-card p-4 mb-5">
           <p class="text-sm font-medium text-gray-700 mb-3">
             Cursos: matrículas e valores ({{ v.porCurso.length }})
           </p>
@@ -295,7 +295,7 @@ const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "o
         </section>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <section class="bg-white rounded-lg border p-4">
+          <section class="ef-card p-4">
             <p class="text-sm font-medium text-gray-700 mb-3">Maiores valores vencidos por aluno</p>
             <table class="w-full text-sm">
               <thead>
@@ -327,7 +327,7 @@ const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "o
             </table>
           </section>
 
-          <section class="bg-white rounded-lg border p-4">
+          <section class="ef-card p-4">
             <p class="text-sm font-medium text-gray-700 mb-3">Matrículas por situação</p>
             <div class="space-y-2">
               @for (s of v.matriculasPorSituacao; track s.situacao) {

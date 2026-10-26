@@ -110,14 +110,14 @@ function hojeIso(): string {
       <a mat-icon-button routerLink="/matriculas" aria-label="Voltar"
         ><mat-icon>arrow_back</mat-icon></a
       >
-      <h1 class="text-2xl font-medium m-0">Nova matrícula</h1>
+      <h1 class="ef-title">Nova matrícula</h1>
     </div>
 
     @if (enviando) {
       <mat-progress-bar mode="indeterminate"></mat-progress-bar>
     }
 
-    <div class="bg-white rounded shadow-sm p-4 max-w-5xl">
+    <div class="ef-card p-4 max-w-5xl">
       <mat-stepper [linear]="true" #stepper>
         <mat-step [stepControl]="pessoal" label="Dados pessoais">
           <form [formGroup]="pessoal" class="pt-3">

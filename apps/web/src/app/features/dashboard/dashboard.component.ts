@@ -23,7 +23,7 @@ import { DashboardCobranca, DashboardGeral } from "../../core/models/dashboard.m
   ],
   template: `
     <div class="flex items-center justify-between mb-4">
-      <h1 class="text-2xl font-medium m-0">Dashboard</h1>
+      <h1 class="ef-title">Dashboard</h1>
       <button mat-stroked-button type="button" (click)="carregar()">
         <mat-icon>refresh</mat-icon> Atualizar
       </button>
@@ -42,25 +42,25 @@ import { DashboardCobranca, DashboardGeral } from "../../core/models/dashboard.m
         @if (geral; as d) {
           <div class="pt-4">
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-              <div class="bg-white rounded-lg border p-4">
+              <div class="ef-card p-4">
                 <p class="text-xs text-gray-500 mb-1">Total de alunos</p>
-                <p class="text-2xl font-medium m-0">{{ d.indicadores.totalAlunos }}</p>
+                <p class="text-2xl font-semibold m-0">{{ d.indicadores.totalAlunos }}</p>
               </div>
-              <div class="bg-white rounded-lg border p-4">
+              <div class="ef-card p-4">
                 <p class="text-xs text-gray-500 mb-1">Alunos inadimplentes</p>
-                <p class="text-2xl font-medium text-red-700 m-0">
+                <p class="text-2xl font-semibold text-red-700 m-0">
                   {{ d.indicadores.alunosInadimplentes }}
                 </p>
               </div>
-              <div class="bg-white rounded-lg border p-4">
+              <div class="ef-card p-4">
                 <p class="text-xs text-gray-500 mb-1">Valor total vencido</p>
-                <p class="text-2xl font-medium m-0">
+                <p class="text-2xl font-semibold m-0">
                   {{ d.indicadores.valorTotalVencido | currency: "BRL" }}
                 </p>
               </div>
-              <div class="bg-white rounded-lg border p-4">
+              <div class="ef-card p-4">
                 <p class="text-xs text-gray-500 mb-1">Última importação</p>
-                <p class="text-2xl font-medium m-0">
+                <p class="text-2xl font-semibold m-0">
                   @if (d.indicadores.ultimaImportacao) {
                     {{ d.indicadores.ultimaImportacao.data | date: "dd/MM" }}
                   } @else {
@@ -71,17 +71,17 @@ import { DashboardCobranca, DashboardGeral } from "../../core/models/dashboard.m
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-5">
-              <div class="bg-white rounded-lg border p-4">
+              <div class="ef-card p-4">
                 <p class="text-xs text-gray-500 mb-1">Cursos</p>
                 <p class="text-xl font-medium m-0">{{ d.indicadores.totalCursosAtivos }} ativos</p>
                 <p class="text-xs text-gray-500 m-0">{{ d.indicadores.totalCursos }} cadastrados</p>
               </div>
-              <div class="bg-white rounded-lg border p-4">
+              <div class="ef-card p-4">
                 <p class="text-xs text-gray-500 mb-1">Matrículas</p>
                 <p class="text-xl font-medium m-0">{{ d.indicadores.totalMatriculas }}</p>
                 <p class="text-xs text-gray-500 m-0">vínculos aluno/curso</p>
               </div>
-              <div class="bg-white rounded-lg border p-4">
+              <div class="ef-card p-4">
                 <p class="text-xs text-gray-500 mb-1">Relatórios gerados</p>
                 <p class="text-xl font-medium m-0">{{ d.indicadores.relatoriosGerados }}</p>
                 <p class="text-xs text-gray-500 m-0">
@@ -91,13 +91,13 @@ import { DashboardCobranca, DashboardGeral } from "../../core/models/dashboard.m
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5">
-              <section class="bg-white rounded-lg border p-4">
+              <section class="ef-card p-4">
                 <p class="text-sm font-medium text-gray-700 mb-4">Valor vencido por mês</p>
                 <div class="h-44 flex items-end gap-2">
                   @for (item of d.valorVencidoPorMes; track item.mes) {
                     <div class="flex-1 h-full flex flex-col justify-end items-center gap-2">
                       <div
-                        class="w-full max-w-10 rounded-t bg-blue-600"
+                        class="w-full max-w-10 rounded-t bg-brand-600"
                         [style.height.%]="percentual(item.valor, maxValorVencido(d))"
                         [title]="item.valor | currency: 'BRL'"
                       ></div>
@@ -107,7 +107,7 @@ import { DashboardCobranca, DashboardGeral } from "../../core/models/dashboard.m
                 </div>
               </section>
 
-              <section class="bg-white rounded-lg border p-4">
+              <section class="ef-card p-4">
                 <p class="text-sm font-medium text-gray-700 mb-4">Inadimplência mensal</p>
                 <div class="h-44 flex items-end gap-2">
                   @for (item of d.inadimplenciaMensal; track item.mes) {
@@ -125,7 +125,7 @@ import { DashboardCobranca, DashboardGeral } from "../../core/models/dashboard.m
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <section class="bg-white rounded-lg border p-4">
+              <section class="ef-card p-4">
                 <p class="text-sm font-medium text-gray-700 mb-4">Top cursos com inadimplência</p>
                 <div class="space-y-3">
                   @for (item of d.inadimplenciaPorCurso; track item.cursoId) {
@@ -147,7 +147,7 @@ import { DashboardCobranca, DashboardGeral } from "../../core/models/dashboard.m
                 </div>
               </section>
 
-              <section class="bg-white rounded-lg border p-4">
+              <section class="ef-card p-4">
                 <p class="text-sm font-medium text-gray-700 mb-4">Evolução histórica</p>
                 <div class="space-y-3">
                   @for (item of d.evolucaoHistorica; track item.mes) {
@@ -175,33 +175,33 @@ import { DashboardCobranca, DashboardGeral } from "../../core/models/dashboard.m
         @if (cobranca; as c) {
           <div class="pt-4">
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-              <div class="bg-white rounded-lg border p-4">
+              <div class="ef-card p-4">
                 <p class="text-xs text-gray-500 mb-1">Inadimplentes</p>
-                <p class="text-2xl font-medium text-red-700 m-0">
+                <p class="text-2xl font-semibold text-red-700 m-0">
                   {{ c.indicadores.inadimplentes }}
                 </p>
               </div>
-              <div class="bg-white rounded-lg border p-4">
+              <div class="ef-card p-4">
                 <p class="text-xs text-gray-500 mb-1">Valor em aberto</p>
-                <p class="text-2xl font-medium m-0">
+                <p class="text-2xl font-semibold m-0">
                   {{ c.indicadores.valorEmAberto | currency: "BRL" }}
                 </p>
               </div>
-              <div class="bg-white rounded-lg border p-4">
+              <div class="ef-card p-4">
                 <p class="text-xs text-gray-500 mb-1">Protestado</p>
-                <p class="text-2xl font-medium m-0">
+                <p class="text-2xl font-semibold m-0">
                   {{ c.indicadores.valorProtestado | currency: "BRL" }}
                 </p>
               </div>
-              <div class="bg-white rounded-lg border p-4">
+              <div class="ef-card p-4">
                 <p class="text-xs text-gray-500 mb-1">Quitado</p>
-                <p class="text-2xl font-medium m-0">
+                <p class="text-2xl font-semibold m-0">
                   {{ c.indicadores.valorQuitado | currency: "BRL" }}
                 </p>
               </div>
             </div>
 
-            <section class="bg-white rounded-lg border p-4 mb-5">
+            <section class="ef-card p-4 mb-5">
               <p class="text-sm font-medium text-gray-700 mb-4">
                 Valor em aberto por contrato assinado
               </p>
@@ -237,7 +237,7 @@ import { DashboardCobranca, DashboardGeral } from "../../core/models/dashboard.m
             </section>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5">
-              <section class="bg-white rounded-lg border p-4">
+              <section class="ef-card p-4">
                 <p class="text-sm font-medium text-gray-700 mb-4">Quantidade por situação</p>
                 <div class="space-y-3">
                   @for (item of c.porSituacao; track item.id || item.nome) {
@@ -266,7 +266,7 @@ import { DashboardCobranca, DashboardGeral } from "../../core/models/dashboard.m
                 </div>
               </section>
 
-              <section class="bg-white rounded-lg border p-4">
+              <section class="ef-card p-4">
                 <p class="text-sm font-medium text-gray-700 mb-4">Ranking de TAGs</p>
                 <div class="space-y-3">
                   @for (item of c.rankingTags; track item.tagId) {
@@ -277,7 +277,7 @@ import { DashboardCobranca, DashboardGeral } from "../../core/models/dashboard.m
                       </div>
                       <div class="h-2 bg-gray-100 rounded">
                         <div
-                          class="h-2 bg-indigo-600 rounded"
+                          class="h-2 bg-brand-700 rounded"
                           [style.width.%]="percentual(item.matriculas, maxRankingTag(c))"
                         ></div>
                       </div>
@@ -290,7 +290,7 @@ import { DashboardCobranca, DashboardGeral } from "../../core/models/dashboard.m
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <section class="bg-white rounded-lg border p-4">
+              <section class="ef-card p-4">
                 <p class="text-sm font-medium text-gray-700 mb-4">Top 10 cursos</p>
                 <div class="space-y-3">
                   @for (item of c.topCursos; track item.cursoId) {
@@ -312,7 +312,7 @@ import { DashboardCobranca, DashboardGeral } from "../../core/models/dashboard.m
                 </div>
               </section>
 
-              <section class="bg-white rounded-lg border p-4">
+              <section class="ef-card p-4">
                 <p class="text-sm font-medium text-gray-700 mb-4">Relatórios por período</p>
                 <div class="space-y-3">
                   @for (item of c.relatoriosPorPeriodo; track item.mes) {

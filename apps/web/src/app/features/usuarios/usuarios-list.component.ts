@@ -34,7 +34,7 @@ const ROTULO_PERFIL: Record<Usuario["perfil"], string> = {
   ],
   template: `
     <div class="flex items-center justify-between mb-4">
-      <h1 class="text-2xl font-medium m-0">Usuários</h1>
+      <h1 class="ef-title">Usuários</h1>
       <a mat-raised-button color="primary" routerLink="/usuarios/novo">
         <mat-icon>add</mat-icon> Novo usuário
       </a>
@@ -50,7 +50,7 @@ const ROTULO_PERFIL: Record<Usuario["perfil"], string> = {
       <mat-progress-bar mode="indeterminate"></mat-progress-bar>
     }
 
-    <div class="bg-white rounded shadow-sm overflow-x-auto mt-2 w-full">
+    <div class="ef-card overflow-x-auto mt-2 w-full">
       <table mat-table [dataSource]="usuarios" class="w-full table-compact">
         <ng-container matColumnDef="nome">
           <th mat-header-cell *matHeaderCellDef>Nome</th>

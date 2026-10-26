@@ -38,6 +38,8 @@ export async function registrarAuditoria(
 
 export interface ListarAuditoriaParams {
   entidade?: string;
+  /** Só os registros deste item (ex.: o id de um aluno). */
+  entidadeId?: string;
   usuario?: string;
   acao?: AcaoAuditoria;
   dataInicio?: Date;

@@ -75,7 +75,7 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
 
       <div class="flex items-start justify-between mb-3">
         <div>
-          <h1 class="text-2xl font-medium m-0">{{ ficha.matricula.aluno?.nome }}</h1>
+          <h1 class="ef-title">{{ ficha.matricula.aluno?.nome }}</h1>
           <p class="text-sm text-gray-500 mt-0.5">
             CPF {{ formatarCpf(ficha.matricula.aluno?.cpf || "") }} ·
             {{ ficha.matricula.curso?.nome }}
@@ -150,7 +150,7 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
         <mat-progress-bar mode="indeterminate" class="mb-4"></mat-progress-bar>
       }
 
-      <div class="bg-white rounded-xl border p-3 mb-3">
+      <div class="ef-card p-3 mb-3">
         <p class="text-xs font-medium text-gray-600 mb-2">Parcelas</p>
         <div class="overflow-x-auto">
           <table class="w-full text-sm">
@@ -464,7 +464,7 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
       </div>
 
       @if (parcelas.length > 0) {
-        <div class="bg-white rounded-xl border p-3 mb-3" data-testid="totalizador">
+        <div class="ef-card p-3 mb-3" data-testid="totalizador">
           <p class="text-xs font-medium text-gray-600 mb-2">Totalizador</p>
           <dl class="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-2 text-sm m-0">
             @for (item of itensTotalizador(); track item.rotulo) {
@@ -483,7 +483,7 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
         </div>
       }
 
-      <div class="bg-white rounded-xl border p-5 mb-5">
+      <div class="ef-card p-5 mb-5">
         <p class="text-xs font-medium text-gray-600 mb-3">Nova observação</p>
 
         <div class="flex gap-2">
@@ -499,7 +499,7 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
         </div>
       </div>
 
-      <div class="bg-white rounded-xl border p-5 mb-5">
+      <div class="ef-card p-5 mb-5">
         <p class="text-xs font-medium text-gray-600 mb-3">Tags</p>
         <div class="flex items-center gap-2">
           <div class="flex gap-2 flex-wrap items-center">

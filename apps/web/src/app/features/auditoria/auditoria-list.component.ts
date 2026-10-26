@@ -29,13 +29,13 @@ import { AuditoriaService } from "../../core/services/auditoria.service";
   ],
   template: `
     <div class="flex items-center justify-between mb-4">
-      <h1 class="text-2xl font-medium m-0">Auditoria</h1>
+      <h1 class="ef-title">Auditoria</h1>
       <button mat-stroked-button type="button" (click)="limparFiltros()">
         <mat-icon>filter_alt_off</mat-icon> Limpar
       </button>
     </div>
 
-    <section class="bg-white rounded-lg border p-4 mb-4">
+    <section class="ef-card p-4 mb-4">
       <form [formGroup]="filtros" class="grid grid-cols-1 md:grid-cols-5 gap-3 items-start">
         <mat-form-field appearance="outline">
           <mat-label>Entidade</mat-label>
@@ -82,7 +82,7 @@ import { AuditoriaService } from "../../core/services/auditoria.service";
       <mat-progress-bar mode="indeterminate"></mat-progress-bar>
     }
 
-    <div class="bg-white rounded shadow-sm overflow-x-auto w-full">
+    <div class="ef-card overflow-x-auto w-full">
       <table mat-table [dataSource]="registros" class="w-full table-compact">
         <ng-container matColumnDef="data">
           <th mat-header-cell *matHeaderCellDef>Data</th>

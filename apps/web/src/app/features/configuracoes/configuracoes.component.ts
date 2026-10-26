@@ -57,7 +57,7 @@ import {
   ],
   template: `
     <div class="flex items-center justify-between mb-4">
-      <h1 class="text-2xl font-medium m-0">Configurações</h1>
+      <h1 class="ef-title">Configurações</h1>
       <button mat-stroked-button type="button" (click)="carregar()" [disabled]="carregando">
         <mat-icon>refresh</mat-icon> Recarregar
       </button>
@@ -68,7 +68,7 @@ import {
     }
 
     <form [formGroup]="form" (ngSubmit)="salvar()" class="space-y-5">
-      <section class="bg-white rounded-lg border p-5">
+      <section class="ef-card p-5">
         <p class="text-sm font-medium text-gray-700 mb-4">Importação e elegibilidade</p>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
           <mat-form-field appearance="outline">
@@ -98,7 +98,7 @@ import {
         </div>
       </section>
 
-      <section class="bg-white rounded-lg border p-5">
+      <section class="ef-card p-5">
         <p class="text-sm font-medium text-gray-700 mb-4">Documentos Word</p>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
           <mat-form-field appearance="outline">
@@ -119,7 +119,7 @@ import {
         </div>
       </section>
 
-      <section class="bg-white rounded-lg border p-5">
+      <section class="ef-card p-5">
         <p class="text-sm font-medium text-gray-700 mb-4">Multa e juros</p>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-start">
           <mat-form-field appearance="outline">
@@ -146,7 +146,7 @@ import {
         </div>
       </section>
 
-      <section class="bg-white rounded-lg border p-5">
+      <section class="ef-card p-5">
         <p class="text-sm font-medium text-gray-700 mb-1">
           Integração com sistema legado (Universa)
         </p>
@@ -196,7 +196,7 @@ import {
         </div>
       </section>
 
-      <section class="bg-white rounded-lg border p-5">
+      <section class="ef-card p-5">
         <p class="text-sm font-medium text-gray-700 mb-1">Integração Asaas</p>
         <p class="text-xs text-gray-500 mb-4">
           Credenciais usadas para gerar cobranças (boleto/Pix/cartão) na Ficha de Cobrança. Deixe a
@@ -374,7 +374,7 @@ import {
         </p>
       </section>
 
-      <section class="bg-white rounded-lg border p-5">
+      <section class="ef-card p-5">
         <p class="text-sm font-medium text-gray-700 mb-1">Nota fiscal de serviço (NFS-e)</p>
         <p class="text-xs text-gray-500 mb-4">
           Pode ser emitida pelo Asaas (a conta precisa ter as informações fiscais da empresa
@@ -603,7 +603,7 @@ import {
         }
       </section>
 
-      <section class="bg-white rounded-lg border p-5">
+      <section class="ef-card p-5">
         <p class="text-sm font-medium text-gray-700 mb-1">Integração Rede (e.Rede/Itaú)</p>
         <p class="text-xs text-gray-500 mb-4">
           Credenciais da Rede — só Pix é suportado nesta integração. Deixe a chave/token em branco
@@ -672,7 +672,7 @@ import {
         </p>
       </section>
 
-      <section class="bg-white rounded-lg border p-5">
+      <section class="ef-card p-5">
         <p class="text-sm font-medium text-gray-700 mb-1">
           Contrato de prestação de serviços e assinatura eletrônica
         </p>
@@ -892,7 +892,7 @@ import {
       </div>
     </form>
 
-    <section class="bg-white rounded-lg border p-5 mt-5">
+    <section class="ef-card p-5 mt-5">
       <p class="text-sm font-medium text-gray-700 mb-1">Mapeamento de colunas da importação</p>
       <p class="text-xs text-gray-500 mb-4">
         Define, para cada coluna opcional da planilha, em qual tabela/campo o valor é gravado e o

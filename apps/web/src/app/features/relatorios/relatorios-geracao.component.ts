@@ -55,9 +55,9 @@ const TAMANHO_PAGINA_HISTORICO = 10;
     MatMenuModule,
   ],
   template: `
-    <h1 class="text-2xl font-medium mb-4">Relatório de inadimplência</h1>
+    <h1 class="ef-title mb-4">Relatório de inadimplência</h1>
 
-    <div class="bg-white rounded-xl border p-5 mb-5">
+    <div class="ef-card p-5 mb-5">
       <p class="text-xs font-medium text-gray-600 mb-3">Financeiro</p>
       <form [formGroup]="filtros" class="grid grid-cols-2 md:grid-cols-4 gap-3 items-start">
         <mat-form-field appearance="outline">
@@ -192,7 +192,7 @@ const TAMANHO_PAGINA_HISTORICO = 10;
           </div>
         </div>
 
-        <div class="bg-white rounded shadow-sm overflow-x-auto mb-6 w-full">
+        <div class="ef-card overflow-x-auto mb-6 w-full">
           <table mat-table [dataSource]="elegiveis" class="w-full table-compact">
             <ng-container matColumnDef="selecionar">
               <th mat-header-cell *matHeaderCellDef>
@@ -292,7 +292,7 @@ const TAMANHO_PAGINA_HISTORICO = 10;
         <mat-progress-bar mode="indeterminate"></mat-progress-bar>
       }
 
-      <div class="bg-white rounded shadow-sm overflow-x-auto w-full">
+      <div class="ef-card overflow-x-auto w-full">
         <table mat-table [dataSource]="historico" class="w-full table-compact">
           <ng-container matColumnDef="data">
             <th mat-header-cell *matHeaderCellDef>Data</th>

@@ -24,7 +24,7 @@ const ROTULO_STATUS: Record<string, string> = {
   standalone: true,
   imports: [CurrencyPipe, DatePipe, MatButtonModule, MatMenuModule],
   template: `
-    <div class="bg-white rounded-lg border overflow-x-auto">
+    <div class="ef-card overflow-x-auto">
       <table class="w-full text-sm">
         <thead>
           <tr class="text-left text-xs text-gray-400">

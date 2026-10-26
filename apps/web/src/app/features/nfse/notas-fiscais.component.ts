@@ -33,7 +33,7 @@ const COR_STATUS: Record<string, string> = {
   imports: [CurrencyPipe, DatePipe, FormsModule, MatButtonModule],
   template: `
     <div class="flex flex-wrap items-center gap-3 mb-3">
-      <h1 class="text-2xl font-medium m-0">Notas fiscais (NFS-e)</h1>
+      <h1 class="ef-title">Notas fiscais (NFS-e)</h1>
       <label class="text-sm ml-auto">
         <span class="text-xs text-gray-500 mr-2">Competência</span>
         <input
@@ -45,7 +45,7 @@ const COR_STATUS: Record<string, string> = {
       </label>
     </div>
 
-    <section class="bg-white rounded-lg border p-4 mb-5">
+    <section class="ef-card p-4 mb-5">
       <h2 class="text-base font-medium m-0 mb-1">Emitir nota de um pagamento</h2>
       <p class="text-xs text-gray-500 mt-0 mb-3">
         Para emitir a nota de um pagamento específico (qualquer tipo, qualquer mês), busque pelo
@@ -170,7 +170,7 @@ const COR_STATUS: Record<string, string> = {
     </section>
 
     @if (previa(); as p) {
-      <div class="bg-white rounded-lg border p-4 mb-4">
+      <div class="ef-card p-4 mb-4">
         <p class="text-sm m-0">
           Competência <strong>{{ p.competencia | date: "dd/MM/yyyy" }}</strong> · emissão automática
           <strong [class]="p.ativa ? 'text-green-700' : 'text-gray-500'">{{
@@ -206,7 +206,7 @@ const COR_STATUS: Record<string, string> = {
       </div>
 
       <h2 class="text-base font-medium mb-1">A emitir ({{ p.pendentes.length }})</h2>
-      <div class="bg-white rounded-lg border overflow-x-auto mb-5">
+      <div class="ef-card overflow-x-auto mb-5">
         <table class="w-full text-sm">
           <thead>
             <tr class="text-left text-xs text-gray-400">
@@ -278,7 +278,7 @@ const COR_STATUS: Record<string, string> = {
       </div>
 
       <h2 class="text-base font-medium mb-1">Notas desta competência ({{ p.emitidas.length }})</h2>
-      <div class="bg-white rounded-lg border overflow-x-auto">
+      <div class="ef-card overflow-x-auto">
         <table class="w-full text-sm">
           <thead>
             <tr class="text-left text-xs text-gray-400">

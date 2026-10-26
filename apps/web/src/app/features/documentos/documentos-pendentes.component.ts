@@ -65,7 +65,7 @@ const MAX_LOTE = 500;
   ],
   template: `
     <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
-      <h1 class="text-2xl font-medium m-0">Documentos</h1>
+      <h1 class="ef-title">Documentos</h1>
       <div class="flex items-center gap-2 flex-wrap">
         @if (selecionados.size > 0) {
           <button
@@ -157,7 +157,7 @@ const MAX_LOTE = 500;
       <mat-progress-bar mode="indeterminate"></mat-progress-bar>
     }
 
-    <div class="bg-white rounded-lg border p-4 overflow-x-auto">
+    <div class="ef-card p-4 overflow-x-auto">
       <table class="w-full text-sm">
         <thead>
           <tr class="text-left text-xs text-gray-400">

@@ -13,6 +13,7 @@ export class AuditoriaService {
   listar(filtros: FiltrosAuditoria = {}): Observable<Paginado<Auditoria>> {
     let params = new HttpParams();
     if (filtros.entidade) params = params.set("entidade", filtros.entidade);
+    if (filtros.entidadeId) params = params.set("entidadeId", filtros.entidadeId);
     if (filtros.usuario) params = params.set("usuario", filtros.usuario);
     if (filtros.acao) params = params.set("acao", filtros.acao);
     if (filtros.dataInicio) params = params.set("dataInicio", filtros.dataInicio);

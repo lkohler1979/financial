@@ -122,6 +122,16 @@ export interface MatriculaPayload {
   diaVencimento?: number;
 }
 
+/** Números do topo da lista de matrículas. */
+export interface ContadoresMatriculas {
+  total: number;
+  ativas: number;
+  aguardandoPagamento: number;
+  comParcelaVencida: number;
+  semContratoAssinado: number;
+  documentacaoIncompleta: number;
+}
+
 export interface SituacaoMatriculaOpcao {
   codigo: string;
   nome: string;

@@ -7,6 +7,7 @@ import {
   AlterarSituacaoPayload,
   HistoricoSituacaoMatricula,
   Matricula,
+  ContadoresMatriculas,
   MatriculaPayload,
   SituacaoMatriculaOpcao,
 } from "../models/matricula.model";
@@ -31,6 +32,8 @@ export class MatriculasService {
       tagId?: string;
       contratoAssinado?: boolean;
       tcdAssinado?: boolean;
+      /** Só matrículas com alguma parcela devendo e já vencida. */
+      comParcelaVencida?: boolean;
       situacaoDocumentacao?: string;
       page?: number;
       pageSize?: number;
@@ -54,12 +57,20 @@ export class MatriculasService {
       params = params.set("contratoAssinado", opcoes.contratoAssinado);
     }
     if (opcoes.tcdAssinado !== undefined) params = params.set("tcdAssinado", opcoes.tcdAssinado);
+    if (opcoes.comParcelaVencida !== undefined) {
+      params = params.set("comParcelaVencida", opcoes.comParcelaVencida);
+    }
     if (opcoes.situacaoDocumentacao) {
       params = params.set("situacaoDocumentacao", opcoes.situacaoDocumentacao);
     }
     if (opcoes.page) params = params.set("page", opcoes.page);
     if (opcoes.pageSize) params = params.set("pageSize", opcoes.pageSize);
     return this.http.get<Paginado<Matricula>>(this.baseUrl, { params });
+  }
+
+  /** Contadores do topo da lista (sobre todas as matrículas). */
+  contadores(): Observable<ContadoresMatriculas> {
+    return this.http.get<ContadoresMatriculas>(`${this.baseUrl}/contadores`);
   }
 
   buscarPorId(id: string): Observable<Matricula> {

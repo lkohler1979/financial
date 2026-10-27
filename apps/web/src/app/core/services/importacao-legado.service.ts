@@ -90,8 +90,10 @@ export interface FiltrosMatriculasLote {
   situacao?: string;
   situacaoCobrancaId?: string;
   tagId?: string;
+  cursoId?: string;
   contratoAssinado?: boolean;
   tcdAssinado?: boolean;
+  comParcelaVencida?: boolean;
   situacaoDocumentacao?: string;
   dataMatriculaInicio?: string;
   dataMatriculaFim?: string;

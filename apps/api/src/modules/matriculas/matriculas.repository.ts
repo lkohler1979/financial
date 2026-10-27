@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../database/prisma";
+import { inicioDeHoje, STATUS_PARCELA_DEVENDO } from "../../shared/utils/parcelas-vencidas";
 import { proximoCodigoSequencial } from "../../shared/utils/sequencial";
 
 export type FiltrosMatriculas = Omit<ListarMatriculasParams, "skip" | "take">;
@@ -16,6 +17,7 @@ export interface ListarMatriculasParams {
   tagId?: string;
   contratoAssinado?: boolean;
   tcdAssinado?: boolean;
+  comParcelaVencida?: boolean;
   situacaoDocumentacao?: "SEM_DOCUMENTOS" | "DOCUMENTOS_PENDENTES" | "DOCUMENTACAO_COMPLETA";
   skip: number;
   take: number;
@@ -78,26 +80,37 @@ export const matriculasRepository = {
   },
 
   /** Filtros da listagem de matrículas (a mesma regra vale para a busca em lote no legado). */
-  whereDaListagem({
-    alunoId,
-    cursoId,
-    situacao,
-    alunoNome,
-    alunoCpf,
-    dataMatriculaInicio,
-    dataMatriculaFim,
-    situacaoCobrancaId,
-    tagId,
-    contratoAssinado,
-    tcdAssinado,
-    situacaoDocumentacao,
-  }: FiltrosMatriculas): Prisma.MatriculaWhereInput {
+  whereDaListagem(
+    {
+      alunoId,
+      cursoId,
+      situacao,
+      alunoNome,
+      alunoCpf,
+      dataMatriculaInicio,
+      dataMatriculaFim,
+      situacaoCobrancaId,
+      tagId,
+      contratoAssinado,
+      tcdAssinado,
+      comParcelaVencida,
+      situacaoDocumentacao,
+    }: FiltrosMatriculas,
+    agora = new Date(),
+  ): Prisma.MatriculaWhereInput {
     return {
       ...(alunoId ? { alunoId } : {}),
       ...(cursoId ? { cursoId } : {}),
       ...(situacao ? { situacao: { contains: situacao, mode: "insensitive" } } : {}),
-      ...(alunoNome ? { aluno: { nome: { contains: alunoNome, mode: "insensitive" } } } : {}),
-      ...(alunoCpf ? { aluno: { cpf: { contains: alunoCpf.replace(/\D/g, "") } } } : {}),
+      // Nome e CPF juntos valem os dois (antes o segundo apagava o primeiro).
+      ...(alunoNome || alunoCpf
+        ? {
+            aluno: {
+              ...(alunoNome ? { nome: { contains: alunoNome, mode: "insensitive" as const } } : {}),
+              ...(alunoCpf ? { cpf: { contains: alunoCpf.replace(/\D/g, "") } } : {}),
+            },
+          }
+        : {}),
       ...(dataMatriculaInicio || dataMatriculaFim
         ? {
             dataMatricula: {
@@ -110,6 +123,16 @@ export const matriculasRepository = {
       ...(tagId ? { tags: { some: { tagId } } } : {}),
       ...(contratoAssinado !== undefined ? { contratoAssinado } : {}),
       ...(tcdAssinado !== undefined ? { tcdAssinado } : {}),
+      ...(comParcelaVencida
+        ? {
+            parcelas: {
+              some: {
+                status: { in: [...STATUS_PARCELA_DEVENDO] },
+                vencimento: { lt: inicioDeHoje(agora) },
+              },
+            },
+          }
+        : {}),
       ...(situacaoDocumentacao ? { situacaoDocumentacao } : {}),
     };
   },
@@ -146,6 +169,7 @@ export const matriculasRepository = {
     tagId,
     contratoAssinado,
     tcdAssinado,
+    comParcelaVencida,
     situacaoDocumentacao,
     skip,
     take,
@@ -162,6 +186,7 @@ export const matriculasRepository = {
       tagId,
       contratoAssinado,
       tcdAssinado,
+      comParcelaVencida,
       situacaoDocumentacao,
     });
 
@@ -177,6 +202,34 @@ export const matriculasRepository = {
     ]);
 
     return { data, total };
+  },
+
+  /** Contadores do topo da lista de matrículas (sobre todas as matrículas, sem filtro). */
+  async contadores(agora = new Date()) {
+    const emAtraso = this.whereDaListagem({ comParcelaVencida: true }, agora);
+    const [
+      total,
+      ativas,
+      aguardandoPagamento,
+      comParcelaVencida,
+      semContratoAssinado,
+      documentacaoIncompleta,
+    ] = await Promise.all([
+      prisma.matricula.count(),
+      prisma.matricula.count({ where: { situacao: "ATIVA" } }),
+      prisma.matricula.count({ where: { situacao: "AGUARDANDO_PAGAMENTO" } }),
+      prisma.matricula.count({ where: emAtraso }),
+      prisma.matricula.count({ where: { contratoAssinado: false } }),
+      prisma.matricula.count({ where: { situacaoDocumentacao: { not: "DOCUMENTACAO_COMPLETA" } } }),
+    ]);
+    return {
+      total,
+      ativas,
+      aguardandoPagamento,
+      comParcelaVencida,
+      semContratoAssinado,
+      documentacaoIncompleta,
+    };
   },
 
   // Número da matrícula = AAAA + 5 dígitos, gerado aqui (e não no service)

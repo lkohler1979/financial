@@ -1,28 +1,32 @@
-import { Component, inject, OnInit } from "@angular/core";
+import { Component, DestroyRef, inject, OnInit, signal } from "@angular/core";
+import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { DatePipe, NgClass } from "@angular/common";
 import { RouterLink } from "@angular/router";
-import { FormBuilder, ReactiveFormsModule } from "@angular/forms";
-import { MatTableModule } from "@angular/material/table";
+import { FormBuilder, FormControl, ReactiveFormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
 import { MatCheckboxModule } from "@angular/material/checkbox";
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatInputModule } from "@angular/material/input";
-import { MatPaginatorModule, PageEvent } from "@angular/material/paginator";
+import { MatMenuModule } from "@angular/material/menu";
 import { MatProgressBarModule } from "@angular/material/progress-bar";
 import { MatSelectModule } from "@angular/material/select";
 import { MatDialog, MatDialogModule } from "@angular/material/dialog";
 import { MatSnackBar } from "@angular/material/snack-bar";
-import { debounceTime, distinctUntilChanged } from "rxjs";
+import { debounceTime, merge } from "rxjs";
 import { MatriculasService } from "../../core/services/matriculas.service";
+import { CursosService } from "../../core/services/cursos.service";
+import { Curso } from "../../core/models/curso.model";
 import {
-  classeSituacaoMatricula,
+  ContadoresMatriculas,
   Matricula,
   rotuloSituacaoMatricula,
   SITUACOES_DOCUMENTACAO,
+  SituacaoDocumentacao,
   SituacaoMatriculaOpcao,
 } from "../../core/models/matricula.model";
 import { formatarCpf } from "../../shared/utils/cpf.util";
+import { iniciaisDe } from "../../shared/utils/iniciais";
 import { AuthService } from "../../core/auth/auth.service";
 import { DocumentosLegadoDialogComponent } from "../alunos/documentos-legado-dialog.component";
 import { ContratoMatriculaDialogComponent } from "./contrato-matricula-dialog.component";
@@ -37,7 +41,35 @@ import {
   ConfirmDialogComponent,
   ConfirmDialogData,
 } from "../../shared/components/confirm-dialog.component";
+import { PaginacaoComponent } from "../../shared/components/paginacao.component";
 
+type Aba = "TODAS" | "ATIVAS" | "AGUARDANDO" | "EM_ATRASO" | "SEM_CONTRATO";
+
+const ABAS: { chave: Aba; rotulo: string }[] = [
+  { chave: "TODAS", rotulo: "Todas" },
+  { chave: "ATIVAS", rotulo: "Ativas" },
+  { chave: "AGUARDANDO", rotulo: "Aguardando pagamento" },
+  { chave: "EM_ATRASO", rotulo: "Com parcelas vencidas" },
+  { chave: "SEM_CONTRATO", rotulo: "Sem contrato assinado" },
+];
+
+/** Filtros da lista (e da busca de documentos "de todas do filtro"), no formato da API. */
+export interface FiltrosDaLista {
+  alunoNome?: string;
+  alunoCpf?: string;
+  cursoId?: string;
+  situacao?: string;
+  situacaoCobrancaId?: string;
+  tagId?: string;
+  contratoAssinado?: boolean;
+  tcdAssinado?: boolean;
+  comParcelaVencida?: boolean;
+  situacaoDocumentacao?: string;
+  dataMatriculaInicio?: string;
+  dataMatriculaFim?: string;
+}
+
+/** Lista de matrículas (padrão docs/especificacao): contadores, abas, filtros e tabela. */
 @Component({
   selector: "app-matriculas-list",
   standalone: true,
@@ -46,23 +78,207 @@ import {
     NgClass,
     RouterLink,
     ReactiveFormsModule,
-    MatTableModule,
     MatButtonModule,
     MatIconModule,
     MatCheckboxModule,
     MatFormFieldModule,
     MatInputModule,
-    MatPaginatorModule,
+    MatMenuModule,
     MatProgressBarModule,
     MatSelectModule,
     MatDialogModule,
+    PaginacaoComponent,
   ],
   template: `
-    <div class="flex items-center justify-between mb-4">
-      <h1 class="ef-title">Matrículas</h1>
-      <div class="flex items-center gap-2 flex-wrap">
-        @if (authService.temPerfil("ADMINISTRADOR", "FINANCEIRO")) {
-          @if (selecionadas.size > 0) {
+    <div class="ef-page">
+      <div class="ef-page-header">
+        <div>
+          <h1 class="ef-title">Matrículas</h1>
+          <p class="ef-subtitle">
+            Acompanhe matrículas, contratos, documentação e a situação das parcelas.
+          </p>
+        </div>
+        <div class="flex flex-wrap items-center gap-3">
+          @if (authService.temPerfil("ADMINISTRADOR", "FINANCEIRO")) {
+            <button mat-stroked-button type="button" [matMenuTriggerFor]="lote">
+              Ações em lote <mat-icon iconPositionEnd>expand_more</mat-icon>
+            </button>
+            <mat-menu #lote="matMenu">
+              <button
+                mat-menu-item
+                type="button"
+                [disabled]="total() === 0"
+                title="Busca no sistema legado os documentos dos alunos de todas as matrículas desta consulta"
+                (click)="buscarDocumentosEmLote(false)"
+              >
+                <mat-icon>cloud_download</mat-icon>
+                Buscar documentos no legado (todas do filtro: {{ total() }})
+              </button>
+            </mat-menu>
+          }
+          <a mat-flat-button color="primary" routerLink="/matriculas/cadastro">
+            <mat-icon>add</mat-icon> Nova matrícula
+          </a>
+        </div>
+      </div>
+
+      <div class="ef-kpis" data-testid="contadores">
+        <div class="ef-kpi">
+          <div class="ef-kpi-label">Todas as matrículas</div>
+          <div class="ef-kpi-value">{{ numero(contadores()?.total) }}</div>
+        </div>
+        <div class="ef-kpi">
+          <div class="ef-kpi-label">Ativas</div>
+          <div class="ef-kpi-value">{{ numero(contadores()?.ativas) }}</div>
+        </div>
+        <div class="ef-kpi">
+          <div class="ef-kpi-label">Com parcelas vencidas</div>
+          <div class="ef-kpi-value">{{ numero(contadores()?.comParcelaVencida) }}</div>
+        </div>
+        <div class="ef-kpi">
+          <div class="ef-kpi-label">Documentação incompleta</div>
+          <div class="ef-kpi-value">{{ numero(contadores()?.documentacaoIncompleta) }}</div>
+        </div>
+      </div>
+
+      <section class="ef-card overflow-hidden">
+        <div class="ef-tabs" role="tablist">
+          @for (a of abas; track a.chave) {
+            <button
+              type="button"
+              role="tab"
+              class="ef-tab"
+              [attr.aria-selected]="aba() === a.chave"
+              (click)="mudarAba(a.chave)"
+            >
+              {{ a.rotulo }}
+            </button>
+          }
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3 p-4">
+          <label
+            class="flex min-w-[260px] flex-1 items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 focus-within:border-brand-600"
+          >
+            <mat-icon class="text-muted">search</mat-icon>
+            <input
+              [formControl]="busca"
+              type="search"
+              placeholder="Buscar por nome ou CPF do aluno"
+              aria-label="Buscar matrículas por nome ou CPF do aluno"
+              class="w-full border-0 bg-transparent text-sm outline-none"
+            />
+          </label>
+          <select
+            class="w-[220px] max-w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm"
+            aria-label="Filtrar por curso"
+            [value]="filtros.controls.cursoId.value ?? ''"
+            (change)="filtros.controls.cursoId.setValue($any($event.target).value || undefined)"
+          >
+            <option value="">Todos os cursos</option>
+            @for (c of cursos(); track c.id) {
+              <option [value]="c.id" [selected]="c.id === filtros.controls.cursoId.value">
+                {{ c.nome }}
+              </option>
+            }
+          </select>
+          <select
+            class="w-[200px] max-w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm"
+            aria-label="Filtrar por situação"
+            [value]="filtros.controls.situacao.value ?? ''"
+            (change)="filtros.controls.situacao.setValue($any($event.target).value || undefined)"
+          >
+            <option value="">Todas as situações</option>
+            @for (s of situacoesMatricula; track s.codigo) {
+              <option [value]="s.codigo" [selected]="s.codigo === filtros.controls.situacao.value">
+                {{ s.nome }}
+              </option>
+            }
+          </select>
+          <button
+            mat-stroked-button
+            type="button"
+            [attr.aria-expanded]="maisFiltros()"
+            (click)="maisFiltros.set(!maisFiltros())"
+          >
+            <mat-icon>filter_list</mat-icon> Filtros
+            @if (filtrosAvancadosAtivos() > 0) {
+              <span
+                class="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-700 px-1.5 text-xs text-white"
+                >{{ filtrosAvancadosAtivos() }}</span
+              >
+            }
+          </button>
+          @if (temFiltro()) {
+            <button mat-button type="button" (click)="limparFiltros()">Limpar</button>
+          }
+        </div>
+
+        @if (maisFiltros()) {
+          <form
+            [formGroup]="filtros"
+            class="grid grid-cols-2 items-start gap-3 border-t border-line bg-[#fafbfc] p-4 sm:grid-cols-3 lg:grid-cols-4"
+          >
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Situação de cobrança</mat-label>
+              <mat-select formControlName="situacaoCobrancaId">
+                <mat-option [value]="undefined">Todas</mat-option>
+                @for (situacao of situacoesCobranca; track situacao.id) {
+                  <mat-option [value]="situacao.id">{{ situacao.nome }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>TAG</mat-label>
+              <mat-select formControlName="tagId">
+                <mat-option [value]="undefined">Todas</mat-option>
+                @for (tag of tags; track tag.id) {
+                  <mat-option [value]="tag.id">{{ tag.nome }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Documentação</mat-label>
+              <mat-select formControlName="situacaoDocumentacao">
+                <mat-option [value]="undefined">Todas</mat-option>
+                @for (s of situacoesDocumentacao; track s.valor) {
+                  <mat-option [value]="s.valor">{{ s.rotulo }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Contrato assinado</mat-label>
+              <mat-select formControlName="contratoAssinado">
+                <mat-option [value]="undefined">Todos</mat-option>
+                <mat-option [value]="true">Sim</mat-option>
+                <mat-option [value]="false">Não</mat-option>
+              </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>TCD assinado</mat-label>
+              <mat-select formControlName="tcdAssinado">
+                <mat-option [value]="undefined">Todos</mat-option>
+                <mat-option [value]="true">Sim</mat-option>
+                <mat-option [value]="false">Não</mat-option>
+              </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Matrícula de</mat-label>
+              <input matInput type="date" formControlName="dataMatriculaInicio" />
+            </mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Matrícula até</mat-label>
+              <input matInput type="date" formControlName="dataMatriculaFim" />
+            </mat-form-field>
+          </form>
+        }
+
+        @if (selecionadas.size > 0 && authService.temPerfil("ADMINISTRADOR", "FINANCEIRO")) {
+          <div
+            class="flex flex-wrap items-center gap-3 border-t border-line bg-brand-50 px-4 py-2.5 text-sm"
+            role="status"
+          >
+            <strong>{{ selecionadas.size }} marcada(s)</strong>
             <button
               mat-flat-button
               color="primary"
@@ -70,280 +286,193 @@ import {
               title="Busca no sistema legado os documentos dos alunos das matrículas marcadas"
               (click)="buscarDocumentosEmLote(true)"
             >
-              <mat-icon>cloud_download</mat-icon> Buscar documentos no legado ({{
-                selecionadas.size
-              }}
-              marcadas)
+              <mat-icon>cloud_download</mat-icon> Buscar documentos no legado
             </button>
+            <button mat-button type="button" (click)="limparSelecao()">Limpar seleção</button>
+          </div>
+        }
+
+        @if (carregando()) {
+          <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+        }
+
+        <div class="overflow-x-auto">
+          <table class="ef-table ef-table-compact" data-testid="tabela-matriculas">
+            <thead>
+              <tr>
+                <th class="w-10">
+                  <mat-checkbox
+                    aria-label="Selecionar todas desta página"
+                    [checked]="todasDaPaginaMarcadas()"
+                    [indeterminate]="algumasDaPaginaMarcadas()"
+                    (change)="marcarPagina($event.checked)"
+                  ></mat-checkbox>
+                </th>
+                <th class="ef-col-principal">
+                  Aluno
+                  <button
+                    type="button"
+                    class="ml-1 inline-flex h-6 w-6 items-center justify-center rounded border-0 bg-transparent align-middle text-muted"
+                    [attr.aria-label]="cpfVisivel() ? 'Ocultar CPF' : 'Mostrar CPF'"
+                    [title]="cpfVisivel() ? 'Ocultar CPF' : 'Mostrar CPF'"
+                    (click)="cpfVisivel.set(!cpfVisivel())"
+                  >
+                    <mat-icon class="!h-[18px] !w-[18px] !text-[18px]">{{
+                      cpfVisivel() ? "visibility_off" : "visibility"
+                    }}</mat-icon>
+                  </button>
+                </th>
+                <th>Curso</th>
+                <th>Matrícula</th>
+                <th>Situação</th>
+                <th>Documentação</th>
+                <th>Contrato</th>
+                <th>Parcelas</th>
+                <th class="w-[1%]"><span class="sr-only">Ações</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (m of matriculas(); track m.id) {
+                <tr class="group">
+                  <td>
+                    <mat-checkbox
+                      [aria-label]="'Selecionar a matrícula de ' + (m.aluno?.nome || 'aluno')"
+                      [checked]="selecionadas.has(m.id)"
+                      (change)="marcar(m.id, $event.checked)"
+                    ></mat-checkbox>
+                  </td>
+                  <td class="ef-col-principal">
+                    <div class="flex items-center gap-3">
+                      <span class="ef-avatar">{{ iniciais(m.aluno?.nome) }}</span>
+                      <div class="leading-tight">
+                        <a
+                          [routerLink]="['/alunos', m.alunoId]"
+                          class="font-medium text-brand-700 no-underline hover:underline"
+                          >{{ m.aluno?.nome || m.alunoId }}</a
+                        >
+                        <div class="text-xs tabular-nums text-muted">
+                          CPF {{ cpf(m.aluno?.cpf) }}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>{{ m.curso?.nome || m.cursoId }}</td>
+                  <td class="whitespace-nowrap leading-tight">
+                    <div>{{ m.numeroMatricula || "—" }}</div>
+                    <div class="text-xs text-muted">
+                      {{ m.dataMatricula ? (m.dataMatricula | date: "dd/MM/yyyy" : "UTC") : "—" }}
+                    </div>
+                  </td>
+                  <td>
+                    <span [class]="pillSituacao(m.situacao)">{{ rotuloSituacao(m.situacao) }}</span>
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      [class]="
+                        pillDocumentacao(m.situacaoDocumentacao) + ' cursor-pointer border-0'
+                      "
+                      title="Ver os documentos desta matrícula"
+                      (click)="abrirDocumentos(m)"
+                    >
+                      {{ situacaoDocumentacao(m).rotulo }}
+                    </button>
+                  </td>
+                  <td class="leading-tight">
+                    <span
+                      [class]="m.contratoAssinado ? 'ef-pill ef-pill-ok' : 'ef-pill ef-pill-warn'"
+                      >{{ m.contratoAssinado ? "Assinado" : "Pendente" }}</span
+                    >
+                    <div class="mt-1 text-xs text-muted">
+                      TCD {{ m.tcdAssinado ? "assinado" : "pendente" }}
+                    </div>
+                  </td>
+                  <td>
+                    <div class="flex flex-wrap gap-1">
+                      @for (badge of badgesParcelas(m); track badge.label) {
+                        <span class="ef-chip" [ngClass]="badge.classe">{{ badge.label }}</span>
+                      }
+                      @if (badgesParcelas(m).length === 0) {
+                        <span class="text-xs text-muted">—</span>
+                      }
+                    </div>
+                  </td>
+                  <td class="whitespace-nowrap text-right">
+                    <button
+                      mat-icon-button
+                      type="button"
+                      [matMenuTriggerFor]="acoes"
+                      [matMenuTriggerData]="{ m: m }"
+                      [attr.aria-label]="'Ações da matrícula de ' + (m.aluno?.nome || 'aluno')"
+                    >
+                      <mat-icon>more_vert</mat-icon>
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+
+          @if (!carregando() && matriculas().length === 0) {
+            <p class="m-0 p-8 text-center text-muted">Nenhuma matrícula encontrada.</p>
           }
-          <button
-            mat-stroked-button
-            type="button"
-            [disabled]="total === 0"
-            title="Busca no sistema legado os documentos dos alunos de todas as matrículas desta consulta"
-            (click)="buscarDocumentosEmLote(false)"
-          >
-            <mat-icon>cloud_download</mat-icon> Buscar documentos de todas do filtro ({{ total }})
+        </div>
+
+        <app-paginacao
+          class="block border-t border-line"
+          rotuloItens="matrículas"
+          [total]="total()"
+          [pagina]="pagina()"
+          [tamanho]="tamanho()"
+          (paginaAlterada)="mudarPagina($event)"
+          (tamanhoAlterado)="mudarTamanho($event)"
+        />
+      </section>
+    </div>
+
+    <mat-menu #acoes="matMenu">
+      <ng-template matMenuContent let-m="m">
+        <a mat-menu-item [routerLink]="['/matriculas', m.id]">
+          <mat-icon>edit</mat-icon> Editar matrícula
+        </a>
+        @if (authService.temPerfil("ADMINISTRADOR")) {
+          <a mat-menu-item [routerLink]="['/cobranca/matriculas', m.id]">
+            <mat-icon>receipt_long</mat-icon> Ficha de cobrança
+          </a>
+        }
+        <button mat-menu-item type="button" (click)="abrirDocumentos(m)">
+          <mat-icon>folder_open</mat-icon> Documentos
+        </button>
+        @if (authService.temPerfil("ADMINISTRADOR", "FINANCEIRO")) {
+          <button mat-menu-item type="button" (click)="abrirContrato(m)">
+            <mat-icon>draw</mat-icon> Contrato de prestação de serviços
+          </button>
+          <button mat-menu-item type="button" (click)="buscarDocumentosLegado(m)">
+            <mat-icon>cloud_download</mat-icon> Buscar documentos no legado
           </button>
         }
-        <a mat-raised-button color="primary" routerLink="/matriculas/cadastro">
-          <mat-icon>add</mat-icon> Nova matrícula
-        </a>
-      </div>
-    </div>
-
-    <form
-      [formGroup]="filtros"
-      class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2 items-start mb-3"
-    >
-      <mat-form-field appearance="outline" subscriptSizing="dynamic">
-        <mat-label>Nome do aluno</mat-label>
-        <input matInput formControlName="alunoNome" />
-      </mat-form-field>
-      <mat-form-field appearance="outline" subscriptSizing="dynamic">
-        <mat-label>CPF</mat-label>
-        <input matInput formControlName="alunoCpf" />
-      </mat-form-field>
-      <mat-form-field appearance="outline" subscriptSizing="dynamic">
-        <mat-label>Situação</mat-label>
-        <mat-select formControlName="situacao">
-          <mat-option [value]="undefined">Todas</mat-option>
-          @for (s of situacoesMatricula; track s.codigo) {
-            <mat-option [value]="s.codigo">{{ s.nome }}</mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
-      <mat-form-field appearance="outline" subscriptSizing="dynamic">
-        <mat-label>Situação de cobrança</mat-label>
-        <mat-select formControlName="situacaoCobrancaId">
-          <mat-option [value]="undefined">Todas</mat-option>
-          @for (situacao of situacoesCobranca; track situacao.id) {
-            <mat-option [value]="situacao.id">{{ situacao.nome }}</mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
-      <mat-form-field appearance="outline" subscriptSizing="dynamic">
-        <mat-label>TAG</mat-label>
-        <mat-select formControlName="tagId">
-          <mat-option [value]="undefined">Todas</mat-option>
-          @for (tag of tags; track tag.id) {
-            <mat-option [value]="tag.id">{{ tag.nome }}</mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
-      <mat-form-field appearance="outline" subscriptSizing="dynamic">
-        <mat-label>Documentação</mat-label>
-        <mat-select formControlName="situacaoDocumentacao">
-          <mat-option [value]="undefined">Todas</mat-option>
-          @for (s of situacoesDocumentacao; track s.valor) {
-            <mat-option [value]="s.valor">{{ s.rotulo }}</mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
-      <mat-form-field appearance="outline" subscriptSizing="dynamic">
-        <mat-label>Contrato assinado</mat-label>
-        <mat-select formControlName="contratoAssinado">
-          <mat-option [value]="undefined">Todos</mat-option>
-          <mat-option [value]="true">Sim</mat-option>
-          <mat-option [value]="false">Não</mat-option>
-        </mat-select>
-      </mat-form-field>
-      <mat-form-field appearance="outline" subscriptSizing="dynamic">
-        <mat-label>TCD assinado</mat-label>
-        <mat-select formControlName="tcdAssinado">
-          <mat-option [value]="undefined">Todos</mat-option>
-          <mat-option [value]="true">Sim</mat-option>
-          <mat-option [value]="false">Não</mat-option>
-        </mat-select>
-      </mat-form-field>
-      <mat-form-field appearance="outline" subscriptSizing="dynamic">
-        <mat-label>Matrícula de</mat-label>
-        <input matInput type="date" formControlName="dataMatriculaInicio" />
-      </mat-form-field>
-      <mat-form-field appearance="outline" subscriptSizing="dynamic">
-        <mat-label>Matrícula até</mat-label>
-        <input matInput type="date" formControlName="dataMatriculaFim" />
-      </mat-form-field>
-    </form>
-
-    @if (carregando) {
-      <mat-progress-bar mode="indeterminate"></mat-progress-bar>
-    }
-
-    <div class="ef-card overflow-x-auto mt-2 w-full">
-      <table mat-table [dataSource]="matriculas" class="w-full table-compact">
-        <ng-container matColumnDef="selecionar">
-          <th mat-header-cell *matHeaderCellDef class="w-10">
-            <mat-checkbox
-              aria-label="Selecionar todas desta página"
-              [checked]="todasDaPaginaMarcadas()"
-              [indeterminate]="algumasDaPaginaMarcadas()"
-              (change)="marcarPagina($event.checked)"
-            ></mat-checkbox>
-          </th>
-          <td mat-cell *matCellDef="let m">
-            <mat-checkbox
-              [aria-label]="'Selecionar a matrícula de ' + (m.aluno?.nome || 'aluno')"
-              [checked]="selecionadas.has(m.id)"
-              (change)="marcar(m.id, $event.checked)"
-            ></mat-checkbox>
-          </td>
-        </ng-container>
-        <ng-container matColumnDef="aluno">
-          <th mat-header-cell *matHeaderCellDef>Aluno</th>
-          <td mat-cell *matCellDef="let m">
-            {{ m.aluno?.nome || m.alunoId }}
-            @if (m.aluno?.codigo) {
-              <span class="text-xs text-gray-400 block">Cód. {{ m.aluno?.codigo }}</span>
-            }
-          </td>
-        </ng-container>
-        <ng-container matColumnDef="cpf">
-          <th mat-header-cell *matHeaderCellDef>CPF</th>
-          <td mat-cell *matCellDef="let m" class="whitespace-nowrap">
-            {{ m.aluno?.cpf ? formatarCpf(m.aluno.cpf) : "—" }}
-          </td>
-        </ng-container>
-        <ng-container matColumnDef="celular">
-          <th mat-header-cell *matHeaderCellDef>Celular</th>
-          <td mat-cell *matCellDef="let m" class="whitespace-nowrap">
-            {{ m.aluno?.telefone1 || m.aluno?.telefone2 || "—" }}
-          </td>
-        </ng-container>
-        <ng-container matColumnDef="email">
-          <th mat-header-cell *matHeaderCellDef>E-mail</th>
-          <td mat-cell *matCellDef="let m">{{ m.aluno?.email || "—" }}</td>
-        </ng-container>
-        <ng-container matColumnDef="curso">
-          <th mat-header-cell *matHeaderCellDef>Curso</th>
-          <td mat-cell *matCellDef="let m">{{ m.curso?.nome || m.cursoId }}</td>
-        </ng-container>
-        <ng-container matColumnDef="numero">
-          <th mat-header-cell *matHeaderCellDef>Matrícula</th>
-          <td mat-cell *matCellDef="let m">{{ m.numeroMatricula || "—" }}</td>
-        </ng-container>
-        <ng-container matColumnDef="data">
-          <th mat-header-cell *matHeaderCellDef>Data</th>
-          <td mat-cell *matCellDef="let m">
-            {{ m.dataMatricula ? (m.dataMatricula | date: "dd/MM/yyyy") : "—" }}
-          </td>
-        </ng-container>
-        <ng-container matColumnDef="situacao">
-          <th mat-header-cell *matHeaderCellDef>Situação</th>
-          <td mat-cell *matCellDef="let m">
-            <span
-              class="px-2 py-0.5 rounded text-xs whitespace-nowrap"
-              [class]="classeSituacao(m.situacao)"
-              >{{ rotuloSituacao(m.situacao) }}</span
-            >
-          </td>
-        </ng-container>
-        <ng-container matColumnDef="documentacao">
-          <th mat-header-cell *matHeaderCellDef>Documentação</th>
-          <td mat-cell *matCellDef="let m">
-            <button
-              type="button"
-              class="px-2 py-0.5 rounded text-xs whitespace-nowrap cursor-pointer border-0"
-              [class]="situacaoDocumentacao(m).classe"
-              title="Ver os documentos desta matrícula"
-              (click)="abrirDocumentos(m)"
-            >
-              {{ situacaoDocumentacao(m).rotulo }}
-            </button>
-          </td>
-        </ng-container>
-        <ng-container matColumnDef="parcelas">
-          <th mat-header-cell *matHeaderCellDef>Parcelas</th>
-          <td mat-cell *matCellDef="let m" class="whitespace-nowrap">
-            <div class="flex gap-1 flex-wrap">
-              @for (badge of badgesParcelas(m); track badge.label) {
-                <span class="px-2 py-0.5 rounded text-xs" [ngClass]="badge.classe">{{
-                  badge.label
-                }}</span>
-              }
-              @if (badgesParcelas(m).length === 0) {
-                <span class="text-gray-400 text-xs">—</span>
-              }
-            </div>
-          </td>
-        </ng-container>
-        <ng-container matColumnDef="acoes">
-          <th mat-header-cell *matHeaderCellDef class="text-right">Ações</th>
-          <td mat-cell *matCellDef="let m" class="text-right whitespace-nowrap">
-            <a
-              mat-icon-button
-              [routerLink]="['/cobranca/matriculas', m.id]"
-              aria-label="Ficha de cobrança"
-            >
-              <mat-icon>receipt_long</mat-icon>
-            </a>
-            <button
-              mat-icon-button
-              type="button"
-              aria-label="Documentos da matrícula"
-              title="Ver os documentos (visualizar e baixar)"
-              (click)="abrirDocumentos(m)"
-            >
-              <mat-icon>folder_open</mat-icon>
-            </button>
-            @if (authService.temPerfil("ADMINISTRADOR", "FINANCEIRO")) {
-              <button
-                mat-icon-button
-                type="button"
-                aria-label="Contrato de prestação de serviços"
-                title="Gerar, visualizar e enviar o contrato para assinatura"
-                (click)="abrirContrato(m)"
-              >
-                <mat-icon [class.text-green-600]="m.contratoAssinado">draw</mat-icon>
-              </button>
-              <button
-                mat-icon-button
-                type="button"
-                aria-label="Buscar documentos no legado"
-                title="Buscar os documentos do aluno no sistema legado e baixar os arquivos"
-                (click)="buscarDocumentosLegado(m)"
-              >
-                <mat-icon>cloud_download</mat-icon>
-              </button>
-            }
-            <a mat-icon-button [routerLink]="['/matriculas', m.id]" aria-label="Editar">
-              <mat-icon>edit</mat-icon>
-            </a>
-            <button mat-icon-button color="warn" (click)="remover(m)" aria-label="Remover">
-              <mat-icon>delete</mat-icon>
-            </button>
-          </td>
-        </ng-container>
-
-        <tr mat-header-row *matHeaderRowDef="colunas"></tr>
-        <tr mat-row *matRowDef="let row; columns: colunas"></tr>
-      </table>
-
-      @if (!carregando && matriculas.length === 0) {
-        <p class="p-6 text-center text-gray-500">Nenhuma matrícula encontrada.</p>
-      }
-
-      <mat-paginator
-        [length]="total"
-        [pageSize]="pageSize"
-        [pageIndex]="page - 1"
-        [pageSizeOptions]="[20, 50, 100]"
-        (page)="mudarPagina($event)"
-      ></mat-paginator>
-    </div>
+        <button mat-menu-item type="button" class="!text-red-700" (click)="remover(m)">
+          <mat-icon class="!text-red-700">delete</mat-icon> Remover
+        </button>
+      </ng-template>
+    </mat-menu>
   `,
 })
 export class MatriculasListComponent implements OnInit {
   private readonly service = inject(MatriculasService);
   private readonly cobrancaService = inject(CobrancaService);
+  private readonly cursosService = inject(CursosService);
   private readonly dialog = inject(MatDialog);
+  private readonly destroyRef = inject(DestroyRef);
   readonly authService = inject(AuthService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly fb = inject(FormBuilder);
 
+  readonly abas = ABAS;
+  readonly aba = signal<Aba>("TODAS");
+  readonly busca = new FormControl("", { nonNullable: true });
   readonly filtros = this.fb.nonNullable.group({
-    alunoNome: this.fb.control<string | undefined>(undefined),
-    alunoCpf: this.fb.control<string | undefined>(undefined),
+    cursoId: this.fb.control<string | undefined>(undefined),
     situacao: this.fb.control<string | undefined>(undefined),
     situacaoCobrancaId: this.fb.control<string | undefined>(undefined),
     tagId: this.fb.control<string | undefined>(undefined),
@@ -354,74 +483,164 @@ export class MatriculasListComponent implements OnInit {
     dataMatriculaFim: this.fb.control<string | undefined>(undefined),
   });
 
-  colunas = [
-    "selecionar",
-    "aluno",
-    "cpf",
-    "celular",
-    "email",
-    "curso",
-    "numero",
-    "data",
-    "situacao",
-    "documentacao",
-    "parcelas",
-    "acoes",
-  ];
   situacoesMatricula: SituacaoMatriculaOpcao[] = [];
   protected readonly situacoesDocumentacao = SITUACOES_DOCUMENTACAO;
-  protected readonly formatarCpf = formatarCpf;
   protected readonly rotuloSituacao = rotuloSituacaoMatricula;
-  protected readonly classeSituacao = classeSituacaoMatricula;
-  matriculas: Matricula[] = [];
   situacoesCobranca: SituacaoCobranca[] = [];
   tags: Tag[] = [];
-  total = 0;
-  page = 1;
-  pageSize = 20;
-  carregando = false;
+
+  readonly matriculas = signal<Matricula[]>([]);
+  readonly cursos = signal<Curso[]>([]);
+  readonly contadores = signal<ContadoresMatriculas | null>(null);
+  readonly total = signal(0);
+  readonly pagina = signal(1);
+  readonly tamanho = signal(20);
+  readonly carregando = signal(false);
+  readonly maisFiltros = signal(false);
+  /** O CPF aparece mascarado (***.***.***-**) até o usuário pedir para mostrar. */
+  readonly cpfVisivel = signal(false);
 
   ngOnInit(): void {
     this.service.situacoes().subscribe((res) => (this.situacoesMatricula = res));
     this.cobrancaService.listarSituacoes(true).subscribe((res) => (this.situacoesCobranca = res));
     this.cobrancaService.listarTags().subscribe((res) => (this.tags = res));
+    this.cursosService.listar({ pageSize: 100 }).subscribe((r) => this.cursos.set(r.data));
+    this.atualizarContadores();
     this.carregar();
-    this.filtros.valueChanges.pipe(debounceTime(400), distinctUntilChanged()).subscribe(() => {
-      this.page = 1;
-      this.selecionadas.clear();
-      this.carregar();
-    });
-  }
-
-  carregar(): void {
-    this.carregando = true;
-    const valores = this.filtros.getRawValue();
-    this.service
-      .listar({
-        alunoNome: valores.alunoNome || undefined,
-        alunoCpf: valores.alunoCpf || undefined,
-        situacao: valores.situacao || undefined,
-        situacaoCobrancaId: valores.situacaoCobrancaId || undefined,
-        tagId: valores.tagId || undefined,
-        contratoAssinado: valores.contratoAssinado ?? undefined,
-        tcdAssinado: valores.tcdAssinado ?? undefined,
-        situacaoDocumentacao: valores.situacaoDocumentacao || undefined,
-        dataMatriculaInicio: valores.dataMatriculaInicio || undefined,
-        dataMatriculaFim: valores.dataMatriculaFim || undefined,
-        page: this.page,
-        pageSize: this.pageSize,
-      })
-      .subscribe({
-        next: (res) => {
-          this.matriculas = res.data;
-          this.total = res.total;
-          this.carregando = false;
-        },
-        error: () => (this.carregando = false),
+    merge(this.busca.valueChanges, this.filtros.valueChanges)
+      .pipe(debounceTime(400), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.pagina.set(1);
+        this.selecionadas.clear();
+        this.carregar();
       });
   }
 
-  /** Contagem de parcelas por situação, para os badges do grid (item 4 do PENDENCIAS.md). */
+  numero(valor: number | undefined): string {
+    return valor === undefined ? "—" : valor.toLocaleString("pt-BR");
+  }
+
+  cpf(valor: string | undefined): string {
+    if (!valor) return "—";
+    return this.cpfVisivel() ? formatarCpf(valor) : "***.***.***-**";
+  }
+
+  iniciais(nome: string | undefined): string {
+    return iniciaisDe(nome ?? "");
+  }
+
+  /** Situação da matrícula em pílula: ativa/concluída verde, aguardando pagamento laranja, indeferida/cancelada vermelha. */
+  pillSituacao(codigo: string): string {
+    if (codigo === "ATIVA" || codigo === "CONCLUIDA") return "ef-pill ef-pill-ok";
+    if (codigo === "AGUARDANDO_PAGAMENTO") return "ef-pill ef-pill-warn";
+    if (["INDEFERIDA", "CANCELADA"].includes(codigo)) return "ef-pill ef-pill-bad";
+    return "ef-pill";
+  }
+
+  pillDocumentacao(situacao: SituacaoDocumentacao): string {
+    if (situacao === "DOCUMENTACAO_COMPLETA") return "ef-pill ef-pill-ok";
+    if (situacao === "SEM_DOCUMENTOS") return "ef-pill ef-pill-bad";
+    return "ef-pill ef-pill-warn";
+  }
+
+  /** Filtros avançados em uso (o número do botão "Filtros"). */
+  filtrosAvancadosAtivos(): number {
+    const v = this.filtros.getRawValue();
+    return [
+      v.situacaoCobrancaId,
+      v.tagId,
+      v.situacaoDocumentacao,
+      v.contratoAssinado,
+      v.tcdAssinado,
+      v.dataMatriculaInicio,
+      v.dataMatriculaFim,
+    ].filter((x) => x !== undefined && x !== null && x !== "").length;
+  }
+
+  temFiltro(): boolean {
+    const v = this.filtros.getRawValue();
+    return (
+      this.busca.value.trim() !== "" ||
+      !!v.cursoId ||
+      !!v.situacao ||
+      this.filtrosAvancadosAtivos() > 0 ||
+      this.aba() !== "TODAS"
+    );
+  }
+
+  limparFiltros(): void {
+    this.aba.set("TODAS");
+    this.busca.setValue("", { emitEvent: false });
+    this.filtros.reset({}, { emitEvent: false });
+    this.pagina.set(1);
+    this.selecionadas.clear();
+    this.carregar();
+  }
+
+  mudarAba(aba: Aba): void {
+    this.aba.set(aba);
+    this.pagina.set(1);
+    this.selecionadas.clear();
+    this.carregar();
+  }
+
+  /**
+   * Os filtros no formato da API: a busca (CPF se só tem dígitos e pontuação; senão nome), os
+   * campos e o filtro rápido da aba escolhida.
+   */
+  valoresDosFiltros(): FiltrosDaLista {
+    const v = this.filtros.getRawValue();
+    const texto = this.busca.value.trim();
+    const pareceCpf = /^[\d.\-\s]+$/.test(texto) && texto.replace(/\D/g, "").length >= 3;
+    const filtros: FiltrosDaLista = {
+      alunoNome: texto && !pareceCpf ? texto : undefined,
+      alunoCpf: texto && pareceCpf ? texto : undefined,
+      cursoId: v.cursoId || undefined,
+      situacao: v.situacao || undefined,
+      situacaoCobrancaId: v.situacaoCobrancaId || undefined,
+      tagId: v.tagId || undefined,
+      contratoAssinado: v.contratoAssinado ?? undefined,
+      tcdAssinado: v.tcdAssinado ?? undefined,
+      situacaoDocumentacao: v.situacaoDocumentacao || undefined,
+      dataMatriculaInicio: v.dataMatriculaInicio || undefined,
+      dataMatriculaFim: v.dataMatriculaFim || undefined,
+    };
+    switch (this.aba()) {
+      case "ATIVAS":
+        filtros.situacao = "ATIVA";
+        break;
+      case "AGUARDANDO":
+        filtros.situacao = "AGUARDANDO_PAGAMENTO";
+        break;
+      case "EM_ATRASO":
+        filtros.comParcelaVencida = true;
+        break;
+      case "SEM_CONTRATO":
+        filtros.contratoAssinado = false;
+        break;
+    }
+    return filtros;
+  }
+
+  carregar(): void {
+    this.carregando.set(true);
+    this.service
+      .listar({ ...this.valoresDosFiltros(), page: this.pagina(), pageSize: this.tamanho() })
+      .subscribe({
+        next: (res) => {
+          this.matriculas.set(res.data);
+          this.total.set(res.total);
+          this.carregando.set(false);
+        },
+        error: () => this.carregando.set(false),
+      });
+  }
+
+  private atualizarContadores(): void {
+    this.service.contadores().subscribe((c) => this.contadores.set(c));
+  }
+
+  /** Contagem de parcelas por situação, para os selos do grid (item 4 do PENDENCIAS.md). */
   badgesParcelas(m: Matricula): Array<{ label: string; classe: string }> {
     const r = m.resumoParcelas;
     if (!r) return [];
@@ -477,22 +696,26 @@ export class MatriculasListComponent implements OnInit {
   }
 
   marcarPagina(marcada: boolean): void {
-    for (const m of this.matriculas) this.marcar(m.id, marcada);
+    for (const m of this.matriculas()) this.marcar(m.id, marcada);
+  }
+
+  limparSelecao(): void {
+    this.selecionadas.clear();
   }
 
   todasDaPaginaMarcadas(): boolean {
-    return this.matriculas.length > 0 && this.matriculas.every((m) => this.selecionadas.has(m.id));
+    const m = this.matriculas();
+    return m.length > 0 && m.every((x) => this.selecionadas.has(x.id));
   }
 
   algumasDaPaginaMarcadas(): boolean {
     return (
-      !this.todasDaPaginaMarcadas() && this.matriculas.some((m) => this.selecionadas.has(m.id))
+      !this.todasDaPaginaMarcadas() && this.matriculas().some((m) => this.selecionadas.has(m.id))
     );
   }
 
   /** Abre a busca em lote: das matrículas marcadas, ou de todas as que casam com o filtro atual. */
   buscarDocumentosEmLote(marcadas: boolean): void {
-    const v = this.filtros.getRawValue();
     const dados: DadosDocumentosLegadoLote = marcadas
       ? {
           matriculaIds: [...this.selecionadas],
@@ -500,19 +723,8 @@ export class MatriculasListComponent implements OnInit {
           origem: "marcadas",
         }
       : {
-          filtros: {
-            alunoNome: v.alunoNome || undefined,
-            alunoCpf: v.alunoCpf || undefined,
-            situacao: v.situacao || undefined,
-            situacaoCobrancaId: v.situacaoCobrancaId || undefined,
-            tagId: v.tagId || undefined,
-            contratoAssinado: v.contratoAssinado ?? undefined,
-            tcdAssinado: v.tcdAssinado ?? undefined,
-            situacaoDocumentacao: v.situacaoDocumentacao || undefined,
-            dataMatriculaInicio: v.dataMatriculaInicio || undefined,
-            dataMatriculaFim: v.dataMatriculaFim || undefined,
-          },
-          quantidade: this.total,
+          filtros: this.valoresDosFiltros(),
+          quantidade: this.total(),
           origem: "do filtro atual",
         };
     this.dialog
@@ -527,9 +739,14 @@ export class MatriculasListComponent implements OnInit {
       .subscribe(() => this.carregar());
   }
 
-  mudarPagina(evento: PageEvent): void {
-    this.page = evento.pageIndex + 1;
-    this.pageSize = evento.pageSize;
+  mudarPagina(pagina: number): void {
+    this.pagina.set(pagina);
+    this.carregar();
+  }
+
+  mudarTamanho(tamanho: number): void {
+    this.tamanho.set(tamanho);
+    this.pagina.set(1);
     this.carregar();
   }
 
@@ -540,13 +757,14 @@ export class MatriculasListComponent implements OnInit {
       confirmarTexto: "Remover",
     };
     this.dialog
-      .open(ConfirmDialogComponent, { data, width: "420px" })
+      .open(ConfirmDialogComponent, { data, width: "440px" })
       .afterClosed()
       .subscribe((ok) => {
         if (!ok) return;
         this.service.remover(matricula.id).subscribe(() => {
           this.snackBar.open("Matrícula removida", "Fechar", { duration: 3000 });
           this.carregar();
+          this.atualizarContadores();
         });
       });
   }
@@ -567,7 +785,10 @@ export class MatriculasListComponent implements OnInit {
       })
       // Conferir/baixar documentos ali dentro muda a situação da documentação desta linha.
       .afterClosed()
-      .subscribe(() => this.carregar());
+      .subscribe(() => {
+        this.carregar();
+        this.atualizarContadores();
+      });
   }
 
   situacaoDocumentacao(m: Matricula) {

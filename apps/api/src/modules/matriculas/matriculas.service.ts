@@ -274,6 +274,11 @@ async function garantirChaveNaturalLivre(
 }
 
 export const matriculasService = {
+  /** Contadores do topo da lista. */
+  contadores() {
+    return matriculasRepository.contadores();
+  },
+
   async listar(params: ListarMatriculasInput) {
     const {
       page,
@@ -289,6 +294,7 @@ export const matriculasService = {
       tagId,
       contratoAssinado,
       tcdAssinado,
+      comParcelaVencida,
       situacaoDocumentacao,
     } = params;
     const { data, total } = await matriculasRepository.list({
@@ -303,6 +309,7 @@ export const matriculasService = {
       tagId,
       contratoAssinado,
       tcdAssinado,
+      comParcelaVencida,
       situacaoDocumentacao,
       skip: (page - 1) * pageSize,
       take: pageSize,

@@ -173,6 +173,14 @@ export function rotuloSituacaoMatricula(codigo: string | null | undefined): stri
   return codigo ? (ROTULO_SITUACAO_MATRICULA[codigo] ?? codigo) : "—";
 }
 
+/** Situação da matrícula em pílula: ativa/concluída verde, aguardando pagamento laranja, indeferida/cancelada vermelha. */
+export function pillSituacaoMatricula(codigo: string): string {
+  if (codigo === "ATIVA" || codigo === "CONCLUIDA") return "ef-pill ef-pill-ok";
+  if (codigo === "AGUARDANDO_PAGAMENTO") return "ef-pill ef-pill-warn";
+  if (["INDEFERIDA", "CANCELADA"].includes(codigo)) return "ef-pill ef-pill-bad";
+  return "ef-pill";
+}
+
 export function classeSituacaoMatricula(codigo: string): string {
   if (codigo === "ATIVA" || codigo === "CONCLUIDA") return "bg-green-100 text-green-700";
   if (codigo === "AGUARDANDO_PAGAMENTO") return "bg-amber-100 text-amber-700";

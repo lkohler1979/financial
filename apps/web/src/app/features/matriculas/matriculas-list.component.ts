@@ -20,6 +20,7 @@ import { Curso } from "../../core/models/curso.model";
 import {
   ContadoresMatriculas,
   Matricula,
+  pillSituacaoMatricula,
   rotuloSituacaoMatricula,
   SITUACOES_DOCUMENTACAO,
   SituacaoDocumentacao,
@@ -529,13 +530,7 @@ export class MatriculasListComponent implements OnInit {
     return iniciaisDe(nome ?? "");
   }
 
-  /** Situação da matrícula em pílula: ativa/concluída verde, aguardando pagamento laranja, indeferida/cancelada vermelha. */
-  pillSituacao(codigo: string): string {
-    if (codigo === "ATIVA" || codigo === "CONCLUIDA") return "ef-pill ef-pill-ok";
-    if (codigo === "AGUARDANDO_PAGAMENTO") return "ef-pill ef-pill-warn";
-    if (["INDEFERIDA", "CANCELADA"].includes(codigo)) return "ef-pill ef-pill-bad";
-    return "ef-pill";
-  }
+  protected readonly pillSituacao = pillSituacaoMatricula;
 
   pillDocumentacao(situacao: SituacaoDocumentacao): string {
     if (situacao === "DOCUMENTACAO_COMPLETA") return "ef-pill ef-pill-ok";

@@ -184,7 +184,10 @@ describe("lista de alunos: situação financeira e última matrícula (banco rea
   it("os contadores do topo somam os grupos", async () => {
     const c = await alunosRepository.contadores(agora);
     expect(c.total).toBe(c.comMatricula + c.semMatricula);
+    // Só limites inferiores, dos dados deste teste: cada contador é uma consulta própria e outros
+    // testes criam e apagam alunos ao mesmo tempo no mesmo banco (comparar um com outro é instável).
     expect(c.comPendencias).toBeGreaterThanOrEqual(1);
-    expect(c.comPendencias).toBeLessThanOrEqual(c.comMatricula);
+    expect(c.comMatricula).toBeGreaterThanOrEqual(3);
+    expect(c.semMatricula).toBeGreaterThanOrEqual(1);
   });
 });

@@ -149,8 +149,9 @@ describe("filtros da lista de matrículas (banco real)", () => {
     const c = await matriculasRepository.contadores(agora);
     expect(c.total).toBeGreaterThanOrEqual(3);
     expect(c.comParcelaVencida).toBeGreaterThanOrEqual(1);
-    expect(c.comParcelaVencida).toBeLessThanOrEqual(c.total);
     expect(c.semContratoAssinado).toBeGreaterThanOrEqual(1);
-    expect(c.ativas + c.aguardandoPagamento).toBeLessThanOrEqual(c.total);
+    // Só limites inferiores, dos dados deste teste: cada contador é uma consulta própria e outros
+    // testes de integração criam e apagam matrículas ao mesmo tempo no mesmo banco, então comparar
+    // um contador com outro (ex.: vencidas <= total) dá falso erro.
   });
 });

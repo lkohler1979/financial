@@ -1,4 +1,5 @@
-import { Component, inject, OnInit } from "@angular/core";
+import { DatePipe } from "@angular/common";
+import { Component, inject, OnInit, signal } from "@angular/core";
 import { ActivatedRoute, Router, RouterLink } from "@angular/router";
 import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
@@ -21,17 +22,27 @@ import { SacadoPayload } from "../../core/models/sacado.model";
 import { AlunosService } from "../../core/services/alunos.service";
 import { CursosService } from "../../core/services/cursos.service";
 import { CobrancaService } from "../../core/services/cobranca.service";
-import { AgenteEducacional, MatriculaPayload } from "../../core/models/matricula.model";
+import {
+  AgenteEducacional,
+  Matricula,
+  MatriculaPayload,
+  pillSituacaoMatricula,
+  rotuloSituacaoMatricula,
+} from "../../core/models/matricula.model";
 import { Aluno } from "../../core/models/aluno.model";
 import { Curso } from "../../core/models/curso.model";
 import { SituacaoCobranca, Tag } from "../../core/models/cobranca.model";
 import { formatarCnpj, formatarCpf } from "../../shared/utils/cpf.util";
+import { iniciaisDe } from "../../shared/utils/iniciais";
+
+type Aba = "dados" | "situacao" | "documentos";
 
 @Component({
   selector: "app-matricula-form",
   standalone: true,
   imports: [
     RouterLink,
+    DatePipe,
     ReactiveFormsModule,
     MatButtonModule,
     MatIconModule,
@@ -47,247 +58,438 @@ import { formatarCnpj, formatarCpf } from "../../shared/utils/cpf.util";
     SacadoMatriculaComponent,
   ],
   template: `
-    <div class="flex items-center gap-2 mb-4">
-      <a mat-icon-button routerLink="/matriculas" aria-label="Voltar">
-        <mat-icon>arrow_back</mat-icon>
+    <div class="ef-page">
+      <a
+        routerLink="/matriculas"
+        class="mb-3 inline-flex items-center gap-2 text-sm font-medium text-brand-700 no-underline hover:underline"
+      >
+        <mat-icon class="!h-5 !w-5 !text-[20px]">arrow_back</mat-icon> Voltar para matrículas
       </a>
-      <h1 class="ef-title">
-        {{ editando ? "Editar matrícula" : "Nova matrícula" }}
-      </h1>
-    </div>
 
-    @if (carregando) {
-      <mat-progress-bar mode="indeterminate"></mat-progress-bar>
-    }
-
-    <form [formGroup]="form" (ngSubmit)="salvar()" class="ef-card p-6 max-w-3xl">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4">
-        <mat-form-field appearance="outline">
-          <mat-label>Aluno</mat-label>
-          <input
-            matInput
-            formControlName="aluno"
-            [matAutocomplete]="autoAluno"
-            placeholder="Buscar por nome ou CPF"
-          />
-          <mat-autocomplete #autoAluno="matAutocomplete" [displayWith]="exibirAluno">
-            @for (a of alunos; track a.id) {
-              <mat-option [value]="a">{{ a.nome }} — {{ formatarCpf(a.cpf) }}</mat-option>
-            }
-          </mat-autocomplete>
-          @if (form.controls.aluno.hasError("required") || form.controls.aluno.hasError("obj")) {
-            <mat-error>Selecione um aluno da lista</mat-error>
-          }
-        </mat-form-field>
-
-        <mat-form-field appearance="outline">
-          <mat-label>Curso</mat-label>
-          <input
-            matInput
-            formControlName="curso"
-            [matAutocomplete]="autoCurso"
-            placeholder="Buscar por nome ou código"
-          />
-          <mat-autocomplete #autoCurso="matAutocomplete" [displayWith]="exibirCurso">
-            @for (c of cursos; track c.id) {
-              <mat-option [value]="c">{{ c.codigo }} — {{ c.nome }}</mat-option>
-            }
-          </mat-autocomplete>
-          @if (form.controls.curso.hasError("required") || form.controls.curso.hasError("obj")) {
-            <mat-error>Selecione um curso da lista</mat-error>
-          }
-        </mat-form-field>
-
-        <mat-form-field appearance="outline">
-          <mat-label>Número da matrícula</mat-label>
-          <input matInput formControlName="numeroMatricula" placeholder="Gerado automaticamente" />
-          <mat-hint>Em branco = gerado automaticamente (ano + 5 dígitos)</mat-hint>
-        </mat-form-field>
-
-        <mat-form-field appearance="outline">
-          <mat-label>Agente educacional</mat-label>
-          <mat-select formControlName="agenteEducacionalId">
-            <mat-option value="">—</mat-option>
-            @for (a of agentes; track a.id) {
-              <mat-option [value]="a.id">{{ a.nome }}</mat-option>
-            }
-          </mat-select>
-        </mat-form-field>
-
-        <mat-form-field appearance="outline">
-          <mat-label>Data da matrícula</mat-label>
-          <input matInput type="date" formControlName="dataMatricula" />
-        </mat-form-field>
-
-        <div class="flex items-center">
-          <mat-slide-toggle formControlName="contratoAssinado">Contrato assinado</mat-slide-toggle>
+      <div class="ef-page-header !mb-2">
+        <div>
+          <h1 class="ef-title">{{ editando ? "Cadastro da matrícula" : "Nova matrícula" }}</h1>
+          <p class="ef-subtitle">
+            {{
+              editando
+                ? "Mantenha os dados, a cobrança e os documentos da matrícula."
+                : "Escolha o aluno e o curso e, se quiser, já configure a cobrança."
+            }}
+          </p>
         </div>
-
-        <div class="flex items-center">
-          <mat-slide-toggle formControlName="tcdAssinado">TCD assinado</mat-slide-toggle>
-        </div>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-x-4 border-t pt-4 mt-2">
-        <p class="text-xs font-medium text-gray-600 col-span-1 md:col-span-3 mb-0">
-          Cobrança (opcional) — preenchendo valor e nº de parcelas
-          {{ editando ? "" : ", as parcelas mensais são geradas automaticamente ao salvar" }}
-        </p>
-        <mat-form-field appearance="outline">
-          <mat-label>Valor do curso</mat-label>
-          <input matInput type="number" min="0" step="0.01" formControlName="valorCurso" />
-        </mat-form-field>
-        <mat-form-field appearance="outline">
-          <mat-label>Número de parcelas</mat-label>
-          <input matInput type="number" min="1" max="360" formControlName="numeroParcelas" />
-        </mat-form-field>
-        <mat-form-field appearance="outline">
-          <mat-label>Dia de vencimento</mat-label>
-          <input matInput type="number" min="1" max="28" formControlName="diaVencimento" />
-        </mat-form-field>
-
-        @if (editando) {
-          <div class="col-span-1 md:col-span-3 -mt-2 mb-2">
-            @if (quantidadeParcelas > 0) {
-              <p class="text-xs text-gray-500">
-                {{ quantidadeParcelas }} parcela(s) já gerada(s) para esta matrícula — veja na Ficha
-                de Cobrança.
-              </p>
-            } @else {
-              <button
-                mat-stroked-button
-                type="button"
-                [disabled]="gerandoParcelas"
-                (click)="gerarParcelas()"
-              >
-                <mat-icon>receipt_long</mat-icon>
-                {{ gerandoParcelas ? "Gerando..." : "Gerar parcelas" }}
-              </button>
-              <p class="text-xs text-gray-500 mt-1">
-                Salve a matrícula com valor, número de parcelas e dia de vencimento preenchidos
-                antes de gerar.
-              </p>
-            }
-          </div>
+        @if (matricula()?.numeroMatricula; as numero) {
+          <span class="rounded-lg border border-line bg-white px-3 py-1.5 text-sm text-muted">
+            Matrícula <strong class="ml-1 text-ink">{{ numero }}</strong>
+          </span>
         }
       </div>
 
-      <mat-form-field appearance="outline" class="w-full">
-        <mat-label>Observações</mat-label>
-        <textarea matInput formControlName="observacoes" rows="3"></textarea>
-      </mat-form-field>
-
       @if (editando) {
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4 mt-2">
-          <div>
-            <p class="text-xs font-medium text-gray-600 mb-2">Situação de cobrança</p>
-            <mat-form-field appearance="outline" class="w-full">
-              <mat-select
-                [formControl]="situacaoCobrancaControl"
-                (selectionChange)="mudarSituacaoCobranca($event.value)"
-              >
-                @for (situacao of situacoesCobranca; track situacao.id) {
-                  <mat-option [value]="situacao.id">{{ situacao.nome }}</mat-option>
+        <div class="ef-tabs mb-5 !px-0" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            class="ef-tab"
+            [attr.aria-selected]="aba() === 'dados'"
+            (click)="aba.set('dados')"
+          >
+            Dados da matrícula
+          </button>
+          <button
+            type="button"
+            role="tab"
+            class="ef-tab"
+            [attr.aria-selected]="aba() === 'situacao'"
+            (click)="aba.set('situacao')"
+          >
+            Situação
+          </button>
+          <button
+            type="button"
+            role="tab"
+            class="ef-tab"
+            [attr.aria-selected]="aba() === 'documentos'"
+            (click)="aba.set('documentos')"
+          >
+            Documentos
+          </button>
+        </div>
+      }
+
+      @if (carregando) {
+        <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+      }
+
+      <!-- ===== Dados da matrícula ===== -->
+      <div
+        [class.hidden]="aba() !== 'dados'"
+        [class]="
+          editando ? 'grid items-start gap-5 lg:grid-cols-[1fr_320px]' : 'grid items-start gap-5'
+        "
+      >
+        <form
+          [formGroup]="form"
+          (ngSubmit)="salvar()"
+          class="ef-card min-w-0 p-6"
+          aria-label="Dados da matrícula"
+        >
+          <h2 class="ef-card-title"><mat-icon>school</mat-icon> Aluno e curso</h2>
+          <div class="grid grid-cols-1 gap-x-4 md:grid-cols-6">
+            <mat-form-field appearance="outline" class="md:col-span-3">
+              <mat-label>Aluno</mat-label>
+              <input
+                matInput
+                formControlName="aluno"
+                [matAutocomplete]="autoAluno"
+                placeholder="Buscar por nome ou CPF"
+              />
+              <mat-autocomplete #autoAluno="matAutocomplete" [displayWith]="exibirAluno">
+                @for (a of alunos; track a.id) {
+                  <mat-option [value]="a">{{ a.nome }} — {{ formatarCpf(a.cpf) }}</mat-option>
+                }
+              </mat-autocomplete>
+              @if (
+                form.controls.aluno.hasError("required") || form.controls.aluno.hasError("obj")
+              ) {
+                <mat-error>Selecione um aluno da lista</mat-error>
+              }
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="md:col-span-3">
+              <mat-label>Curso</mat-label>
+              <input
+                matInput
+                formControlName="curso"
+                [matAutocomplete]="autoCurso"
+                placeholder="Buscar por nome ou código"
+              />
+              <mat-autocomplete #autoCurso="matAutocomplete" [displayWith]="exibirCurso">
+                @for (c of cursos; track c.id) {
+                  <mat-option [value]="c">{{ c.codigo }} — {{ c.nome }}</mat-option>
+                }
+              </mat-autocomplete>
+              @if (
+                form.controls.curso.hasError("required") || form.controls.curso.hasError("obj")
+              ) {
+                <mat-error>Selecione um curso da lista</mat-error>
+              }
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="md:col-span-2" subscriptSizing="dynamic">
+              <mat-label>Número da matrícula</mat-label>
+              <input
+                matInput
+                formControlName="numeroMatricula"
+                placeholder="Gerado automaticamente"
+              />
+              <mat-hint>Em branco = gerado (ano + 5 dígitos)</mat-hint>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="md:col-span-2" subscriptSizing="dynamic">
+              <mat-label>Data da matrícula</mat-label>
+              <input matInput type="date" formControlName="dataMatricula" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="md:col-span-2" subscriptSizing="dynamic">
+              <mat-label>Agente educacional</mat-label>
+              <mat-select formControlName="agenteEducacionalId">
+                <mat-option value="">—</mat-option>
+                @for (a of agentes; track a.id) {
+                  <mat-option [value]="a.id">{{ a.nome }}</mat-option>
                 }
               </mat-select>
             </mat-form-field>
           </div>
 
-          <div>
-            <p class="text-xs font-medium text-gray-600 mb-2">Tags (para busca posterior)</p>
-            <div class="flex gap-2 flex-wrap items-center">
-              <mat-chip-set>
-                @for (tag of tagsAtuais; track tag.id) {
-                  <mat-chip [removable]="true" (removed)="removerTag(tag)">
-                    {{ tag.nome }}
-                    <mat-icon matChipRemove aria-label="Remover tag">cancel</mat-icon>
-                  </mat-chip>
-                }
-              </mat-chip-set>
-              <mat-form-field appearance="outline" class="!w-48 !text-xs" subscriptSizing="dynamic">
-                <input
-                  matInput
-                  [formControl]="novaTagControl"
-                  [matAutocomplete]="autoTag"
-                  placeholder="Digite e Enter"
-                  (keydown.enter)="$event.preventDefault(); confirmarNovaTag()"
-                />
-                <mat-autocomplete #autoTag="matAutocomplete" (optionSelected)="confirmarNovaTag()">
-                  @for (tag of tagsFiltradas(); track tag.id) {
-                    <mat-option [value]="tag.nome">{{ tag.nome }}</mat-option>
-                  }
-                </mat-autocomplete>
-              </mat-form-field>
-            </div>
-          </div>
-        </div>
-      }
-
-      @if (editando && id) {
-        <section class="ef-card p-4 mb-4">
-          <div class="flex flex-wrap items-center gap-3">
-            <p class="text-sm font-medium text-gray-700 m-0">
-              Responsável financeiro e tomador da nota fiscal
-            </p>
-            @if (sacadoNome) {
-              <span class="text-sm"
-                ><strong>{{ sacadoNome }}</strong> — {{ sacadoDocumento }} (cobrança e nota fiscal
-                saem em nome dele)</span
-              >
-            } @else {
-              <span class="text-sm text-gray-600"
-                >O próprio aluno (padrão) — a nota fiscal sai no nome dele</span
-              >
-            }
-            <button
-              mat-stroked-button
-              type="button"
-              class="ml-auto"
-              (click)="alterandoSacado = !alterandoSacado"
+          <hr class="my-5 border-0 border-t border-line" />
+          <h2 class="ef-card-title"><mat-icon>draw</mat-icon> Contrato</h2>
+          <div class="flex flex-wrap gap-x-10 gap-y-3">
+            <mat-slide-toggle formControlName="contratoAssinado"
+              >Contrato assinado</mat-slide-toggle
             >
-              {{ alterandoSacado ? "Fechar" : "Alterar responsável" }}
+            <mat-slide-toggle formControlName="tcdAssinado">TCD assinado</mat-slide-toggle>
+          </div>
+
+          <hr class="my-5 border-0 border-t border-line" />
+          <h2 class="ef-card-title"><mat-icon>payments</mat-icon> Cobrança</h2>
+          <p class="mb-3 mt-0 text-sm text-muted">
+            Opcional. Preenchendo valor e nº de parcelas{{
+              editando ? "." : ", as parcelas mensais são geradas automaticamente ao salvar."
+            }}
+          </p>
+          <div class="grid grid-cols-1 gap-x-4 md:grid-cols-6">
+            <mat-form-field appearance="outline" class="md:col-span-2">
+              <mat-label>Valor do curso</mat-label>
+              <input matInput type="number" min="0" step="0.01" formControlName="valorCurso" />
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="md:col-span-2">
+              <mat-label>Número de parcelas</mat-label>
+              <input matInput type="number" min="1" max="360" formControlName="numeroParcelas" />
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="md:col-span-2">
+              <mat-label>Dia de vencimento</mat-label>
+              <input matInput type="number" min="1" max="28" formControlName="diaVencimento" />
+            </mat-form-field>
+          </div>
+
+          @if (editando) {
+            <div class="-mt-2">
+              @if (quantidadeParcelas > 0) {
+                <p class="m-0 text-sm text-muted">
+                  {{ quantidadeParcelas }} parcela(s) já gerada(s) para esta matrícula — veja na
+                  Ficha de Cobrança.
+                </p>
+              } @else {
+                <button
+                  mat-stroked-button
+                  type="button"
+                  [disabled]="gerandoParcelas"
+                  (click)="gerarParcelas()"
+                >
+                  <mat-icon>receipt_long</mat-icon>
+                  {{ gerandoParcelas ? "Gerando..." : "Gerar parcelas" }}
+                </button>
+                <p class="mb-0 mt-1 text-xs text-muted">
+                  Salve a matrícula com valor, número de parcelas e dia de vencimento preenchidos
+                  antes de gerar.
+                </p>
+              }
+            </div>
+
+            <hr class="my-5 border-0 border-t border-line" />
+            <h2 class="ef-card-title"><mat-icon>sell</mat-icon> Situação de cobrança e tags</h2>
+            <div class="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                <mat-label>Situação de cobrança</mat-label>
+                <mat-select
+                  [formControl]="situacaoCobrancaControl"
+                  (selectionChange)="mudarSituacaoCobranca($event.value)"
+                >
+                  @for (situacao of situacoesCobranca; track situacao.id) {
+                    <mat-option [value]="situacao.id">{{ situacao.nome }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
+              <div>
+                <p class="mb-2 mt-0 text-sm text-muted">Tags (para busca posterior)</p>
+                <div class="flex flex-wrap items-center gap-2">
+                  <mat-chip-set>
+                    @for (tag of tagsAtuais; track tag.id) {
+                      <mat-chip [removable]="true" (removed)="removerTag(tag)">
+                        {{ tag.nome }}
+                        <mat-icon matChipRemove aria-label="Remover tag">cancel</mat-icon>
+                      </mat-chip>
+                    }
+                  </mat-chip-set>
+                  <mat-form-field
+                    appearance="outline"
+                    class="!w-48 !text-xs"
+                    subscriptSizing="dynamic"
+                  >
+                    <input
+                      matInput
+                      [formControl]="novaTagControl"
+                      [matAutocomplete]="autoTag"
+                      placeholder="Digite e Enter"
+                      (keydown.enter)="$event.preventDefault(); confirmarNovaTag()"
+                    />
+                    <mat-autocomplete
+                      #autoTag="matAutocomplete"
+                      (optionSelected)="confirmarNovaTag()"
+                    >
+                      @for (tag of tagsFiltradas(); track tag.id) {
+                        <mat-option [value]="tag.nome">{{ tag.nome }}</mat-option>
+                      }
+                    </mat-autocomplete>
+                  </mat-form-field>
+                </div>
+              </div>
+            </div>
+
+            @if (id) {
+              <hr class="my-5 border-0 border-t border-line" />
+              <h2 class="ef-card-title">
+                <mat-icon>account_balance_wallet</mat-icon> Responsável financeiro
+              </h2>
+              <div class="flex flex-wrap items-center gap-3">
+                @if (sacadoNome) {
+                  <span class="text-sm"
+                    ><strong>{{ sacadoNome }}</strong> — {{ sacadoDocumento }} (cobrança e nota
+                    fiscal saem em nome dele)</span
+                  >
+                } @else {
+                  <span class="text-sm text-muted"
+                    >O próprio aluno (padrão) — a nota fiscal sai no nome dele</span
+                  >
+                }
+                <button
+                  mat-stroked-button
+                  type="button"
+                  class="ml-auto"
+                  (click)="alterandoSacado = !alterandoSacado"
+                >
+                  {{ alterandoSacado ? "Fechar" : "Alterar responsável" }}
+                </button>
+              </div>
+
+              @if (alterandoSacado) {
+                <app-sacado-matricula (alterado)="aoMudarSacado($event)"></app-sacado-matricula>
+                <p class="mt-2 text-xs text-amber-700">
+                  Cobranças (boleto/Pix) já emitidas continuam no nome do responsável anterior; só
+                  as próximas saem no nome do novo.
+                </p>
+                <div class="mt-2 flex gap-2">
+                  <button
+                    mat-flat-button
+                    color="primary"
+                    type="button"
+                    [disabled]="!sacadoNovoValido || salvandoSacado"
+                    (click)="salvarSacado()"
+                  >
+                    Salvar responsável
+                  </button>
+                </div>
+              }
+            }
+          }
+
+          <hr class="my-5 border-0 border-t border-line" />
+          <h2 class="ef-card-title"><mat-icon>notes</mat-icon> Observações</h2>
+          <mat-form-field appearance="outline" class="w-full" subscriptSizing="dynamic">
+            <mat-label>Observações</mat-label>
+            <textarea matInput formControlName="observacoes" rows="3"></textarea>
+          </mat-form-field>
+
+          <div class="ef-form-footer">
+            <span class="text-sm text-muted"
+              ><span class="text-red-600">*</span> Campos obrigatórios</span
+            >
+            <span class="flex-1"></span>
+            <a mat-stroked-button routerLink="/matriculas">Cancelar</a>
+            <button mat-flat-button color="primary" type="submit" [disabled]="salvando">
+              <mat-icon>check</mat-icon> {{ editando ? "Salvar alterações" : "Criar matrícula" }}
             </button>
           </div>
+        </form>
 
-          @if (alterandoSacado) {
-            <app-sacado-matricula (alterado)="aoMudarSacado($event)"></app-sacado-matricula>
-            <p class="text-xs text-amber-700 mt-2">
-              Cobranças (boleto/Pix) já emitidas continuam no nome do responsável anterior; só as
-              próximas saem no nome do novo.
-            </p>
-            <div class="flex gap-2 mt-2">
-              <button
-                mat-flat-button
-                color="primary"
-                type="button"
-                [disabled]="!sacadoNovoValido || salvandoSacado"
-                (click)="salvarSacado()"
-              >
-                Salvar responsável
-              </button>
-            </div>
-          }
-        </section>
-      }
+        @if (editando && matricula(); as m) {
+          <aside class="grid gap-3" aria-label="Resumo da matrícula">
+            <section class="ef-card p-5">
+              <div class="flex items-center gap-4">
+                <span class="ef-avatar ef-avatar-lg">{{ iniciais(m.aluno?.nome) }}</span>
+                <div class="min-w-0">
+                  <a
+                    [routerLink]="['/alunos', m.alunoId]"
+                    class="break-words text-lg font-semibold leading-tight text-brand-700 no-underline hover:underline"
+                    >{{ m.aluno?.nome || "Aluno" }}</a
+                  >
+                  <p class="m-0 text-sm text-muted">{{ m.curso?.nome }}</p>
+                </div>
+              </div>
 
-      @if (editando && id && situacaoAtual) {
+              <hr class="my-4 border-0 border-t border-line" />
+              <dl class="m-0 grid gap-3 text-sm">
+                <div>
+                  <dt class="text-muted">Situação da matrícula</dt>
+                  <dd class="m-0 mt-1">
+                    <span [class]="pillSituacao(m.situacao)">{{ rotuloSituacao(m.situacao) }}</span>
+                  </dd>
+                </div>
+                <div>
+                  <dt class="text-muted">Data da matrícula</dt>
+                  <dd class="m-0 text-base font-medium">
+                    {{ m.dataMatricula ? (m.dataMatricula | date: "dd/MM/yyyy" : "UTC") : "—" }}
+                  </dd>
+                </div>
+                <div>
+                  <dt class="text-muted">Contrato e TCD</dt>
+                  <dd class="m-0 mt-1 flex flex-wrap gap-2">
+                    <span
+                      [class]="m.contratoAssinado ? 'ef-pill ef-pill-ok' : 'ef-pill ef-pill-warn'"
+                      >Contrato {{ m.contratoAssinado ? "assinado" : "pendente" }}</span
+                    >
+                    <span [class]="m.tcdAssinado ? 'ef-pill ef-pill-ok' : 'ef-pill ef-pill-warn'"
+                      >TCD {{ m.tcdAssinado ? "assinado" : "pendente" }}</span
+                    >
+                  </dd>
+                </div>
+              </dl>
+
+              <hr class="my-4 border-0 border-t border-line" />
+              <h2 class="ef-card-title !mb-3"><mat-icon>credit_card</mat-icon> Parcelas</h2>
+              @if (m.resumoParcelas; as r) {
+                <div class="flex flex-wrap gap-1.5" data-testid="resumo-parcelas">
+                  @if (r.vencidas > 0) {
+                    <span class="ef-chip bg-orange-100 text-orange-700"
+                      >{{ r.vencidas }} vencida(s)</span
+                    >
+                  }
+                  @if (r.emAberto > 0) {
+                    <span class="ef-chip bg-blue-100 text-blue-700"
+                      >{{ r.emAberto }} aberta(s)</span
+                    >
+                  }
+                  @if (r.pagas > 0) {
+                    <span class="ef-chip bg-green-100 text-green-700">{{ r.pagas }} paga(s)</span>
+                  }
+                  @if (r.renegociadas > 0) {
+                    <span class="ef-chip bg-purple-100 text-purple-700"
+                      >{{ r.renegociadas }} renegociada(s)</span
+                    >
+                  }
+                  @if (r.protestadas > 0) {
+                    <span class="ef-chip bg-red-100 text-red-800"
+                      >{{ r.protestadas }} protestada(s)</span
+                    >
+                  }
+                  @if (r.canceladas > 0) {
+                    <span class="ef-chip bg-gray-100 text-gray-500"
+                      >{{ r.canceladas }} cancelada(s)</span
+                    >
+                  }
+                </div>
+              } @else {
+                <p class="m-0 text-sm text-muted">
+                  {{
+                    quantidadeParcelas > 0
+                      ? quantidadeParcelas + " parcela(s) gerada(s)."
+                      : "Nenhuma parcela gerada."
+                  }}
+                </p>
+              }
+              @if (auth.temPerfil("ADMINISTRADOR")) {
+                <a
+                  mat-stroked-button
+                  class="mt-4 !w-full"
+                  [routerLink]="['/cobranca/matriculas', m.id]"
+                >
+                  <mat-icon>receipt_long</mat-icon> Abrir ficha de cobrança
+                </a>
+              }
+            </section>
+          </aside>
+        }
+      </div>
+
+      <!-- ===== Situação ===== -->
+      @if (editando && id && situacaoAtual && aba() === "situacao") {
         <app-situacao-matricula
           [matriculaId]="id"
           [situacaoInicial]="situacaoAtual"
         ></app-situacao-matricula>
       }
 
-      @if (editando && id) {
-        <app-documentos-matricula [matriculaId]="id"></app-documentos-matricula>
+      <!-- ===== Documentos ===== -->
+      @if (editando && id && aba() === "documentos") {
+        <section class="ef-card p-6">
+          <h2 class="ef-card-title !mb-0">
+            <mat-icon>folder_open</mat-icon> Documentos da matrícula
+          </h2>
+          <app-documentos-matricula [matriculaId]="id"></app-documentos-matricula>
+        </section>
       }
-
-      <div class="flex justify-end gap-2 mt-2">
-        <a mat-button routerLink="/matriculas">Cancelar</a>
-        <button mat-raised-button color="primary" type="submit" [disabled]="salvando">
-          Salvar
-        </button>
-      </div>
-    </form>
+    </div>
   `,
 })
 export class MatriculaFormComponent implements OnInit {
@@ -301,6 +503,16 @@ export class MatriculaFormComponent implements OnInit {
   private readonly snackBar = inject(MatSnackBar);
 
   protected readonly formatarCpf = formatarCpf;
+  protected readonly pillSituacao = pillSituacaoMatricula;
+  protected readonly rotuloSituacao = rotuloSituacaoMatricula;
+
+  readonly aba = signal<Aba>("dados");
+  /** A matrícula carregada (resumo lateral); nula em matrícula nova. */
+  readonly matricula = signal<Matricula | null>(null);
+
+  iniciais(nome: string | undefined): string {
+    return iniciaisDe(nome ?? "");
+  }
   /** Situação carregada da matrícula (a troca é feita pelo componente próprio). */
   situacaoAtual = "";
   sacadoNome = "";
@@ -351,7 +563,7 @@ export class MatriculaFormComponent implements OnInit {
   quantidadeParcelas = 0;
   id: string | null = null;
   agentes: AgenteEducacional[] = [];
-  private readonly auth = inject(AuthService);
+  readonly auth = inject(AuthService);
 
   alunos: Aluno[] = [];
   cursos: Curso[] = [];
@@ -424,6 +636,8 @@ export class MatriculaFormComponent implements OnInit {
       this.carregando = true;
       this.service.buscarPorId(this.id).subscribe({
         next: (m) => {
+          this.matricula.set(m);
+          this.carregarResumoParcelas(m);
           this.situacaoAtual = m.situacao;
           this.sacadoNome = m.sacado?.nome ?? "";
           this.sacadoDocumento = m.sacado
@@ -458,6 +672,15 @@ export class MatriculaFormComponent implements OnInit {
       this.cobrancaService.listarTags().subscribe((res) => (this.todasTags = res));
       this.carregarFichaCobranca();
     }
+  }
+
+  /** A busca por id não traz o resumo de parcelas (só a lista traz): pega da lista do aluno. */
+  private carregarResumoParcelas(m: Matricula): void {
+    this.service.listar({ alunoId: m.alunoId, pageSize: 100 }).subscribe((res) => {
+      const resumo = res.data.find((x) => x.id === m.id)?.resumoParcelas;
+      if (resumo)
+        this.matricula.update((atual) => (atual ? { ...atual, resumoParcelas: resumo } : atual));
+    });
   }
 
   private carregarFichaCobranca(): void {

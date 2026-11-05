@@ -18,7 +18,10 @@ export interface FiltrosFicha {
 
 export const SEM_FILTROS: FiltrosFicha = { estado: "", tipo: "", situacao: "" };
 
-export type ParcelaFiltravel = Pick<Parcela, "status" | "vencimento" | "tipoTitulo" | "situacaoCobranca">;
+export type ParcelaFiltravel = Pick<
+  Parcela,
+  "status" | "vencimento" | "tipoTitulo" | "situacaoCobranca"
+>;
 
 export interface OpcoesDosFiltros {
   estados: string[];

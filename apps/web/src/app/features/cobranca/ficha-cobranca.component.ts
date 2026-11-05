@@ -746,7 +746,12 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
 
   private calcularFiltro() {
     const c = this.cacheFiltro;
-    if (c && c.parcelas === this.parcelas && c.dias === this.diasAtrasoMinimo && c.filtros === this.filtros) {
+    if (
+      c &&
+      c.parcelas === this.parcelas &&
+      c.dias === this.diasAtrasoMinimo &&
+      c.filtros === this.filtros
+    ) {
       return c;
     }
     const hoje = new Date();

@@ -14,7 +14,15 @@ import { MatMenuModule } from "@angular/material/menu";
 import { MatProgressBarModule } from "@angular/material/progress-bar";
 import { MatDialog } from "@angular/material/dialog";
 import { MatSnackBar } from "@angular/material/snack-bar";
-import { Subscription, interval, switchMap, takeWhile } from "rxjs";
+import { Subscription, forkJoin, interval, map, of, switchMap, takeWhile } from "rxjs";
+import {
+  filtrarParcelas,
+  FiltrosFicha,
+  opcoesDosFiltros,
+  OpcoesDosFiltros,
+  SEM_FILTROS,
+  temFiltro,
+} from "./ficha-filtros";
 import { CobrancaService } from "../../core/services/cobranca.service";
 import { ConfiguracoesService } from "../../core/services/configuracoes.service";
 import { FinanceiroService } from "../../core/services/financeiro.service";
@@ -152,6 +160,63 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
 
       <div class="ef-card p-3 mb-3">
         <p class="text-xs font-medium text-gray-600 mb-2">Parcelas</p>
+        <div class="flex flex-wrap items-end gap-3 mb-3" data-testid="filtros-parcelas">
+          <label class="text-xs text-gray-500 flex flex-col gap-1">
+            Estado da parcela
+            <select
+              class="border border-line rounded-md px-2 py-1.5 text-sm text-ink bg-white min-w-[11rem]"
+              data-testid="filtro-estado"
+              [value]="filtros.estado"
+              (change)="mudarFiltro('estado', $any($event.target).value)"
+            >
+              <option value="">Todos</option>
+              @for (o of opcoesFiltro().estados; track o) {
+                <option [value]="o" [selected]="o === filtros.estado">{{ o }}</option>
+              }
+            </select>
+          </label>
+          <label class="text-xs text-gray-500 flex flex-col gap-1">
+            Tipo de título
+            <select
+              class="border border-line rounded-md px-2 py-1.5 text-sm text-ink bg-white min-w-[14rem]"
+              data-testid="filtro-tipo"
+              [value]="filtros.tipo"
+              (change)="mudarFiltro('tipo', $any($event.target).value)"
+            >
+              <option value="">Todos</option>
+              @for (o of opcoesFiltro().tipos; track o) {
+                <option [value]="o" [selected]="o === filtros.tipo">{{ o }}</option>
+              }
+            </select>
+          </label>
+          <label class="text-xs text-gray-500 flex flex-col gap-1">
+            Situação
+            <select
+              class="border border-line rounded-md px-2 py-1.5 text-sm text-ink bg-white min-w-[13rem]"
+              data-testid="filtro-situacao"
+              [value]="filtros.situacao"
+              (change)="mudarFiltro('situacao', $any($event.target).value)"
+            >
+              <option value="">Todas</option>
+              @for (o of opcoesFiltro().situacoes; track o) {
+                <option [value]="o" [selected]="o === filtros.situacao">{{ o }}</option>
+              }
+            </select>
+          </label>
+          @if (filtrando()) {
+            <button mat-button type="button" data-testid="limpar-filtros" (click)="limparFiltros()">
+              Limpar filtros
+            </button>
+          }
+          @if (parcelas.length > 0) {
+            <span class="text-xs text-gray-500 pb-2" data-testid="contador-parcelas">
+              {{ parcelasVisiveis().length }} de {{ parcelas.length }} parcelas
+              @if (filtrando()) {
+                — totais consideram só as filtradas
+              }
+            </span>
+          }
+        </div>
         <div class="overflow-x-auto">
           <table class="w-full text-sm">
             <thead>
@@ -180,7 +245,7 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
                 <th class="py-1 font-medium">Detalhes</th>
               </tr>
             </thead>
-            @for (parcela of parcelas; track parcela.id) {
+            @for (parcela of parcelasVisiveis(); track parcela.id) {
               <tr class="text-gray-600">
                 <td class="py-1">{{ parcela.parcela }}</td>
                 <td class="py-1">{{ parcela.codTitulo }}</td>
@@ -444,8 +509,14 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
               <tr>
                 <td class="text-gray-400 py-2">Nenhuma parcela cadastrada.</td>
               </tr>
+            } @else if (parcelasVisiveis().length === 0) {
+              <tr>
+                <td class="text-gray-400 py-2" colspan="13">
+                  Nenhuma parcela corresponde aos filtros.
+                </td>
+              </tr>
             }
-            @if (parcelas.length > 0) {
+            @if (parcelasVisiveis().length > 0) {
               <tr class="border-t font-medium">
                 <td class="py-1" colspan="6">Total devedor</td>
                 <td class="py-1 text-right">{{ totalDevedor() | currency: "BRL" }}</td>
@@ -463,7 +534,7 @@ import { extrairNomeArquivo, salvarBlobComoArquivo } from "../../shared/utils/do
         </div>
       </div>
 
-      @if (parcelas.length > 0) {
+      @if (parcelasVisiveis().length > 0) {
         <div class="ef-card p-3 mb-3" data-testid="totalizador">
           <p class="text-xs font-medium text-gray-600 mb-2">Totalizador</p>
           <dl class="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-2 text-sm m-0">
@@ -640,9 +711,74 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
       error: () => (this.carregando = false),
     });
 
+    // A API entrega no máximo 100 por página; busca as demais para a ficha não truncar matrículas grandes.
+    const POR_PAGINA = 100;
     this.financeiroService
-      .listar({ matriculaId: this.matriculaId, pageSize: 100 })
-      .subscribe((res) => (this.parcelas = res.data));
+      .listar({ matriculaId: this.matriculaId, page: 1, pageSize: POR_PAGINA })
+      .pipe(
+        switchMap((primeira) => {
+          const paginas = Math.ceil(primeira.total / POR_PAGINA);
+          if (paginas <= 1) return of(primeira.data);
+          const restantes = Array.from({ length: paginas - 1 }, (_, i) =>
+            this.financeiroService.listar({
+              matriculaId: this.matriculaId,
+              page: i + 2,
+              pageSize: POR_PAGINA,
+            }),
+          );
+          return forkJoin(restantes).pipe(
+            map((outras) => [...primeira.data, ...outras.flatMap((r) => r.data)]),
+          );
+        }),
+      )
+      .subscribe((todas) => (this.parcelas = todas));
+  }
+
+  // ---- Filtros da tabela de parcelas (só na tela; renegociação usa sempre todas as parcelas) ----
+  filtros: FiltrosFicha = { ...SEM_FILTROS };
+  private cacheFiltro?: {
+    parcelas: Parcela[];
+    dias: number;
+    filtros: FiltrosFicha;
+    visiveis: Parcela[];
+    opcoes: OpcoesDosFiltros;
+  };
+
+  private calcularFiltro() {
+    const c = this.cacheFiltro;
+    if (c && c.parcelas === this.parcelas && c.dias === this.diasAtrasoMinimo && c.filtros === this.filtros) {
+      return c;
+    }
+    const hoje = new Date();
+    const estadoDe = (p: Parcela) => this.situacaoParcela(p).rotulo;
+    this.cacheFiltro = {
+      parcelas: this.parcelas,
+      dias: this.diasAtrasoMinimo,
+      filtros: this.filtros,
+      visiveis: filtrarParcelas(this.parcelas, this.filtros, estadoDe, hoje),
+      opcoes: opcoesDosFiltros(this.parcelas, estadoDe, hoje),
+    };
+    return this.cacheFiltro;
+  }
+
+  parcelasVisiveis(): Parcela[] {
+    return this.calcularFiltro().visiveis;
+  }
+
+  opcoesFiltro(): OpcoesDosFiltros {
+    return this.calcularFiltro().opcoes;
+  }
+
+  filtrando(): boolean {
+    return temFiltro(this.filtros);
+  }
+
+  mudarFiltro(campo: keyof FiltrosFicha, valor: string): void {
+    this.filtros = { ...this.filtros, [campo]: valor };
+  }
+
+  limparFiltros(): void {
+    this.filtros = { ...SEM_FILTROS };
   }
 
   voltar(): void {
@@ -707,17 +843,12 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
 
   itensTotalizador(): { rotulo: string; valor: number; moeda: boolean; destaque?: boolean }[] {
     return itensDoTotalizador(
-      totaisDaFicha(this.parcelas, (p) => this.calculoParcela(p as Parcela), new Date()),
+      totaisDaFicha(this.parcelasVisiveis(), (p) => this.calculoParcela(p as Parcela), new Date()),
     );
   }
 
   totalDevedor(): number {
-    return this.parcelas
-      .filter(
-        (p) =>
-          p.status === "EM_ABERTO" || p.status === "PROTESTO_ENVIADO" || p.status === "PROTESTADO",
-      )
-      .reduce((soma, p) => soma + Number(p.valor), 0);
+    return this.parcelasDevedoras().reduce((soma, p) => soma + Number(p.valor), 0);
   }
 
   /**
@@ -757,7 +888,7 @@ export class FichaCobrancaComponent implements OnInit, OnDestroy {
   }
 
   private parcelasDevedoras(): Parcela[] {
-    return this.parcelas.filter(
+    return this.parcelasVisiveis().filter(
       (p) =>
         p.status === "EM_ABERTO" || p.status === "PROTESTO_ENVIADO" || p.status === "PROTESTADO",
     );

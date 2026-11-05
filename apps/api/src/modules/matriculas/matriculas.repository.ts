@@ -157,24 +157,8 @@ export const matriculasRepository = {
     return alunos;
   },
 
-  async list({
-    alunoId,
-    cursoId,
-    situacao,
-    alunoNome,
-    alunoCpf,
-    dataMatriculaInicio,
-    dataMatriculaFim,
-    situacaoCobrancaId,
-    tagId,
-    contratoAssinado,
-    tcdAssinado,
-    comParcelaVencida,
-    situacaoDocumentacao,
-    skip,
-    take,
-  }: ListarMatriculasParams) {
-    const where = this.whereDaListagem({
+  async list(
+    {
       alunoId,
       cursoId,
       situacao,
@@ -188,7 +172,29 @@ export const matriculasRepository = {
       tcdAssinado,
       comParcelaVencida,
       situacaoDocumentacao,
-    });
+      skip,
+      take,
+    }: ListarMatriculasParams,
+    agora = new Date(),
+  ) {
+    const where = this.whereDaListagem(
+      {
+        alunoId,
+        cursoId,
+        situacao,
+        alunoNome,
+        alunoCpf,
+        dataMatriculaInicio,
+        dataMatriculaFim,
+        situacaoCobrancaId,
+        tagId,
+        contratoAssinado,
+        tcdAssinado,
+        comParcelaVencida,
+        situacaoDocumentacao,
+      },
+      agora,
+    );
 
     const [data, total] = await Promise.all([
       prisma.matricula.findMany({

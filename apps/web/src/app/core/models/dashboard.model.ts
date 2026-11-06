@@ -129,6 +129,8 @@ export interface DashboardVisaoGeral {
     matriculas: number;
     parcelas: number;
     valorVencido: number;
+    /** Valor vencido + multa + juros. */
+    valorVencidoComEncargos: number;
     maiorAtrasoDias: number;
   }>;
   matriculasPorSituacao: Array<{ situacao: string; matriculas: number }>;

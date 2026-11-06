@@ -303,6 +303,9 @@ const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "o
                   <th class="py-1">Aluno</th>
                   <th class="py-1 text-right">Parcelas</th>
                   <th class="py-1 text-right">Vencido</th>
+                  <th class="py-1 text-right" title="Valor vencido + multa + juros">
+                    Vencido com multa e juros
+                  </th>
                   <th class="py-1 text-right">Maior atraso</th>
                 </tr>
               </thead>
@@ -314,13 +317,16 @@ const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "o
                     <td class="py-1 text-right text-red-700">
                       {{ a.valorVencido | currency: "BRL" }}
                     </td>
+                    <td class="py-1 text-right font-medium text-red-700">
+                      {{ a.valorVencidoComEncargos | currency: "BRL" }}
+                    </td>
                     <td class="py-1 text-right text-gray-500">
                       {{ a.maiorAtrasoDias | number }} d
                     </td>
                   </tr>
                 } @empty {
                   <tr>
-                    <td class="py-2 text-gray-500" colspan="4">Sem valores vencidos.</td>
+                    <td class="py-2 text-gray-500" colspan="5">Sem valores vencidos.</td>
                   </tr>
                 }
               </tbody>

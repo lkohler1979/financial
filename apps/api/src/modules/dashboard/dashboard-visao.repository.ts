@@ -1,4 +1,11 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../../database/prisma";
+import { configuracoesRepository } from "../configuracoes/configuracoes.repository";
+import {
+  EncargosDoAluno,
+  ParcelaVencidaDoAluno,
+  somarEncargosPorAluno,
+} from "./encargos-devedores";
 
 /** "AAAA-MM-DD" de uma data local. */
 function dataIso(d: Date): string {
@@ -243,6 +250,31 @@ export const dashboardVisaoRepository = {
         FROM matriculas GROUP BY situacao ORDER BY qtd DESC`,
     ]);
 
+    // Valor vencido com multa e juros dos maiores devedores (mesma regra da ficha de cobrança).
+    // Só dos 10 alunos do ranking, então a consulta é pequena.
+    let encargosPorAluno = new Map<string, EncargosDoAluno>();
+    if (topDevedores.length > 0) {
+      const alunoIds = topDevedores.map((d) => d.aluno_id);
+      const [configuracao, vencidas] = await Promise.all([
+        configuracoesRepository.obterOuCriar(),
+        prisma.$queryRaw<ParcelaVencidaDoAluno[]>`SELECT m.aluno_id,
+            p.valor::float8 AS valor,
+            to_char(p.vencimento, 'YYYY-MM-DD') AS vencimento,
+            p.multa_legado::float8 AS multa_legado,
+            p.juros_legado::float8 AS juros_legado,
+            p.total_legado::float8 AS total_legado
+          FROM parcelas p
+          JOIN matriculas m ON m.id = p.matricula_id
+          WHERE p.status = 'EM_ABERTO' AND p.vencimento < ${hojeIso}::date
+            AND m.aluno_id IN (${Prisma.join(alunoIds)})`,
+      ]);
+      encargosPorAluno = somarEncargosPorAluno(vencidas, hoje, {
+        multaPercentual: Number(configuracao.multaPercentual),
+        jurosDiarioPercentual: Number(configuracao.jurosDiarioPercentual),
+        jurosContarDiaGeracao: configuracao.jurosContarDiaGeracao,
+      });
+    }
+
     const meses12 = mesesDesde(inicioSerie, 12);
     const proximos6 = mesesDesde(new Date(hoje.getFullYear(), hoje.getMonth(), 1), 6);
     const vencidoValor = parcelas.vencidas_valor;
@@ -317,6 +349,7 @@ export const dashboardVisaoRepository = {
         matriculas: d.matriculas,
         parcelas: d.parcelas,
         valorVencido: arredonda(d.valor),
+        valorVencidoComEncargos: encargosPorAluno.get(d.aluno_id)?.total ?? arredonda(d.valor),
         maiorAtrasoDias: d.maior_atraso,
       })),
       matriculasPorSituacao: situacoes.map((s) => ({ situacao: s.situacao, matriculas: s.qtd })),

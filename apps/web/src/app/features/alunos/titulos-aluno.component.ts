@@ -26,8 +26,15 @@ import {
 } from "../cobranca/ficha-totais";
 import { ParcelaDetalhesDialogComponent } from "../cobranca/parcela-detalhes-dialog.component";
 import { formatarCpf } from "../../shared/utils/cpf.util";
-
-type FiltroOrigem = "TODOS" | "MATRICULA" | "SEM_MATRICULA";
+import {
+  filtrarParcelas,
+  FiltrosFicha,
+  opcoesDosFiltros,
+  SEM_FILTROS,
+  temFiltro,
+} from "../cobranca/ficha-filtros";
+import { opcoesDeMatricula, pertenceAMatricula } from "./aluno-financeiro";
+import { GerarCobrancaProtestoDialogComponent } from "./gerar-cobranca-protesto-dialog.component";
 
 /**
  * Todos os títulos de um aluno (por CPF): as parcelas de todas as matrículas e os títulos do legado
@@ -67,14 +74,24 @@ type FiltroOrigem = "TODOS" | "MATRICULA" | "SEM_MATRICULA";
           </p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="!w-52">
-            <mat-label>Mostrar</mat-label>
-            <mat-select [value]="filtro()" (selectionChange)="filtro.set($event.value)">
-              <mat-option value="TODOS">Todos os títulos</mat-option>
-              <mat-option value="MATRICULA">Só os de matrícula</mat-option>
-              <mat-option value="SEM_MATRICULA">Só os sem matrícula</mat-option>
-            </mat-select>
-          </mat-form-field>
+          <button
+            mat-stroked-button
+            type="button"
+            data-testid="gerar-cobranca"
+            (click)="abrirGerar('COBRANCA')"
+            title="Gera as cobranças (boleto, Pix ou cartão) da matrícula/curso escolhido ou de todos"
+          >
+            <mat-icon>request_quote</mat-icon> Gerar cobrança
+          </button>
+          <button
+            mat-stroked-button
+            type="button"
+            data-testid="gerar-protesto"
+            (click)="abrirGerar('PROTESTO')"
+            title="Gera o documento de protesto da matrícula/curso escolhido ou de todos"
+          >
+            <mat-icon>gavel</mat-icon> Gerar protesto
+          </button>
           <button
             mat-stroked-button
             type="button"
@@ -89,6 +106,71 @@ type FiltroOrigem = "TODOS" | "MATRICULA" | "SEM_MATRICULA";
       @if (atualizando()) {
         <mat-progress-bar mode="indeterminate" class="mb-3"></mat-progress-bar>
       }
+
+      <div class="ef-card mb-3 p-3" data-testid="filtros-titulos">
+        <div class="flex flex-wrap items-end gap-3">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="!w-64">
+            <mat-label>Matrícula / curso</mat-label>
+            <mat-select
+              data-testid="filtro-matricula"
+              [value]="matriculaFiltro()"
+              (selectionChange)="matriculaFiltro.set($event.value)"
+            >
+              <mat-option value="">Todas as matrículas</mat-option>
+              @for (o of opcoesMatricula(); track o.id) {
+                <mat-option [value]="o.id">{{ o.rotulo }} ({{ o.titulos }})</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="!w-56">
+            <mat-label>Tipo de título</mat-label>
+            <mat-select
+              data-testid="filtro-tipo"
+              [value]="filtros().tipo"
+              (selectionChange)="mudarFiltro('tipo', $event.value)"
+            >
+              <mat-option value="">Todos</mat-option>
+              @for (o of opcoesFiltro().tipos; track o) {
+                <mat-option [value]="o">{{ o }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="!w-48">
+            <mat-label>Estado da parcela</mat-label>
+            <mat-select
+              data-testid="filtro-estado"
+              [value]="filtros().estado"
+              (selectionChange)="mudarFiltro('estado', $event.value)"
+            >
+              <mat-option value="">Todos</mat-option>
+              @for (o of opcoesFiltro().estados; track o) {
+                <mat-option [value]="o">{{ o }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="!w-52">
+            <mat-label>Situação</mat-label>
+            <mat-select
+              data-testid="filtro-situacao"
+              [value]="filtros().situacao"
+              (selectionChange)="mudarFiltro('situacao', $event.value)"
+            >
+              <mat-option value="">Todas</mat-option>
+              @for (o of opcoesFiltro().situacoes; track o) {
+                <mat-option [value]="o">{{ o }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          @if (filtrando()) {
+            <button mat-button type="button" data-testid="limpar-filtros" (click)="limparFiltros()">
+              Limpar filtros
+            </button>
+          }
+          <span class="text-xs text-gray-500 pb-2" data-testid="contador-titulos">
+            {{ visiveis().length }} de {{ d.titulos.length }} título(s)
+          </span>
+        </div>
+      </div>
 
       <div class="ef-card mb-3 overflow-hidden">
         <div class="overflow-x-auto">
@@ -212,7 +294,9 @@ export class TitulosAlunoComponent implements OnInit {
   readonly dados = signal<TitulosDoAluno | null>(null);
   readonly carregando = signal(true);
   readonly atualizando = signal(false);
-  readonly filtro = signal<FiltroOrigem>("TODOS");
+  /** "" = todas as matrículas; SEM_MATRICULA = só os do legado sem matrícula; ou o id da matrícula. */
+  readonly matriculaFiltro = signal("");
+  readonly filtros = signal<FiltrosFicha>({ ...SEM_FILTROS });
   private readonly config = signal<ConfigEncargos>({
     diasAtrasoMinimo: 0,
     multaPercentual: 0,
@@ -222,11 +306,24 @@ export class TitulosAlunoComponent implements OnInit {
 
   private alunoId = "";
 
-  readonly visiveis = computed(() => {
-    const f = this.filtro();
-    const titulos = this.dados()?.titulos ?? [];
-    return f === "TODOS" ? titulos : titulos.filter((t) => t.origem === f);
+  readonly opcoesMatricula = computed(() => opcoesDeMatricula(this.dados()?.titulos ?? []));
+
+  /** Títulos da matrícula escolhida (antes dos filtros de tipo, estado e situação). */
+  private readonly daMatricula = computed(() => {
+    const m = this.matriculaFiltro();
+    return (this.dados()?.titulos ?? []).filter((t) => pertenceAMatricula(t, m));
   });
+
+  /** As opções dos filtros são só as que existem nos títulos da matrícula escolhida. */
+  readonly opcoesFiltro = computed(() =>
+    opcoesDosFiltros(this.daMatricula(), (t) => this.estado(t).rotulo, new Date()),
+  );
+
+  readonly visiveis = computed(() =>
+    filtrarParcelas(this.daMatricula(), this.filtros(), (t) => this.estado(t).rotulo, new Date()),
+  );
+
+  readonly filtrando = computed(() => this.matriculaFiltro() !== "" || temFiltro(this.filtros()));
 
   readonly totalizador = computed(() =>
     itensDoTotalizador(
@@ -245,6 +342,38 @@ export class TitulosAlunoComponent implements OnInit {
       }),
     );
     this.carregar();
+  }
+
+  mudarFiltro(campo: keyof FiltrosFicha, valor: string): void {
+    this.filtros.update((f) => ({ ...f, [campo]: valor }));
+  }
+
+  limparFiltros(): void {
+    this.matriculaFiltro.set("");
+    this.filtros.set({ ...SEM_FILTROS });
+  }
+
+  /** Gerar cobrança/protesto da matrícula/curso escolhido no filtro, ou de todas se for "todas". */
+  abrirGerar(modo: "COBRANCA" | "PROTESTO"): void {
+    const d = this.dados();
+    if (!d) return;
+    const m = this.matriculaFiltro();
+    const escolhida = this.opcoesMatricula().find((o) => o.id === m);
+    this.dialog
+      .open(GerarCobrancaProtestoDialogComponent, {
+        width: "560px",
+        maxWidth: "95vw",
+        data: {
+          modo,
+          titulos: d.titulos,
+          matriculaId: m,
+          escopo: escolhida ? escolhida.rotulo : "Todas as matrículas do aluno",
+        },
+      })
+      .afterClosed()
+      .subscribe((mudou) => {
+        if (mudou) this.carregar();
+      });
   }
 
   cpf(valor: string): string {
